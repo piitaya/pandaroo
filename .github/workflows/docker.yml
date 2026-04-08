@@ -37,15 +37,12 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           # Tag scheme:
           #  * main push              → edge + sha-xxx
-          #  * stable  v1.2.3          → 1.2.3 + 1.2 + 1 + latest + beta + alpha + sha-xxx
-          #  * beta    v1.2.3-beta.1   → 1.2.3-beta.1 + beta + alpha + sha-xxx
-          #  * alpha   v1.2.3-alpha.1  → 1.2.3-alpha.1 + alpha + sha-xxx
+          #  * stable v1.2.3           → 1.2.3 + 1.2 + 1 + latest + beta + sha-xxx
+          #  * beta   v1.2.3-beta.1    → 1.2.3-beta.1 + beta + sha-xxx
           #
-          # Channels fast-forward: stable updates beta and alpha,
-          # beta updates alpha. That way users on :beta or :alpha
-          # always get the newest thing they signed up to try — so a
-          # long stable-only stretch doesn't leave them stuck on an
-          # old pre-release.
+          # Stable fast-forwards beta so users on :beta get the
+          # newest thing they signed up to try, even during a long
+          # stable-only stretch.
           #
           # Pre-releases never touch latest or the major/minor
           # aliases, so users pinning "1.2" can't land on an unstable
@@ -57,7 +54,6 @@ jobs:
             type=semver,pattern={{major}},enable=${{ !contains(github.ref, '-') }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
             type=raw,value=beta,enable=${{ startsWith(github.ref, 'refs/tags/v') && (!contains(github.ref, '-') || contains(github.ref, '-beta.')) }}
-            type=raw,value=alpha,enable=${{ startsWith(github.ref, 'refs/tags/v') && (!contains(github.ref, '-') || contains(github.ref, '-beta.') || contains(github.ref, '-alpha.')) }}
             type=raw,value=edge,enable={{is_default_branch}}
             type=sha,format=short
 
