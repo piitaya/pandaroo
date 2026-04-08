@@ -34,13 +34,14 @@ tells you why).
 
 ## Slot status at a glance
 
-| Badge       | Meaning                                                |
-| ----------- | ------------------------------------------------------ |
-| Mapped      | Recognized Bambu spool, ready to sync with Spoolman    |
-| Unmapped    | Recognized Bambu spool but no Spoolman match yet       |
-| Unknown     | Looks like a Bambu spool we've never seen              |
-| Third party | Non-Bambu spool, or a spool without an RFID tag        |
-| Empty       | Slot has no filament loaded                            |
+| Badge        | Meaning                                                     |
+| ------------ | ----------------------------------------------------------- |
+| Mapped       | Recognized Bambu spool, ready to sync with Spoolman         |
+| Unmapped     | Recognized Bambu spool but no Spoolman match yet            |
+| Unknown      | Looks like a Bambu spool we've never seen                   |
+| Third party  | Non-Bambu spool, or a spool without an RFID tag             |
+| Unidentified | Spool detected but the printer has no info about it yet     |
+| Empty        | Slot has no filament loaded                                 |
 
 Only **Mapped** slots sync today. Everything else is shown with an
 explanation so you know what's blocking.
