@@ -3,14 +3,24 @@ import {
   Alert,
   Badge,
   Button,
+  Card,
   Group,
   Loader,
   Stack,
+  Text,
   Title
 } from "@mantine/core";
+// Alert is still used for the load-error state below.
 import { useDisclosure } from "@mantine/hooks";
-import { IconHelp, IconRefresh, IconRefreshDot } from "@tabler/icons-react";
+import {
+  IconHelp,
+  IconPlugConnected,
+  IconPlus,
+  IconRefresh,
+  IconRefreshDot
+} from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { PrinterBlock } from "../components/PrinterBlock";
 import { StatusLegend } from "../components/StatusLegend";
 import { useAppState, useConfig, useSyncAllSpoolman } from "../hooks";
@@ -32,7 +42,9 @@ export default function DashboardPage() {
     );
   }
 
-  const printers = (data?.printers ?? []).filter((p) => p.enabled);
+  const allPrinters = data?.printers ?? [];
+  const printers = allPrinters.filter((p) => p.enabled);
+  const hasAnyPrinter = allPrinters.length > 0;
 
   const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
   const autoSync = Boolean(configData?.config.spoolman?.auto_sync);
@@ -74,10 +86,58 @@ export default function DashboardPage() {
         )}
       </Group>
 
-      {printers.length === 0 && (
-        <Alert color="blue" title={t("dashboard.no_printers_title")}>
-          {t("dashboard.no_printers_body")}
-        </Alert>
+      {printers.length === 0 && !hasAnyPrinter && (
+        <Card withBorder padding="xl" radius="md">
+          <Stack gap="md" align="center" ta="center">
+            <Title order={3}>{t("dashboard.no_printers_title")}</Title>
+            <Text c="dimmed" maw={420}>
+              {t("dashboard.no_printers_body")}
+            </Text>
+            <Button
+              component={Link}
+              to="/printers"
+              state={{ openAdd: true }}
+              leftSection={<IconPlus size={16} />}
+            >
+              {t("dashboard.no_printers_action")}
+            </Button>
+          </Stack>
+        </Card>
+      )}
+
+      {printers.length === 0 && hasAnyPrinter && (
+        <Card withBorder padding="xl" radius="md">
+          <Stack gap="md" align="center" ta="center">
+            <Title order={3}>{t("dashboard.all_disabled_title")}</Title>
+            <Text c="dimmed" maw={420}>
+              {t("dashboard.all_disabled_body")}
+            </Text>
+            <Button component={Link} to="/printers" variant="default">
+              {t("dashboard.all_disabled_action")}
+            </Button>
+          </Stack>
+        </Card>
+      )}
+
+      {printers.length > 0 && !spoolmanConfigured && (
+        <Card withBorder padding="md" radius="md">
+          <Group justify="space-between" wrap="wrap" gap="md" align="center">
+            <Stack gap={2} style={{ flex: "1 1 260px", minWidth: 0 }}>
+              <Text fw={500}>{t("dashboard.no_spoolman_title")}</Text>
+              <Text size="sm" c="dimmed">
+                {t("dashboard.no_spoolman_body")}
+              </Text>
+            </Stack>
+            <Button
+              component={Link}
+              to="/sync"
+              variant="default"
+              leftSection={<IconPlugConnected size={16} />}
+            >
+              {t("dashboard.no_spoolman_action")}
+            </Button>
+          </Group>
+        </Card>
       )}
 
       {printers.map((p) => (

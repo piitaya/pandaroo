@@ -24,7 +24,14 @@
     "help_aria_label": "Que signifient les statuts des slots ?",
     "failed_to_load": "Impossible de charger l'état",
     "no_printers_title": "Aucune imprimante configurée",
-    "no_printers_body": "Rendez-vous sur la page Imprimantes pour ajouter votre première imprimante Bambu.",
+    "no_printers_body": "Ajoutez votre première imprimante Bambu Lab pour surveiller son AMS et faire correspondre les bobines au mapping communautaire.",
+    "no_printers_action": "Ajouter une imprimante",
+    "all_disabled_title": "Toutes les imprimantes sont désactivées",
+    "all_disabled_body": "Des imprimantes sont configurées mais aucune n'est activée. Activez-en au moins une pour suivre son AMS.",
+    "all_disabled_action": "Gérer les imprimantes",
+    "no_spoolman_title": "Spoolman non connecté",
+    "no_spoolman_body": "Connectez votre instance Spoolman pour synchroniser les bobines reconnues.",
+    "no_spoolman_action": "Connecter Spoolman",
     "empty": {
       "title": "En attente de données AMS",
       "body": "L'imprimante n'a pas encore envoyé son état."
@@ -89,7 +96,7 @@
       "never_tooltip": "Pas encore synchronisé avec Spoolman",
       "synced_tooltip": "Synchronisé avec la bobine #{{spool_id}} · {{at}}",
       "stale_tooltip": "Bobine #{{spool_id}} obsolète depuis {{at}} — le slot a changé",
-      "error_tooltip": "Dernière synchronisation échouée à {{at}} : {{error}}",
+      "error_tooltip": "Dernière synchronisation échouée {{at}}",
       "open_in_spoolman": "Ouvrir dans Spoolman"
     }
   },
@@ -182,7 +189,8 @@
       "archive_on_empty": "Archiver les bobines vides",
       "archive_on_empty_hint": "Quand le poids restant d'une bobine atteint zéro, elle est archivée dans Spoolman.",
       "test": "Tester la connexion",
-      "test_ok": "Connecté à Spoolman {{version}}"
+      "test_ok": "Connecté à Spoolman {{version}}",
+      "test_error": "Impossible de joindre Spoolman. Vérifiez l'URL et que l'instance est bien lancée."
     },
     "actions_card": {
       "title": "Actions",

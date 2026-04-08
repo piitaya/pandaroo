@@ -159,8 +159,8 @@ function normalizeBaseUrl(raw: string): string {
 }
 
 export interface SpoolmanClient {
-  getInfo(): Promise<SpoolmanInfo>;
-  getBaseUrl(): Promise<string | null>;
+  getInfo(signal?: AbortSignal): Promise<SpoolmanInfo>;
+  getBaseUrl(signal?: AbortSignal): Promise<string | null>;
   findVendorByName(name: string): Promise<SpoolmanVendor | null>;
   createVendor(name: string): Promise<SpoolmanVendor>;
   findFilamentByExternalId(externalId: string): Promise<SpoolmanFilament | null>;
@@ -192,12 +192,14 @@ export function createSpoolmanClient(
   async function request<T>(
     method: string,
     path: string,
-    body?: unknown
+    body?: unknown,
+    signal?: AbortSignal
   ): Promise<T> {
     const res = await fetchImpl(`${base}${path}`, {
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined
+      body: body ? JSON.stringify(body) : undefined,
+      signal
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -213,18 +215,20 @@ export function createSpoolmanClient(
   }
 
   return {
-    async getInfo() {
-      return request<SpoolmanInfo>("GET", "/api/v1/info");
+    async getInfo(signal) {
+      return request<SpoolmanInfo>("GET", "/api/v1/info", undefined, signal);
     },
 
-    async getBaseUrl() {
+    async getBaseUrl(signal) {
       // Spoolman stores UI-configurable settings at /api/v1/setting/{key}.
       // `base_url` is the one the user sets under Paramètres → Général.
       // The `value` field is JSON-encoded so we parse twice.
       try {
         const res = await request<SpoolmanSettingResponse>(
           "GET",
-          "/api/v1/setting/base_url"
+          "/api/v1/setting/base_url",
+          undefined,
+          signal
         );
         if (!res.is_set) return null;
         try {

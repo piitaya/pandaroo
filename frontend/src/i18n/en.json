@@ -24,7 +24,14 @@
     "help_aria_label": "What do the slot statuses mean?",
     "failed_to_load": "Failed to load state",
     "no_printers_title": "No printers configured",
-    "no_printers_body": "Head to the Printers page to add your first Bambu printer.",
+    "no_printers_body": "Add your first Bambu Lab printer to start watching its AMS and matching spools against the community mapping.",
+    "no_printers_action": "Add your first printer",
+    "all_disabled_title": "All printers are disabled",
+    "all_disabled_body": "You have printers configured but none are enabled. Enable at least one to start watching its AMS.",
+    "all_disabled_action": "Manage printers",
+    "no_spoolman_title": "Spoolman not connected",
+    "no_spoolman_body": "Connect your Spoolman instance to start syncing matched slots.",
+    "no_spoolman_action": "Connect Spoolman",
     "empty": {
       "title": "Waiting for AMS data",
       "body": "The printer hasn't reported its state yet."
@@ -89,7 +96,7 @@
       "never_tooltip": "Not yet synced to Spoolman",
       "synced_tooltip": "Synced to spool #{{spool_id}} · {{at}}",
       "stale_tooltip": "Spool #{{spool_id}} out of date since {{at}} — slot changed",
-      "error_tooltip": "Last sync failed at {{at}}: {{error}}",
+      "error_tooltip": "Last sync failed {{at}}",
       "open_in_spoolman": "Open in Spoolman"
     }
   },
@@ -182,7 +189,8 @@
       "archive_on_empty": "Archive empty spools",
       "archive_on_empty_hint": "When a spool's remaining weight reaches zero, archive it in Spoolman.",
       "test": "Test connection",
-      "test_ok": "Connected to Spoolman {{version}}"
+      "test_ok": "Connected to Spoolman {{version}}",
+      "test_error": "Couldn't reach Spoolman. Check the URL and that the instance is running."
     },
     "actions_card": {
       "title": "Actions",

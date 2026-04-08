@@ -146,11 +146,15 @@ export async function registerRoutes(
       reply.code(400);
       return { error: "Spoolman URL is not configured." };
     }
+    // Fail fast when the instance is unreachable: 3s covers a healthy
+    // LAN round-trip comfortably, and avoids users staring at a
+    // spinner for undici's default 10s connect timeout.
+    const signal = AbortSignal.timeout(3000);
     try {
       const client = createSpoolmanClient(url);
       const [info, base_url] = await Promise.all([
-        client.getInfo(),
-        client.getBaseUrl()
+        client.getInfo(signal),
+        client.getBaseUrl(signal)
       ]);
       return { ok: true, info, base_url };
     } catch (err) {

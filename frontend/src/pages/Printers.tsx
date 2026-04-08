@@ -16,6 +16,7 @@ import { useForm } from "@mantine/form";
 import { IconEdit, IconGripVertical, IconTrash } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   DndContext,
   PointerSensor,
@@ -237,6 +238,22 @@ export default function PrintersPage() {
 
   const isMobile = useMediaQuery("(max-width: 48em)") ?? false;
 
+  // Auto-open the add-printer modal when routed here with
+  // `state.openAdd: true` (e.g. the Dashboard empty-state CTA).
+  // Clear the state after consuming so a page refresh doesn't
+  // reopen it.
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const state = location.state as { openAdd?: boolean } | null;
+    if (state?.openAdd) {
+      setEditing(null);
+      open();
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, {
@@ -414,23 +431,19 @@ export default function PrintersPage() {
           <Stack>
             <TextInput
               label={t("printers.form.name")}
-              required
               {...form.getInputProps("name")}
             />
             <TextInput
               label={t("printers.form.host")}
               placeholder={t("printers.form.host_placeholder")}
-              required
               {...form.getInputProps("host")}
             />
             <TextInput
               label={t("printers.form.serial")}
-              required
               {...form.getInputProps("serial")}
             />
             <TextInput
               label={t("printers.form.access_code")}
-              required
               // Plain text: Chrome flags `type="password"` fields
               // against its breach database, which is nonsense for a
               // LAN-only device access code.

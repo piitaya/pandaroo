@@ -39,11 +39,11 @@ export default function SyncPage() {
       const { info } = await api.testSpoolman();
       if (seq !== testSeq.current) return;
       setTestState({ status: "ok", version: info.version });
-    } catch (err) {
+    } catch {
       if (seq !== testSeq.current) return;
       setTestState({
         status: "error",
-        message: err instanceof Error ? err.message : String(err)
+        message: t("sync.connection_card.test_error")
       });
     }
   };
