@@ -21,7 +21,6 @@ import { useConfig, useSyncSlotSpoolman } from "../hooks";
 import type { MatchedSlot, SlotSyncView } from "../api";
 
 function SyncIndicator({ sync }: { sync: SlotSyncView }) {
-  const { t } = useTranslation();
   const color =
     sync.status === "synced"
       ? "var(--mantine-color-teal-6)"
@@ -30,28 +29,7 @@ function SyncIndicator({ sync }: { sync: SlotSyncView }) {
         : sync.status === "error"
           ? "var(--mantine-color-red-6)"
           : "var(--mantine-color-gray-5)";
-  const tooltip =
-    sync.status === "synced"
-      ? t("slot.sync_status.synced_tooltip", {
-          spool_id: sync.spool_id,
-          at: new Date(sync.at).toLocaleString()
-        })
-      : sync.status === "stale"
-        ? t("slot.sync_status.stale_tooltip", {
-            spool_id: sync.spool_id,
-            at: new Date(sync.at).toLocaleString()
-          })
-        : sync.status === "error"
-          ? t("slot.sync_status.error_tooltip", {
-              error: sync.error,
-              at: new Date(sync.at).toLocaleString()
-            })
-          : t("slot.sync_status.never_tooltip");
-  return (
-    <Tooltip label={tooltip} multiline maw={320}>
-      <IconCircleFilled size={10} style={{ color }} />
-    </Tooltip>
-  );
+  return <IconCircleFilled size={10} style={{ color }} />;
 }
 
 function SyncButton({
