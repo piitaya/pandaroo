@@ -81,7 +81,7 @@ services:
 | `latest`       | Most recent stable release (nothing here yet, preview)   |
 | `beta`         | Most recent beta release                                 |
 | `edge`         | Latest commit on `main`, unstable                        |
-| `0.1.0-beta.1` | Pin to an exact version                                  |
+| `0.1.0-beta.2` | Pin to an exact version                                  |
 
 While the project is in preview, the recommended tag is **`beta`**
 (or pin to an exact version). `latest` will only start moving once
