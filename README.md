@@ -53,14 +53,39 @@ explanation so you know what's blocking.
 docker run -d --name bambu-spoolman-sync \
   -p 4000:4000 \
   -v $(pwd)/data:/data \
-  ghcr.io/piitaya/bambu-spoolman-sync:latest
+  ghcr.io/piitaya/bambu-spoolman-sync:beta
 ```
 
 Open [http://localhost:4000](http://localhost:4000) and follow the UI.
 
-A [docker-compose.example.yml](docker-compose.example.yml) is
-included. Copy it to `docker-compose.yml` and run
-`docker compose up -d`.
+Or with Docker Compose — save as `docker-compose.yml` and run
+`docker compose up -d`:
+
+```yaml
+services:
+  bambu-spoolman-sync:
+    image: ghcr.io/piitaya/bambu-spoolman-sync:beta
+    container_name: bambu-spoolman-sync
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./data:/data
+```
+
+#### Image tags
+
+| Tag           | Meaning                                                  |
+| ------------- | -------------------------------------------------------- |
+| `latest`      | Most recent stable release (nothing here yet, preview)   |
+| `beta`        | Most recent beta release, currently `0.1.0-beta.1`       |
+| `alpha`       | Most recent alpha release                                |
+| `edge`        | Latest commit on `main`, unstable                        |
+| `0.1.0-beta.1`| Pin to an exact version                                  |
+
+While the project is in preview, the recommended tag is **`beta`**
+(or pin to an exact version). `latest` will only start moving once
+there's a stable release.
 
 ### From source
 
