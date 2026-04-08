@@ -61,6 +61,7 @@ export interface AMSSlotData {
   tray_sub_brands: string | null;
   tray_type: string | null;
   tray_color: string | null;
+  tray_colors: string[] | null;
   tray_uuid: string | null;
   nozzle_temp_min: number | null;
   nozzle_temp_max: number | null;
@@ -83,10 +84,17 @@ export interface FilamentEntry {
   spoolman_id?: string | null;
 }
 
+export type SlotSyncView =
+  | { status: "never" }
+  | { status: "synced"; spool_id: number; at: string }
+  | { status: "stale"; spool_id: number; at: string }
+  | { status: "error"; error: string; at: string };
+
 export interface MatchedSlot {
   slot: AMSSlotData;
   type: MatchType;
   entry?: FilamentEntry;
+  sync: SlotSyncView;
 }
 
 export type PrinterErrorCode =
@@ -178,7 +186,11 @@ export const api = {
   refreshMapping: () =>
     req<{ count: number }>("/api/mapping/refresh", { method: "POST" }),
   testSpoolman: () =>
-    req<{ ok: true; info: { version?: string } }>("/api/spoolman/test", {
+    req<{
+      ok: true;
+      info: { version?: string };
+      base_url: string | null;
+    }>("/api/spoolman/test", {
       method: "POST"
     }),
   syncAllSpoolman: () =>

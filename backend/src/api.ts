@@ -10,6 +10,7 @@ import { matchSlot } from "./matcher.js";
 import { listRuntimes } from "./mqtt.js";
 import {
   createSpoolmanClient,
+  getSlotSyncView,
   syncAll,
   syncSlot
 } from "./spoolman.js";
@@ -146,8 +147,12 @@ export async function registerRoutes(
       return { error: "Spoolman URL is not configured." };
     }
     try {
-      const info = await createSpoolmanClient(url).getInfo();
-      return { ok: true, info };
+      const client = createSpoolmanClient(url);
+      const [info, base_url] = await Promise.all([
+        client.getInfo(),
+        client.getBaseUrl()
+      ]);
+      return { ok: true, info, base_url };
     } catch (err) {
       reply.code(502);
       return { error: err instanceof Error ? err.message : String(err) };
@@ -188,7 +193,8 @@ export async function registerRoutes(
       const runtime = bySerial.get(p.serial);
       const slots = (runtime?.slots ?? []).map((slot) => ({
         slot,
-        ...matchSlot(slot, ctx.mapping.byId)
+        ...matchSlot(slot, ctx.mapping.byId),
+        sync: getSlotSyncView(ctx.syncState, slot)
       }));
       return {
         serial: p.serial,

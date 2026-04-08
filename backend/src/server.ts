@@ -12,7 +12,12 @@ import {
   syncPrinters,
   type MqttState,
 } from "./mqtt.js";
-import { evaluateSlotForSync, syncSlot } from "./spoolman.js";
+import {
+  createSyncStateStore,
+  evaluateSlotForSync,
+  syncSlot,
+  type SyncStateStore
+} from "./spoolman.js";
 
 const MAPPING_SOURCE_URL =
   "https://raw.githubusercontent.com/piitaya/bambu-spoolman-db/main/filaments.json";
@@ -22,6 +27,7 @@ export interface AppContext {
   configFilePath: string;
   mapping: Mapping;
   mqttState: MqttState;
+  syncState: SyncStateStore;
   syncFromConfig(): void;
 }
 
@@ -38,6 +44,7 @@ export async function buildApp() {
   });
 
   const mqttState = createMqttState();
+  const syncState = createSyncStateStore();
 
   // Per-slot auto-sync bookkeeping. We track the last-synced tray_uuid
   // and remain% so we only hit Spoolman when something actually changed,
@@ -53,6 +60,7 @@ export async function buildApp() {
     configFilePath,
     mapping,
     mqttState,
+    syncState,
     syncFromConfig() {
       mapping.setInterval(ctx.config.mapping.refresh_interval_hours);
       syncPrinters(
@@ -67,14 +75,22 @@ export async function buildApp() {
           if (!ctx.config.spoolman?.auto_sync || !ctx.config.spoolman?.url) {
             return;
           }
+          // Trailing-edge debounce with cooldown:
+          //   - If nothing is scheduled and signature differs from the
+          //     last-synced one, schedule a sync in 2s.
+          //   - Subsequent pushes within that window are ignored *if*
+          //     the signature is unchanged; the pending timer still
+          //     fires with the latest data. Previously we were
+          //     clearing and rescheduling on every push, so a chatty
+          //     printer (pushes every <2s) could starve the timer
+          //     indefinitely — meaning auto-sync never ran.
           for (const slot of slots) {
             const evaluated = evaluateSlotForSync(slot, ctx.mapping.byId);
             if (!evaluated.ok) continue;
             const key = slotKey(printer.serial, slot.ams_id, slot.slot_id);
             const signature = `${slot.tray_uuid}|${slot.remain}`;
             if (lastSyncKey.get(key) === signature) continue;
-            const existing = debounceTimers.get(key);
-            if (existing) clearTimeout(existing);
+            if (debounceTimers.has(key)) continue;
             debounceTimers.set(
               key,
               setTimeout(() => {

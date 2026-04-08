@@ -5,15 +5,105 @@ import {
   Group,
   Progress,
   Stack,
-  Text
+  Text,
+  Tooltip
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconInfoCircle, IconRefresh } from "@tabler/icons-react";
+import {
+  IconCircleFilled,
+  IconInfoCircle,
+  IconRefresh
+} from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { SlotDetailModal } from "./SlotDetailModal";
 import { useMatchStatus } from "./matchStatus";
 import { useConfig, useSyncSlotSpoolman } from "../hooks";
-import type { MatchedSlot } from "../api";
+import type { MatchedSlot, SlotSyncView } from "../api";
+
+function SyncIndicator({ sync }: { sync: SlotSyncView }) {
+  const { t } = useTranslation();
+  const color =
+    sync.status === "synced"
+      ? "var(--mantine-color-teal-6)"
+      : sync.status === "stale"
+        ? "var(--mantine-color-yellow-6)"
+        : sync.status === "error"
+          ? "var(--mantine-color-red-6)"
+          : "var(--mantine-color-gray-5)";
+  const tooltip =
+    sync.status === "synced"
+      ? t("slot.sync_status.synced_tooltip", {
+          spool_id: sync.spool_id,
+          at: new Date(sync.at).toLocaleString()
+        })
+      : sync.status === "stale"
+        ? t("slot.sync_status.stale_tooltip", {
+            spool_id: sync.spool_id,
+            at: new Date(sync.at).toLocaleString()
+          })
+        : sync.status === "error"
+          ? t("slot.sync_status.error_tooltip", {
+              error: sync.error,
+              at: new Date(sync.at).toLocaleString()
+            })
+          : t("slot.sync_status.never_tooltip");
+  return (
+    <Tooltip label={tooltip} multiline maw={320}>
+      <IconCircleFilled size={10} style={{ color }} />
+    </Tooltip>
+  );
+}
+
+function SyncButton({
+  sync,
+  loading,
+  onClick
+}: {
+  sync: SlotSyncView;
+  loading: boolean;
+  onClick: () => void;
+}) {
+  const { t } = useTranslation();
+  const color =
+    sync.status === "synced"
+      ? "teal"
+      : sync.status === "stale"
+        ? "yellow"
+        : sync.status === "error"
+          ? "red"
+          : "gray";
+  const tooltip =
+    sync.status === "synced"
+      ? t("slot.sync_status.synced_tooltip", {
+          spool_id: sync.spool_id,
+          at: new Date(sync.at).toLocaleString()
+        })
+      : sync.status === "stale"
+        ? t("slot.sync_status.stale_tooltip", {
+            spool_id: sync.spool_id,
+            at: new Date(sync.at).toLocaleString()
+          })
+        : sync.status === "error"
+          ? t("slot.sync_status.error_tooltip", {
+              error: sync.error,
+              at: new Date(sync.at).toLocaleString()
+            })
+          : t("slot.sync_status.never_tooltip");
+  return (
+    <Tooltip label={tooltip} multiline maw={320}>
+      <ActionIcon
+        variant="subtle"
+        color={color}
+        size="sm"
+        loading={loading}
+        onClick={onClick}
+        aria-label={t("slot.sync_aria_label")}
+      >
+        <IconRefresh size={16} />
+      </ActionIcon>
+    </Tooltip>
+  );
+}
 
 /**
  * Bambu reports `"00000000"` (all zeros, including alpha) when a tray
@@ -118,10 +208,10 @@ export function SlotCard({ s }: { s: MatchedSlot }) {
   const status = matchStatus[s.type];
   const { data: configData } = useConfig();
   const syncSlot = useSyncSlotSpoolman();
-  const canSync =
-    s.type === "matched" &&
-    Boolean(configData?.config.spoolman?.url) &&
-    !configData?.config.spoolman?.auto_sync;
+  const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
+  const autoSync = Boolean(configData?.config.spoolman?.auto_sync);
+  const canSync = s.type === "matched" && spoolmanConfigured && !autoSync;
+  const showIndicator = s.type === "matched" && spoolmanConfigured && autoSync;
 
   // When we have a mapped color name, promote it to the headline and
   // push the material to the secondary line. Otherwise fall back to
@@ -148,11 +238,10 @@ export function SlotCard({ s }: { s: MatchedSlot }) {
             <Badge color={status.color} variant="light">
               {status.label}
             </Badge>
+            {showIndicator && <SyncIndicator sync={s.sync} />}
             {canSync && (
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                size="sm"
+              <SyncButton
+                sync={s.sync}
                 loading={syncSlot.isPending}
                 onClick={() =>
                   syncSlot.mutate({
@@ -161,10 +250,7 @@ export function SlotCard({ s }: { s: MatchedSlot }) {
                     slotId: s.slot.slot_id
                   })
                 }
-                aria-label={t("slot.sync_aria_label")}
-              >
-                <IconRefresh size={16} />
-              </ActionIcon>
+              />
             )}
             <ActionIcon
               variant="subtle"

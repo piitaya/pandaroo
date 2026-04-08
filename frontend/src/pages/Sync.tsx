@@ -100,6 +100,9 @@ export default function SyncPage() {
         auto_sync: value
       }
     });
+    // Immediate sync on enable so users see status populate instantly
+    // instead of waiting for the next MQTT push.
+    if (value) syncAll.mutate();
   };
 
   const toggleArchiveOnEmpty = async (value: boolean) => {

@@ -54,17 +54,42 @@
     "remaining": "Remaining: {{value}}%",
     "details_aria_label": "Slot details",
     "sync_aria_label": "Sync this slot to Spoolman",
+    "sections": {
+      "filament": "Filament",
+      "identification": "Identification",
+      "physical": "Physical",
+      "sync": "Sync",
+      "source": "Source"
+    },
     "fields": {
-      "color": "Color",
+      "color_name": "Color",
+      "color": "Swatch",
+      "colors": "Swatches",
+      "color_hex": "Hex",
+      "colors_hex": "Hex colors",
       "material": "Material",
-      "variant_id": "Variant ID",
-      "spoolman_id": "Spoolman ID",
-      "color_hex": "Color hex",
-      "nozzle_temp": "Nozzle temp",
-      "spool_weight": "Spool weight",
+      "bambu_filament": "Bambu filament",
+      "spoolman_filament": "Spoolman filament",
+      "spool_uid": "Spool UID",
+      "total_weight": "Total weight",
       "remaining": "Remaining",
-      "tray_uuid": "Tray UUID",
-      "printer": "Printer"
+      "nozzle_temp": "Nozzle temp",
+      "sync_status": "Sync status",
+      "spoolman_spool": "Spoolman spool",
+      "sync_last": "Last sync",
+      "sync_error": "Sync error",
+      "printer_serial": "Printer"
+    },
+    "sync_status": {
+      "never": "Never synced",
+      "synced": "Synced",
+      "stale": "Out of date",
+      "error": "Error",
+      "never_tooltip": "Not yet synced to Spoolman",
+      "synced_tooltip": "Synced to spool #{{spool_id}} · {{at}}",
+      "stale_tooltip": "Spool #{{spool_id}} out of date since {{at}} — slot changed",
+      "error_tooltip": "Last sync failed at {{at}}: {{error}}",
+      "open_in_spoolman": "Open in Spoolman"
     }
   },
   "status": {

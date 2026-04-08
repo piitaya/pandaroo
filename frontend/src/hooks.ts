@@ -161,6 +161,24 @@ export const useRefreshMapping = () => {
   });
 };
 
+// Reads Spoolman's own `base_url` setting (used for building links
+// to spools). Cached for the lifetime of the session; refetched when
+// the saved Spoolman URL changes.
+export const useSpoolmanBaseUrl = () => {
+  const { data: configData } = useConfig();
+  const url = configData?.config.spoolman?.url;
+  return useQuery({
+    queryKey: ["spoolman-base-url", url ?? ""],
+    queryFn: async () => {
+      const { base_url } = await api.testSpoolman();
+      return base_url;
+    },
+    enabled: Boolean(url),
+    staleTime: Infinity,
+    retry: false
+  });
+};
+
 export const useTestSpoolman = () => {
   const { t } = useTranslation();
   const toast = useToasts();

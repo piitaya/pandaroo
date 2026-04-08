@@ -54,17 +54,42 @@
     "remaining": "Restant : {{value}}%",
     "details_aria_label": "Détails du slot",
     "sync_aria_label": "Synchroniser ce slot avec Spoolman",
+    "sections": {
+      "filament": "Filament",
+      "identification": "Identification",
+      "physical": "Caractéristiques",
+      "sync": "Synchronisation",
+      "source": "Source"
+    },
     "fields": {
-      "color": "Couleur",
+      "color_name": "Couleur",
+      "color": "Aperçu",
+      "colors": "Aperçus",
+      "color_hex": "Hex",
+      "colors_hex": "Couleurs (hex)",
       "material": "Matériau",
-      "variant_id": "ID de variante",
-      "spoolman_id": "ID Spoolman",
-      "color_hex": "Couleur (hex)",
-      "nozzle_temp": "Température buse",
-      "spool_weight": "Poids de la bobine",
+      "bambu_filament": "Filament Bambu",
+      "spoolman_filament": "Filament Spoolman",
+      "spool_uid": "UID de la bobine",
+      "total_weight": "Poids total",
       "remaining": "Restant",
-      "tray_uuid": "UUID du tray",
-      "printer": "Imprimante"
+      "nozzle_temp": "Température buse",
+      "sync_status": "État de synchronisation",
+      "spoolman_spool": "Bobine Spoolman",
+      "sync_last": "Dernière synchronisation",
+      "sync_error": "Erreur de synchronisation",
+      "printer_serial": "Imprimante"
+    },
+    "sync_status": {
+      "never": "Jamais synchronisé",
+      "synced": "Synchronisé",
+      "stale": "Obsolète",
+      "error": "Erreur",
+      "never_tooltip": "Pas encore synchronisé avec Spoolman",
+      "synced_tooltip": "Synchronisé avec la bobine #{{spool_id}} · {{at}}",
+      "stale_tooltip": "Bobine #{{spool_id}} obsolète depuis {{at}} — le slot a changé",
+      "error_tooltip": "Dernière synchronisation échouée à {{at}} : {{error}}",
+      "open_in_spoolman": "Ouvrir dans Spoolman"
     }
   },
   "status": {

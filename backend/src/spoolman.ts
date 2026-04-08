@@ -28,6 +28,12 @@ export interface SpoolmanInfo {
   version?: string;
 }
 
+interface SpoolmanSettingResponse {
+  value: string;
+  is_set: boolean;
+  type: string;
+}
+
 // SpoolmanDB filament shape (as proxied by Spoolman's /external/filament).
 // Fields mirror donkie.github.io/SpoolmanDB/filaments.json. Only the
 // ones we forward to POST /api/v1/filament are strictly typed.
@@ -45,6 +51,62 @@ export interface ExternalFilament {
   multi_color_direction?: "coaxial" | "longitudinal";
   extruder_temp?: number;
   bed_temp?: number;
+}
+
+// In-memory store of the most recent sync outcome per slot. Rebuilt
+// from scratch on restart — there's no persistence layer, so the
+// first sync after boot always shows "never" until it runs.
+export interface SyncStateEntry {
+  status: "synced" | "error";
+  at: string;
+  signature: string; // tray_uuid|remain at the moment of sync
+  spool_id?: number;
+  error?: string;
+}
+
+export type SyncStateStore = Map<string, SyncStateEntry>;
+
+export function createSyncStateStore(): SyncStateStore {
+  return new Map();
+}
+
+export function syncStateKey(
+  serial: string,
+  amsId: number,
+  slotId: number
+): string {
+  return `${serial}#${amsId}#${slotId}`;
+}
+
+function slotSignature(slot: AMSSlot): string {
+  return `${slot.tray_uuid ?? ""}|${slot.remain ?? ""}`;
+}
+
+// Public view of a slot's sync state. "stale" is derived on read: if
+// a prior success exists but the slot signature has changed since,
+// the recorded result no longer reflects reality.
+export type SlotSyncView =
+  | { status: "never" }
+  | { status: "synced"; spool_id: number; at: string }
+  | { status: "stale"; spool_id: number; at: string }
+  | { status: "error"; error: string; at: string };
+
+export function getSlotSyncView(
+  store: SyncStateStore,
+  slot: AMSSlot
+): SlotSyncView {
+  const entry = store.get(
+    syncStateKey(slot.printer_serial, slot.ams_id, slot.slot_id)
+  );
+  if (!entry) return { status: "never" };
+  if (entry.status === "error") {
+    return { status: "error", error: entry.error ?? "", at: entry.at };
+  }
+  const current = slotSignature(slot);
+  if (current !== entry.signature) {
+    return { status: "stale", spool_id: entry.spool_id!, at: entry.at };
+  }
+  return { status: "synced", spool_id: entry.spool_id!, at: entry.at };
 }
 
 export interface SyncOutcome {
@@ -98,6 +160,7 @@ function normalizeBaseUrl(raw: string): string {
 
 export interface SpoolmanClient {
   getInfo(): Promise<SpoolmanInfo>;
+  getBaseUrl(): Promise<string | null>;
   findVendorByName(name: string): Promise<SpoolmanVendor | null>;
   createVendor(name: string): Promise<SpoolmanVendor>;
   findFilamentByExternalId(externalId: string): Promise<SpoolmanFilament | null>;
@@ -152,6 +215,29 @@ export function createSpoolmanClient(
   return {
     async getInfo() {
       return request<SpoolmanInfo>("GET", "/api/v1/info");
+    },
+
+    async getBaseUrl() {
+      // Spoolman stores UI-configurable settings at /api/v1/setting/{key}.
+      // `base_url` is the one the user sets under Paramètres → Général.
+      // The `value` field is JSON-encoded so we parse twice.
+      try {
+        const res = await request<SpoolmanSettingResponse>(
+          "GET",
+          "/api/v1/setting/base_url"
+        );
+        if (!res.is_set) return null;
+        try {
+          const parsed = JSON.parse(res.value);
+          if (typeof parsed !== "string" || parsed === "") return null;
+          return parsed;
+        } catch {
+          return null;
+        }
+      } catch {
+        // Older Spoolman versions predate this endpoint; swallow.
+        return null;
+      }
     },
 
     async findVendorByName(name) {
@@ -375,20 +461,37 @@ export async function syncSlot(
   if (!evaluated.ok) {
     throw new Error(`Slot cannot be synced: ${evaluated.reason}.`);
   }
-  const client = clientFactory(url);
-  const outcome = await syncOneSlot(
-    client,
-    slot,
-    evaluated.spoolmanId,
-    evaluated.usedWeight,
-    { archiveOnEmpty: ctx.config.spoolman?.archive_on_empty ?? false }
-  );
-  return {
-    printer_serial: printerSerial,
-    ams_id: amsId,
-    slot_id: slotId,
-    ...outcome
-  };
+  const key = syncStateKey(printerSerial, amsId, slotId);
+  try {
+    const client = clientFactory(url);
+    const outcome = await syncOneSlot(
+      client,
+      slot,
+      evaluated.spoolmanId,
+      evaluated.usedWeight,
+      { archiveOnEmpty: ctx.config.spoolman?.archive_on_empty ?? false }
+    );
+    ctx.syncState.set(key, {
+      status: "synced",
+      at: new Date().toISOString(),
+      signature: slotSignature(slot),
+      spool_id: outcome.spool_id
+    });
+    return {
+      printer_serial: printerSerial,
+      ams_id: amsId,
+      slot_id: slotId,
+      ...outcome
+    };
+  } catch (err) {
+    ctx.syncState.set(key, {
+      status: "error",
+      at: new Date().toISOString(),
+      signature: slotSignature(slot),
+      error: err instanceof Error ? err.message : String(err)
+    });
+    throw err;
+  }
 }
 
 export async function syncAll(
@@ -415,6 +518,11 @@ export async function syncAll(
         });
         continue;
       }
+      const key = syncStateKey(
+        runtime.printer.serial,
+        slot.ams_id,
+        slot.slot_id
+      );
       try {
         const outcome = await syncOneSlot(
           client,
@@ -423,6 +531,12 @@ export async function syncAll(
           evaluated.usedWeight,
           options
         );
+        ctx.syncState.set(key, {
+          status: "synced",
+          at: new Date().toISOString(),
+          signature: slotSignature(slot),
+          spool_id: outcome.spool_id
+        });
         result.synced.push({
           printer_serial: runtime.printer.serial,
           ams_id: slot.ams_id,
@@ -430,11 +544,18 @@ export async function syncAll(
           ...outcome
         });
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        ctx.syncState.set(key, {
+          status: "error",
+          at: new Date().toISOString(),
+          signature: slotSignature(slot),
+          error: message
+        });
         result.errors.push({
           printer_serial: runtime.printer.serial,
           ams_id: slot.ams_id,
           slot_id: slot.slot_id,
-          error: err instanceof Error ? err.message : String(err)
+          error: message
         });
       }
     }

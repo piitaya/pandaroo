@@ -28,6 +28,7 @@ export interface AMSSlot {
   tray_sub_brands: string | null;
   tray_type: string | null;
   tray_color: string | null;
+  tray_colors: string[] | null;
   tray_uuid: string | null;
   nozzle_temp_min: number | null;
   nozzle_temp_max: number | null;

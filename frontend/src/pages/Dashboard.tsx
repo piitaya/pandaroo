@@ -40,8 +40,8 @@ export default function DashboardPage() {
 
   return (
     <Stack gap="xl">
-      <Group justify="space-between" wrap="nowrap">
-        <Group gap="xs">
+      <Group justify="space-between" wrap="wrap" gap="sm">
+        <Group gap="xs" wrap="nowrap">
           <Title order={2}>{t("dashboard.title")}</Title>
           <ActionIcon
             variant="subtle"

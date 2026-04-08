@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createSpoolmanClient,
+  createSyncStateStore,
   decodeExtraString,
   encodeExtraString,
   evaluateSlotForSync,
+  getSlotSyncView,
   syncAll,
   syncSlot,
+  syncStateKey,
   type SpoolmanClient,
   type SpoolmanFilament,
   type SpoolmanSpool
@@ -62,7 +65,11 @@ function buildContext(slots: AMSSlot[]): AppContext {
     config: {
       printers: [],
       mapping: { refresh_interval_hours: 24 },
-      spoolman: { url: "http://spoolman.local", auto_sync: false }
+      spoolman: {
+        url: "http://spoolman.local",
+        auto_sync: false,
+        archive_on_empty: false
+      }
     },
     configFilePath: "",
     mapping: {
@@ -75,6 +82,7 @@ function buildContext(slots: AMSSlot[]): AppContext {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any,
     mqttState,
+    syncState: createSyncStateStore(),
     syncFromConfig: () => {}
   };
 }
@@ -111,6 +119,66 @@ function fakeClient(over: Partial<SpoolmanClient> = {}): SpoolmanClient {
     ...over
   };
 }
+
+describe("getSlotSyncView", () => {
+  it("returns never when no entry is recorded", () => {
+    const store = createSyncStateStore();
+    expect(getSlotSyncView(store, slot())).toEqual({ status: "never" });
+  });
+
+  it("returns synced when the signature still matches", () => {
+    const store = createSyncStateStore();
+    store.set(syncStateKey("AC12", 0, 0), {
+      status: "synced",
+      at: "2024-01-01T00:00:00Z",
+      signature: "UID-1|75",
+      spool_id: 9
+    });
+    expect(getSlotSyncView(store, slot())).toEqual({
+      status: "synced",
+      at: "2024-01-01T00:00:00Z",
+      spool_id: 9
+    });
+  });
+
+  it("flips to stale when tray_uuid changes", () => {
+    const store = createSyncStateStore();
+    store.set(syncStateKey("AC12", 0, 0), {
+      status: "synced",
+      at: "2024-01-01T00:00:00Z",
+      signature: "UID-OLD|75",
+      spool_id: 9
+    });
+    expect(getSlotSyncView(store, slot()).status).toBe("stale");
+  });
+
+  it("flips to stale when remain changes", () => {
+    const store = createSyncStateStore();
+    store.set(syncStateKey("AC12", 0, 0), {
+      status: "synced",
+      at: "2024-01-01T00:00:00Z",
+      signature: "UID-1|100",
+      spool_id: 9
+    });
+    expect(getSlotSyncView(store, slot()).status).toBe("stale");
+  });
+
+  it("returns error entries as-is", () => {
+    const store = createSyncStateStore();
+    store.set(syncStateKey("AC12", 0, 0), {
+      status: "error",
+      at: "2024-01-01T00:00:00Z",
+      signature: "UID-1|75",
+      error: "boom"
+    });
+    const view = getSlotSyncView(store, slot());
+    expect(view).toEqual({
+      status: "error",
+      at: "2024-01-01T00:00:00Z",
+      error: "boom"
+    });
+  });
+});
 
 describe("encodeExtraString / decodeExtraString", () => {
   it("round-trips a raw value through JSON encoding", () => {
@@ -280,6 +348,36 @@ describe("syncSlot", () => {
     await expect(
       syncSlot(ctx, "AC12", 0, 0, () => fakeClient())
     ).rejects.toThrow(/not_matched/);
+  });
+
+  it("records a success in ctx.syncState", async () => {
+    const client = fakeClient({
+      async findFilamentByExternalId() {
+        return { id: 42 };
+      },
+      async listSpools() {
+        return [];
+      }
+    });
+    const ctx = buildContext([slot()]);
+    await syncSlot(ctx, "AC12", 0, 0, () => client);
+    const view = getSlotSyncView(ctx.syncState, slot());
+    expect(view.status).toBe("synced");
+  });
+
+  it("records an error in ctx.syncState when sync throws", async () => {
+    const client = fakeClient({
+      async findFilamentByExternalId() {
+        throw new Error("network down");
+      }
+    });
+    const ctx = buildContext([slot()]);
+    await expect(
+      syncSlot(ctx, "AC12", 0, 0, () => client)
+    ).rejects.toThrow(/network down/);
+    const view = getSlotSyncView(ctx.syncState, slot());
+    expect(view.status).toBe("error");
+    if (view.status === "error") expect(view.error).toMatch(/network down/);
   });
 
   it("rejects when tray_uuid is missing", async () => {

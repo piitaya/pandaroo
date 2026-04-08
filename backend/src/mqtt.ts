@@ -109,6 +109,11 @@ export function parseAmsReport(
         tray_sub_brands: tray?.tray_sub_brands ?? null,
         tray_type: tray?.tray_type ?? null,
         tray_color: tray?.tray_color ?? null,
+        tray_colors: Array.isArray(tray?.cols)
+          ? (tray.cols as unknown[]).filter(
+              (c): c is string => typeof c === "string"
+            )
+          : null,
         tray_uuid: tray?.tray_uuid ?? null,
         nozzle_temp_min:
           tray?.nozzle_temp_min != null ? Number(tray.nozzle_temp_min) : null,
