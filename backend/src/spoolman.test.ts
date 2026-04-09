@@ -25,7 +25,7 @@ const mapping = new Map<string, FilamentEntry>([
 
 const baseSpool = (over: Partial<Spool> = {}): Spool => ({
   uid: "UID-1", variant_id: "A01-B6", material: "PLA", product: "PLA Matte",
-  color_hex: "042F56FF", color_hexes: null, weight: "1000",
+  color_hex: "042F56FF", color_hexes: null, weight: 1000,
   temp_min: 220, temp_max: 240, remain: 75, ...over
 });
 

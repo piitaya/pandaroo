@@ -14,7 +14,7 @@ describe("SpoolScanSchema", () => {
       material: "PLA",
       product: "PLA Matte",
       color_hex: "042F56FF",
-      weight: "1000",
+      weight: 1000,
       temp_min: 190,
       temp_max: 230
     });

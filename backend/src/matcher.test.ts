@@ -14,7 +14,7 @@ const spool = (over: Partial<Spool> = {}): Spool => ({
   product: "PLA Matte",
   color_hex: "042F56FF",
   color_hexes: null,
-  weight: "1000",
+  weight: 1000,
   temp_min: 220,
   temp_max: 240,
   remain: 80,

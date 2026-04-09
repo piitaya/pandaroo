@@ -11,7 +11,7 @@ export interface Spool {
   product: string | null;
   color_hex: string | null;
   color_hexes: string[] | null;
-  weight: string | null;
+  weight: number | null;
   temp_min: number | null;
   temp_max: number | null;
   remain: number | null;
@@ -39,7 +39,7 @@ export const SpoolScanSchema = z.object({
   product: z.string().nullish().default(null),
   color_hex: z.string().nullish().default(null),
   color_hexes: z.array(z.string()).nullish().default(null),
-  weight: z.string().nullish().default(null),
+  weight: z.number().nullish().default(null),
   temp_min: z.number().nullish().default(null),
   temp_max: z.number().nullish().default(null),
   remain: z.number().nullish().default(null)
@@ -67,7 +67,7 @@ export function toSpool(tray: unknown): Spool | null {
   // Normalize Bambu sentinels at the boundary:
   // tray_weight "0" = no NFC tag data, remain -1 = unknown
   const rawWeight = (t?.tray_weight as string) ?? null;
-  const weight = rawWeight && rawWeight !== "0" ? rawWeight : null;
+  const weight = rawWeight && rawWeight !== "0" ? Number(rawWeight) : null;
   const rawRemain = t?.remain != null ? Number(t.remain) : null;
   const remain = rawRemain != null && rawRemain >= 0 ? rawRemain : null;
 

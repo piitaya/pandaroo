@@ -377,7 +377,7 @@ export function evaluateSpoolForSync(
   if (!spool.uid) return { ok: false, reason: "missing_uid" };
   if (spool.weight == null) return { ok: false, reason: "missing_weight" };
   if (spool.remain == null) return { ok: false, reason: "missing_remain" };
-  const weight = Number(spool.weight);
+  const weight = spool.weight;
   if (!Number.isFinite(weight) || weight <= 0) {
     return { ok: false, reason: "missing_weight" };
   }
@@ -454,7 +454,7 @@ export async function syncSpool(
   // the spool record without updating used_weight.
   let usedWeight: number | null = null;
   if (spool.weight != null && spool.remain != null) {
-    const w = Number(spool.weight);
+    const w = spool.weight;
     if (Number.isFinite(w) && w > 0) {
       usedWeight = Math.max(0, w * (1 - spool.remain / 100));
     }

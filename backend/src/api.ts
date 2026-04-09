@@ -218,7 +218,7 @@ export async function registerRoutes(
           synced = true;
           archived = found.archived ?? false;
           if (found.used_weight != null && spool.weight != null) {
-            const total = Number(spool.weight);
+            const total = spool.weight;
             const remaining = Math.max(0, total - found.used_weight);
             spool.remain =
               total > 0 ? Math.round((remaining / total) * 100) : 0;
