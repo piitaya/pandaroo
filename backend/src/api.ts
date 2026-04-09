@@ -4,7 +4,7 @@ import {
   ConfigSchema,
   PrinterSchema,
   saveConfig,
-  type Config
+  type Config,
 } from "./config.js";
 import { matchSlot, matchSpool } from "./matcher.js";
 import { SpoolScanSchema } from "./spool.js";
@@ -15,7 +15,7 @@ import {
   getSlotSyncView,
   syncAll,
   syncSlot,
-  syncSpool
+  syncSpool,
 } from "./spoolman.js";
 import type { AppContext } from "./server.js";
 
@@ -24,7 +24,9 @@ import type { AppContext } from "./server.js";
 // returns a deeply-nested object, which is unhelpful for end users.
 const zodMessage = (err: ZodError): string =>
   err.issues
-    .map((i) => (i.path.length ? `${i.path.join(".")}: ${i.message}` : i.message))
+    .map((i) =>
+      i.path.length ? `${i.path.join(".")}: ${i.message}` : i.message,
+    )
     .join("; ");
 
 // Creation accepts every printer field. Update accepts the same set
@@ -37,7 +39,7 @@ const PrinterUpdateSchema = PrinterSchema.partial();
 
 export async function registerRoutes(
   app: FastifyInstance,
-  ctx: AppContext
+  ctx: AppContext,
 ): Promise<void> {
   const applyConfig = async (next: Config) => {
     await saveConfig(ctx.configFilePath, next);
@@ -74,7 +76,7 @@ export async function registerRoutes(
     }
     await applyConfig({
       ...ctx.config,
-      printers: [...ctx.config.printers, printer]
+      printers: [...ctx.config.printers, printer],
     });
     return printer;
   });
@@ -88,7 +90,7 @@ export async function registerRoutes(
         return { error: zodMessage(parsed.error) };
       }
       const idx = ctx.config.printers.findIndex(
-        (p) => p.serial === req.params.serial
+        (p) => p.serial === req.params.serial,
       );
       if (idx === -1) {
         reply.code(404);
@@ -100,7 +102,7 @@ export async function registerRoutes(
         parsed.data.serial != null &&
         parsed.data.serial !== req.params.serial &&
         ctx.config.printers.some(
-          (p, i) => i !== idx && p.serial === parsed.data.serial
+          (p, i) => i !== idx && p.serial === parsed.data.serial,
         )
       ) {
         reply.code(409);
@@ -111,26 +113,24 @@ export async function registerRoutes(
       printers[idx] = updated;
       await applyConfig({ ...ctx.config, printers });
       return updated;
-    }
+    },
   );
 
   app.delete<{ Params: { serial: string } }>(
     "/api/printers/:serial",
     async (req, reply) => {
-      if (
-        !ctx.config.printers.some((p) => p.serial === req.params.serial)
-      ) {
+      if (!ctx.config.printers.some((p) => p.serial === req.params.serial)) {
         reply.code(404);
         return { error: "not found" };
       }
       await applyConfig({
         ...ctx.config,
         printers: ctx.config.printers.filter(
-          (p) => p.serial !== req.params.serial
-        )
+          (p) => p.serial !== req.params.serial,
+        ),
       });
       return { ok: true };
-    }
+    },
   );
 
   app.post("/api/mapping/refresh", async (_req, reply) => {
@@ -157,7 +157,7 @@ export async function registerRoutes(
       const client = createSpoolmanClient(url);
       const [info, base_url] = await Promise.all([
         client.getInfo(signal),
-        client.getBaseUrl(signal)
+        client.getBaseUrl(signal),
       ]);
       return { ok: true, info, base_url };
     } catch (err) {
@@ -190,7 +190,7 @@ export async function registerRoutes(
         reply.code(400);
         return { error: err instanceof Error ? err.message : String(err) };
       }
-    }
+    },
   );
 
   app.post("/api/spools/scan", async (req, reply) => {
@@ -205,24 +205,37 @@ export async function registerRoutes(
     // Enrich with weight data from Spoolman if the spool was
     // previously synced (looked up by extra.tag === uid).
     const spoolmanUrl = ctx.config.spoolman?.url;
+    let synced = false;
+    let archived = false;
     if (spoolmanUrl && spool.uid) {
       try {
         const client = createSpoolmanClient(spoolmanUrl);
         const all = await client.listSpools();
         const found = all.find(
-          (s) => decodeExtraString(s.extra?.tag) === spool.uid
+          (s) => decodeExtraString(s.extra?.tag) === spool.uid,
         );
-        if (found?.used_weight != null && spool.weight != null) {
-          const total = Number(spool.weight);
-          const remaining = Math.max(0, total - found.used_weight);
-          spool.remain = total > 0 ? Math.round((remaining / total) * 100) : 0;
+        if (found) {
+          synced = true;
+          archived = found.archived ?? false;
+          if (found.used_weight != null && spool.weight != null) {
+            const total = Number(spool.weight);
+            const remaining = Math.max(0, total - found.used_weight);
+            spool.remain =
+              total > 0 ? Math.round((remaining / total) * 100) : 0;
+          }
         }
       } catch {
         // Spoolman unreachable — return spool without weight enrichment
       }
     }
 
-    return { spool, match: match.type, sync_available: !!spoolmanUrl };
+    return {
+      spool,
+      match: match.type,
+      sync_available: !!spoolmanUrl,
+      synced,
+      archived,
+    };
   });
 
   app.post("/api/spools/sync", async (req, reply) => {
@@ -238,10 +251,10 @@ export async function registerRoutes(
     }
     const spool = parsed.data;
     try {
-      const result = await syncSpool(spool, ctx.mapping.byId, url, {
-        archiveOnEmpty: ctx.config.spoolman?.archive_on_empty ?? false
+      await syncSpool(spool, ctx.mapping.byId, url, {
+        archiveOnEmpty: ctx.config.spoolman?.archive_on_empty ?? false,
       });
-      return result;
+      return { success: true };
     } catch (err) {
       reply.code(400);
       return { error: err instanceof Error ? err.message : String(err) };
@@ -259,8 +272,8 @@ export async function registerRoutes(
         slots: unit.slots.map((slot) => ({
           slot,
           ...matchSlot(slot, ctx.mapping.byId),
-          sync: getSlotSyncView(ctx.syncState, slot)
-        }))
+          sync: getSlotSyncView(ctx.syncState, slot),
+        })),
       }));
 
       return {
@@ -268,7 +281,7 @@ export async function registerRoutes(
         name: p.name,
         enabled: p.enabled,
         status: runtime?.status ?? { lastError: null, errorCode: null },
-        ams_units
+        ams_units,
       };
     });
 
@@ -276,8 +289,8 @@ export async function registerRoutes(
       printers,
       mapping: {
         count: ctx.mapping.byId.size,
-        fetched_at: ctx.mapping.fetchedAt
-      }
+        fetched_at: ctx.mapping.fetchedAt,
+      },
     };
   });
 }
