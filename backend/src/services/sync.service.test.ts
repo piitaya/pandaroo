@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  evaluateSpoolForSync,
-  syncAll,
-  syncSlot,
-} from "./sync.service.js";
-import type { AppContext } from "../context.js";
+import { syncByTagIds, type SyncDeps } from "./sync.service.js";
 import {
   createSpoolmanClient,
   encodeExtraString,
@@ -14,8 +9,8 @@ import {
   type SpoolmanSpool,
 } from "../clients/spoolman.client.js";
 import type { FilamentEntry } from "../domain/matcher.js";
-import type { AmsSlot, Spool } from "../domain/spool.js";
-import type { MqttState } from "../clients/bambu.client.js";
+import type { AmsSlot } from "../domain/spool.js";
+import type { SpoolRow, SpoolRepository } from "../db/spool.repository.js";
 import {
   createSyncStateStore,
   getSlotSyncView,
@@ -27,22 +22,64 @@ const mapping = new Map<string, FilamentEntry>([
   ["A18-B0", { id: "A18-B0", spoolman_id: null }],
 ]);
 
-const baseSpool = (over: Partial<Spool> = {}): Spool => ({
-  uid: "UID-1",
-  variant_id: "A01-B6",
-  material: "PLA",
-  product: "PLA Matte",
-  color_hex: "042F56FF",
-  color_hexes: null,
-  weight: 1000,
-  temp_min: 220,
-  temp_max: 240,
-  remain: 75,
-  ...over,
-});
+function makeSpoolRow(over: Partial<SpoolRow> = {}): SpoolRow {
+  return {
+    tagId: "UID-1",
+    variantId: "A01-B6",
+    material: "PLA",
+    product: "PLA Matte",
+    colorHex: "042F56FF",
+    weight: 1000,
+    remain: 75,
+    lastUsed: null,
+    firstSeen: "2024-01-01T00:00:00",
+    lastUpdated: "2024-01-01T00:00:00",
+    ...over,
+  };
+}
+
+function fakeSpoolRepo(rows: SpoolRow[]): SpoolRepository {
+  return {
+    upsert() {},
+    findByTagId(tagId) {
+      return rows.find((r) => r.tagId === tagId);
+    },
+    list() {
+      return rows;
+    },
+  };
+}
+
+function buildDeps(rows: SpoolRow[], overrides?: Partial<SyncDeps>): SyncDeps {
+  return {
+    spoolRepo: fakeSpoolRepo(rows),
+    mapping,
+    spoolmanUrl: "http://spoolman.local",
+    archiveOnEmpty: false,
+    ...overrides,
+  };
+}
+
+function fakeClient(over: Partial<SpoolmanClient> = {}): SpoolmanClient {
+  return {
+    async getInfo() { return { version: "test" }; },
+    async getBaseUrl() { return null; },
+    async findVendorByName() { return null; },
+    async createVendor() { return { id: 1, name: "Bambu Lab" }; },
+    async findFilamentByExternalId() { return null; },
+    async createFilamentFromExternal() { return { id: 42 } as SpoolmanFilament; },
+    async listSpools() { return []; },
+    async ensureSpoolTagField() {},
+    async createSpool() { return { id: 7, filament: { id: 42 } } as SpoolmanSpool; },
+    async updateSpool(id) { return { id, filament: { id: 42 } } as SpoolmanSpool; },
+    ...over,
+  };
+}
+
+// ---------- Helpers ----------
 
 const slot = (
-  overSpool?: Partial<Spool> | null,
+  overSpool?: Partial<AmsSlot["spool"]> | null,
   overSlot?: Partial<AmsSlot>,
 ): AmsSlot => ({
   printer_serial: "AC12",
@@ -50,91 +87,21 @@ const slot = (
   slot_id: 0,
   nozzle_id: 0,
   has_spool: true,
-  spool: overSpool === null ? null : baseSpool(overSpool),
+  spool: overSpool === null ? null : {
+    uid: "UID-1",
+    variant_id: "A01-B6",
+    material: "PLA",
+    product: "PLA Matte",
+    color_hex: "042F56FF",
+    color_hexes: null,
+    weight: 1000,
+    temp_min: 220,
+    temp_max: 240,
+    remain: 75,
+    ...overSpool,
+  },
   ...overSlot,
 });
-
-function buildContext(slots: AmsSlot[]) {
-  const unitMap = new Map<number, AmsSlot[]>();
-  for (const s of slots) {
-    const arr = unitMap.get(s.ams_id);
-    if (arr) arr.push(s);
-    else unitMap.set(s.ams_id, [s]);
-  }
-  const ams_units = Array.from(unitMap.entries()).map(([id, items]) => ({
-    id,
-    nozzle_id: items[0].nozzle_id,
-    slots: items,
-  }));
-  const mqttState: MqttState = new Map();
-  mqttState.set("AC12", {
-    printer: {
-      name: "X1C",
-      host: "10.0.0.1",
-      serial: "AC12",
-      access_code: "abc",
-      enabled: true,
-    },
-    status: { lastError: null, errorCode: null },
-    ams_units,
-    mqtt: {} as any,
-    async disconnect() {},
-  } as any);
-  return {
-    config: {
-      printers: [],
-      mapping: { refresh_interval_hours: 24 },
-      spoolman: {
-        url: "http://spoolman.local",
-        auto_sync: false,
-        archive_on_empty: false,
-      },
-    },
-    mapping: {
-      byId: mapping,
-      fetchedAt: null,
-      refresh: async () => 0,
-      setInterval: () => {},
-      stop: () => {},
-    },
-    mqttState,
-    syncState: createSyncStateStore(),
-  };
-}
-
-function fakeClient(over: Partial<SpoolmanClient> = {}): SpoolmanClient {
-  return {
-    async getInfo() {
-      return { version: "test" };
-    },
-    async getBaseUrl() {
-      return null;
-    },
-    async findVendorByName() {
-      return null;
-    },
-    async createVendor() {
-      return { id: 1, name: "Bambu Lab" };
-    },
-    async findFilamentByExternalId() {
-      return null;
-    },
-    async createFilamentFromExternal() {
-      return { id: 42 } as SpoolmanFilament;
-    },
-    async listSpools() {
-      return [];
-    },
-    async ensureSpoolTagField() {},
-    async createSpool() {
-      return { id: 7, filament: { id: 42 } } as SpoolmanSpool;
-    },
-    async updateSpool(id) {
-      return { id, filament: { id: 42 } } as SpoolmanSpool;
-    },
-    ...over,
-  };
-}
 
 describe("encodeExtraString / decodeExtraString", () => {
   it("round-trips a value through JSON encoding", () => {
@@ -178,16 +145,6 @@ describe("getSlotSyncView", () => {
     });
     expect(getSlotSyncView(store, slot()).status).toBe("stale");
   });
-  it("returns stale when remain changed since last sync", () => {
-    const store = createSyncStateStore();
-    store.set(syncStateKey("AC12", 0, 0), {
-      status: "synced",
-      at: "2024-01-01T00:00:00Z",
-      signature: "UID-1|100",
-      spool_id: 9,
-    });
-    expect(getSlotSyncView(store, slot()).status).toBe("stale");
-  });
   it("returns error with message and timestamp", () => {
     const store = createSyncStateStore();
     store.set(syncStateKey("AC12", 0, 0), {
@@ -204,239 +161,58 @@ describe("getSlotSyncView", () => {
   });
 });
 
-describe("evaluateSpoolForSync", () => {
-  it("returns ok with spoolman id and computed used weight", () => {
-    const r = evaluateSpoolForSync(baseSpool(), mapping);
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.spoolmanId).toBe("bambulab_pla_matte_darkblue");
-      expect(r.usedWeight).toBeCloseTo(250);
-    }
-  });
-  it("rejects known_unmapped variants", () => {
-    expect(
-      evaluateSpoolForSync(baseSpool({ variant_id: "A18-B0" }), mapping),
-    ).toEqual({ ok: false, reason: "not_matched" });
-  });
-  it("rejects unknown variants", () => {
-    expect(
-      evaluateSpoolForSync(baseSpool({ variant_id: "X99" }), mapping),
-    ).toEqual({ ok: false, reason: "not_matched" });
-  });
-  it("rejects null spool", () => {
-    expect(evaluateSpoolForSync(null, mapping)).toEqual({
-      ok: false,
-      reason: "no_spool",
-    });
-  });
-  it("rejects spool with no weight", () => {
-    expect(
-      evaluateSpoolForSync(baseSpool({ weight: null }), mapping),
-    ).toEqual({ ok: false, reason: "missing_weight" });
-  });
-  it("rejects spool with zero weight", () => {
-    expect(
-      evaluateSpoolForSync(baseSpool({ weight: "0" as any }), mapping),
-    ).toEqual({ ok: false, reason: "missing_weight" });
-  });
-  it("rejects spool with no remain", () => {
-    expect(
-      evaluateSpoolForSync(baseSpool({ remain: null }), mapping),
-    ).toEqual({ ok: false, reason: "missing_remain" });
-  });
-});
-
-describe("syncSlot", () => {
-  it("finds existing filament and spool, patches used weight", async () => {
+describe("syncByTagIds", () => {
+  it("syncs a matched spool", async () => {
     const patch = vi.fn(
       async (id: number) => ({ id, filament: { id: 42 } }) as SpoolmanSpool,
     );
     const client = fakeClient({
-      async findFilamentByExternalId() {
-        return { id: 42 };
-      },
+      async findFilamentByExternalId() { return { id: 42 }; },
       async listSpools() {
-        return [
-          {
-            id: 9,
-            filament: { id: 42 },
-            first_used: "2024-01-01",
-            extra: { tag: encodeExtraString("UID-1") },
-          },
-        ];
+        return [{
+          id: 9,
+          filament: { id: 42 },
+          first_used: "2024-01-01",
+          extra: { tag: encodeExtraString("UID-1") },
+        }];
       },
       updateSpool: patch,
     });
-    const ctx = buildContext([slot()]);
-    const outcome = await syncSlot(ctx, "AC12", 0, 0, () => client);
-    expect(outcome).toMatchObject({
-      spool_id: 9,
-      used_weight: 250,
-      created_filament: false,
-      created_spool: false,
+    const deps = buildDeps([makeSpoolRow()]);
+    const r = await syncByTagIds(deps, ["UID-1"], () => client);
+    expect(r.synced).toHaveLength(1);
+    expect(r.synced[0]).toMatchObject({
+      tag_id: "UID-1",
+      spoolman_spool_id: 9,
     });
+    expect(r.synced[0].created_spool).toBe(false);
   });
 
   it("auto-creates filament when not in Spoolman", async () => {
-    const create = vi.fn(
-      async () => ({ id: 99 }) as SpoolmanFilament,
-    );
+    const create = vi.fn(async () => ({ id: 99 }) as SpoolmanFilament);
     const client = fakeClient({
-      async findFilamentByExternalId() {
-        return null;
-      },
+      async findFilamentByExternalId() { return null; },
       createFilamentFromExternal: create,
     });
-    const ctx = buildContext([slot()]);
-    const outcome = await syncSlot(ctx, "AC12", 0, 0, () => client);
+    const deps = buildDeps([makeSpoolRow()]);
+    const r = await syncByTagIds(deps, ["UID-1"], () => client);
     expect(create).toHaveBeenCalledWith("bambulab_pla_matte_darkblue");
-    expect(outcome).toMatchObject({
+    expect(r.synced[0]).toMatchObject({
       created_filament: true,
       created_spool: true,
     });
   });
 
-  it("matches spool by non-JSON-encoded extra.tag (legacy)", async () => {
-    const client = fakeClient({
-      async findFilamentByExternalId() {
-        return { id: 42 };
-      },
-      async listSpools() {
-        return [{ id: 5, filament: { id: 42 }, extra: { tag: "UID-1" } }];
-      },
-    });
-    const ctx = buildContext([slot()]);
-    expect(
-      (await syncSlot(ctx, "AC12", 0, 0, () => client)).spool_id,
-    ).toBe(5);
+  it("skips spools not in local DB", async () => {
+    const deps = buildDeps([]);
+    const r = await syncByTagIds(deps, ["MISSING"], () => fakeClient());
+    expect(r.skipped).toEqual([{ tag_id: "MISSING", reason: "not_found" }]);
   });
 
-  it("archives spool when remain is 0 and archive_on_empty is true", async () => {
-    const patch = vi.fn(
-      async (id: number) => ({ id, filament: { id: 42 } }) as SpoolmanSpool,
-    );
-    const client = fakeClient({
-      async findFilamentByExternalId() {
-        return { id: 42 };
-      },
-      async listSpools() {
-        return [
-          {
-            id: 9,
-            filament: { id: 42 },
-            first_used: "2024-01-01",
-            extra: { tag: encodeExtraString("UID-1") },
-          },
-        ];
-      },
-      updateSpool: patch,
-    });
-    const ctx = buildContext([slot({ remain: 0 })]);
-    ctx.config = {
-      ...ctx.config,
-      spoolman: {
-        url: "http://spoolman.local",
-        auto_sync: false,
-        archive_on_empty: true,
-      },
-    };
-    await syncSlot(ctx, "AC12", 0, 0, () => client);
-    const patchArg = (
-      patch.mock.calls[0] as unknown as [number, Record<string, unknown>]
-    )[1];
-    expect(patchArg.archived).toBe(true);
-  });
-
-  it("does not archive when archive_on_empty is false", async () => {
-    const patch = vi.fn(
-      async (id: number) => ({ id, filament: { id: 42 } }) as SpoolmanSpool,
-    );
-    const client = fakeClient({
-      async findFilamentByExternalId() {
-        return { id: 42 };
-      },
-      async listSpools() {
-        return [
-          {
-            id: 9,
-            filament: { id: 42 },
-            first_used: "2024-01-01",
-            extra: { tag: encodeExtraString("UID-1") },
-          },
-        ];
-      },
-      updateSpool: patch,
-    });
-    const ctx = buildContext([slot({ remain: 0 })]);
-    await syncSlot(ctx, "AC12", 0, 0, () => client);
-    const patchArg = (
-      patch.mock.calls[0] as unknown as [number, Record<string, unknown>]
-    )[1];
-    expect(patchArg.archived).toBeUndefined();
-  });
-
-  it("records success in syncState", async () => {
-    const client = fakeClient({
-      async findFilamentByExternalId() {
-        return { id: 42 };
-      },
-    });
-    const ctx = buildContext([slot()]);
-    await syncSlot(ctx, "AC12", 0, 0, () => client);
-    expect(getSlotSyncView(ctx.syncState, slot()).status).toBe("synced");
-  });
-
-  it("records error in syncState", async () => {
-    const client = fakeClient({
-      async findFilamentByExternalId() {
-        throw new Error("down");
-      },
-    });
-    const ctx = buildContext([slot()]);
-    await expect(
-      syncSlot(ctx, "AC12", 0, 0, () => client),
-    ).rejects.toThrow(/down/);
-    expect(getSlotSyncView(ctx.syncState, slot()).status).toBe("error");
-  });
-
-  it("rejects when URL not configured", async () => {
-    const ctx = buildContext([slot()]);
-    ctx.config = {
-      ...ctx.config,
-      spoolman: { auto_sync: false, archive_on_empty: false },
-    };
-    await expect(
-      syncSlot(ctx, "AC12", 0, 0, () => fakeClient()),
-    ).rejects.toThrow(/not configured/);
-  });
-
-  it("rejects when not matched", async () => {
-    const ctx = buildContext([slot({ variant_id: "A18-B0" })]);
-    await expect(
-      syncSlot(ctx, "AC12", 0, 0, () => fakeClient()),
-    ).rejects.toThrow(/not_matched/);
-  });
-});
-
-describe("syncAll", () => {
-  it("separates synced from skipped", async () => {
-    const client = fakeClient({
-      async findFilamentByExternalId() {
-        return { id: 42 };
-      },
-      updateSpool: vi.fn(
-        async (id: number) => ({ id, filament: { id: 42 } }) as SpoolmanSpool,
-      ),
-    });
-    const ctx = buildContext([
-      slot({}, { ams_id: 0, slot_id: 0 }),
-      slot({ variant_id: "X99" }, { ams_id: 0, slot_id: 1 }),
-      slot(null, { ams_id: 0, slot_id: 2 }),
-    ]);
-    const r = await syncAll(ctx, () => client);
-    expect(r.synced).toHaveLength(1);
-    expect(r.skipped).toHaveLength(2);
-    expect(r.errors).toHaveLength(0);
+  it("skips unmapped spools", async () => {
+    const deps = buildDeps([makeSpoolRow({ variantId: "A18-B0" })]);
+    const r = await syncByTagIds(deps, ["UID-1"], () => fakeClient());
+    expect(r.skipped).toEqual([{ tag_id: "UID-1", reason: "not_matched" }]);
   });
 
   it("collects errors without aborting", async () => {
@@ -448,13 +224,35 @@ describe("syncAll", () => {
         return { id: 42 };
       },
     });
-    const ctx = buildContext([
-      slot({}, { slot_id: 0 }),
-      slot({ uid: "UID-2" }, { slot_id: 1 }),
+    const deps = buildDeps([
+      makeSpoolRow({ tagId: "UID-1" }),
+      makeSpoolRow({ tagId: "UID-2" }),
     ]);
-    const r = await syncAll(ctx, () => client);
+    const r = await syncByTagIds(deps, ["UID-1", "UID-2"], () => client);
     expect(r.errors).toHaveLength(1);
     expect(r.synced).toHaveLength(1);
+  });
+
+  it("archives spool when remain is 0 and archive_on_empty is true", async () => {
+    const patch = vi.fn(
+      async (id: number) => ({ id, filament: { id: 42 } }) as SpoolmanSpool,
+    );
+    const client = fakeClient({
+      async findFilamentByExternalId() { return { id: 42 }; },
+      async listSpools() {
+        return [{
+          id: 9,
+          filament: { id: 42 },
+          first_used: "2024-01-01",
+          extra: { tag: encodeExtraString("UID-1") },
+        }];
+      },
+      updateSpool: patch,
+    });
+    const deps = buildDeps([makeSpoolRow({ remain: 0 })], { archiveOnEmpty: true });
+    await syncByTagIds(deps, ["UID-1"], () => client);
+    const patchArg = (patch.mock.calls[0] as unknown as [number, Record<string, unknown>])[1];
+    expect(patchArg.archived).toBe(true);
   });
 });
 

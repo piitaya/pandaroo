@@ -14,8 +14,8 @@ import {
 import { IconPlugConnected, IconPlugConnectedX } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { api } from "../api";
-import { useConfig, usePutConfig, useSyncAllSpoolman } from "../hooks";
+import { api, collectActiveTagIds } from "../api";
+import { useAppState, useConfig, usePutConfig, useSyncSpoolman } from "../hooks";
 
 type TestState =
   | { status: "idle" }
@@ -26,7 +26,8 @@ type TestState =
 export default function SyncPage() {
   const { data } = useConfig();
   const put = usePutConfig();
-  const syncAll = useSyncAllSpoolman();
+  const { data: stateData } = useAppState();
+  const syncSpoolman = useSyncSpoolman();
   const { t } = useTranslation();
 
   const [testState, setTestState] = useState<TestState>({ status: "idle" });
@@ -102,7 +103,7 @@ export default function SyncPage() {
     });
     // Immediate sync on enable so users see status populate instantly
     // instead of waiting for the next MQTT push.
-    if (value) syncAll.mutate();
+    if (value) syncSpoolman.mutate(stateData ? collectActiveTagIds(stateData) : []);
   };
 
   const toggleArchiveOnEmpty = async (value: boolean) => {
@@ -209,8 +210,8 @@ export default function SyncPage() {
             </Text>
             <Group>
               <Button
-                loading={syncAll.isPending}
-                onClick={() => syncAll.mutate()}
+                loading={syncSpoolman.isPending}
+                onClick={() => syncSpoolman.mutate(stateData ? collectActiveTagIds(stateData) : [])}
               >
                 {t("sync.actions_card.sync_all")}
               </Button>

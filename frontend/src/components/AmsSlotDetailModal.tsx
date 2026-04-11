@@ -24,7 +24,7 @@ import { useMatchStatus } from "./matchStatus";
 import {
   useConfig,
   useSpoolmanBaseUrl,
-  useSyncSlotSpoolman
+  useSyncSpoolman
 } from "../hooks";
 import type { AmsMatchedSlot } from "../api";
 
@@ -114,7 +114,7 @@ export function AmsSlotDetailModal({
   const { data: spoolmanBaseUrl } = useSpoolmanBaseUrl();
   const spoolmanUrl = spoolmanBaseUrl?.replace(/\/+$/, "") ?? null;
   const { data: configData } = useConfig();
-  const syncSlot = useSyncSlotSpoolman();
+  const syncSpoolman = useSyncSpoolman();
   const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
   const autoSync = Boolean(configData?.config.spoolman?.auto_sync);
   const canManualSync =
@@ -305,14 +305,11 @@ export function AmsSlotDetailModal({
                           size="sm"
                           variant="subtle"
                           color="gray"
-                          loading={syncSlot.isPending}
-                          onClick={() =>
-                            syncSlot.mutate({
-                              serial: slot.slot.printer_serial,
-                              amsId: slot.slot.ams_id,
-                              slotId: slot.slot.slot_id
-                            })
-                          }
+                          loading={syncSpoolman.isPending}
+                          onClick={() => {
+                            const uid = slot.slot.spool?.uid;
+                            if (uid) syncSpoolman.mutate([uid]);
+                          }}
                           aria-label={t("slot.sync_aria_label")}
                         >
                           <IconRefresh size={14} />

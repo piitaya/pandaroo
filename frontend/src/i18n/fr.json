@@ -3,6 +3,7 @@
     "dashboard": "Tableau de bord",
     "printers": "Imprimantes",
     "sync": "Synchronisation",
+    "spools": "Bobines",
     "settings": "Paramètres",
     "toggle_navigation": "Afficher le menu"
   },
@@ -197,6 +198,12 @@
       "hint": "Envoyer tous les slots AMS correspondants de toutes les imprimantes à Spoolman.",
       "sync_all": "Tout synchroniser"
     }
+  },
+  "spools": {
+    "title": "Bobines",
+    "empty": "Aucune bobine scannée. Les bobines sont automatiquement suivies lorsqu'elles sont détectées dans l'AMS.",
+    "failed_to_load": "Impossible de charger les bobines",
+    "last_updated": "Dernière mise à jour"
   },
   "spoolman": {
     "sync_slot": {

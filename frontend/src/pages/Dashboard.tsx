@@ -23,12 +23,13 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { PrinterBlock } from "../components/PrinterBlock";
 import { StatusLegend } from "../components/StatusLegend";
-import { useAppState, useConfig, useSyncAllSpoolman } from "../hooks";
+import { collectActiveTagIds } from "../api";
+import { useAppState, useConfig, useSyncSpoolman } from "../hooks";
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error } = useAppState();
   const { data: configData } = useConfig();
-  const syncAll = useSyncAllSpoolman();
+  const syncSpoolman = useSyncSpoolman();
   const { t } = useTranslation();
   const [legendOpened, { open: openLegend, close: closeLegend }] =
     useDisclosure(false);
@@ -68,8 +69,8 @@ export default function DashboardPage() {
           <Button
             leftSection={<IconRefresh size={16} />}
             variant="default"
-            loading={syncAll.isPending}
-            onClick={() => syncAll.mutate()}
+            loading={syncSpoolman.isPending}
+            onClick={() => syncSpoolman.mutate(data ? collectActiveTagIds(data) : [])}
           >
             {t("dashboard.sync_all")}
           </Button>

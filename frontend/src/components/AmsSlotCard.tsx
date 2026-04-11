@@ -17,7 +17,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { AmsSlotDetailModal } from "./AmsSlotDetailModal";
 import { useMatchStatus } from "./matchStatus";
-import { useConfig, useSyncSlotSpoolman } from "../hooks";
+import { spoolFillColor } from "./spoolFillColor";
+import { useConfig, useSyncSpoolman } from "../hooks";
 import type { AmsMatchedSlot, SlotSyncView } from "../api";
 
 function SyncIndicator({ sync }: { sync: SlotSyncView }) {
@@ -99,16 +100,6 @@ export function amsSlotKey(s: AmsMatchedSlot): string {
 }
 
 /**
- * Traffic-light color for the remaining percentage — matches
- * bambuddy's thresholds (> 50 green, 15–50 amber, < 15 red).
- */
-function fillColor(pct: number): string {
-  if (pct > 50) return "teal";
-  if (pct >= 15) return "yellow";
-  return "red";
-}
-
-/**
  * Fixed-size color swatch. Shows the slot color when known; otherwise
  * renders a dashed placeholder so empty / unknown-color slots keep the
  * same layout as filled ones.
@@ -161,7 +152,7 @@ function SlotFill({
     <Stack gap={2}>
       <Progress
         value={clamped ?? 0}
-        color={clamped != null ? fillColor(clamped) : "gray"}
+        color={clamped != null ? spoolFillColor(clamped) : "gray"}
         size="sm"
       />
       <Group justify="space-between" gap={4} wrap="nowrap">
@@ -186,7 +177,7 @@ export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
   const matchStatus = useMatchStatus();
   const status = matchStatus[s.type];
   const { data: configData } = useConfig();
-  const syncSlot = useSyncSlotSpoolman();
+  const syncSpoolman = useSyncSpoolman();
   const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
   const autoSync = Boolean(configData?.config.spoolman?.auto_sync);
   const canSync = s.type === "matched" && spoolmanConfigured && !autoSync;
@@ -230,14 +221,11 @@ export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
             {canSync && (
               <SyncButton
                 sync={s.sync}
-                loading={syncSlot.isPending}
-                onClick={() =>
-                  syncSlot.mutate({
-                    serial: s.slot.printer_serial,
-                    amsId: s.slot.ams_id,
-                    slotId: s.slot.slot_id
-                  })
-                }
+                loading={syncSpoolman.isPending}
+                onClick={() => {
+                  const uid = s.slot.spool?.uid;
+                  if (uid) syncSpoolman.mutate([uid]);
+                }}
               />
             )}
             <ActionIcon

@@ -1,6 +1,14 @@
 import { Type, type Static } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 
+export function computeUsedWeight(weight: number, remain: number): number {
+  return Math.max(0, weight * (1 - remain / 100));
+}
+
+export function hasUid(spool: Spool): spool is Spool & { uid: string } {
+  return !!spool.uid;
+}
+
 export interface Spool {
   uid: string | null;
   variant_id: string | null;

@@ -7,6 +7,8 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+RUN apk add --no-cache python3 make g++
+
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
@@ -23,6 +25,7 @@ RUN npm run build
 # the Vite / TypeScript / Vitest footprint.
 FROM node:20-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
@@ -47,6 +50,7 @@ COPY --from=deps  --chown=node:node /app/node_modules ./node_modules
 COPY --from=deps  --chown=node:node /app/backend/package.json ./backend/package.json
 COPY --from=deps  --chown=node:node /app/frontend/package.json ./frontend/package.json
 COPY --from=builder --chown=node:node /app/backend/dist ./backend/dist
+COPY --from=builder --chown=node:node /app/backend/drizzle ./backend/drizzle
 COPY --from=builder --chown=node:node /app/frontend/dist ./frontend/dist
 
 VOLUME ["/data"]

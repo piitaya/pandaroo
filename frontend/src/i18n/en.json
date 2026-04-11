@@ -3,6 +3,7 @@
     "dashboard": "Dashboard",
     "printers": "Printers",
     "sync": "Sync",
+    "spools": "Spools",
     "settings": "Settings",
     "toggle_navigation": "Toggle navigation"
   },
@@ -197,6 +198,12 @@
       "hint": "Push every matched AMS slot across all printers to Spoolman.",
       "sync_all": "Sync all now"
     }
+  },
+  "spools": {
+    "title": "Spools",
+    "empty": "No spools scanned yet. Spools are automatically tracked when detected in the AMS.",
+    "failed_to_load": "Failed to load spools",
+    "last_updated": "Last updated"
   },
   "spoolman": {
     "sync_slot": {

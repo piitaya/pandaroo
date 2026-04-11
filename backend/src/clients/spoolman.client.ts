@@ -77,7 +77,7 @@ export interface SpoolmanClient {
     spoolId: number,
     patch: {
       used_weight?: number;
-      last_used: string;
+      last_used?: string;
       first_used?: string;
       archived?: boolean;
     },

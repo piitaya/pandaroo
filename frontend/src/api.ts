@@ -25,30 +25,31 @@ export interface Config {
   };
 }
 
-export interface SyncOutcome {
-  printer_serial: string;
-  ams_id: number;
-  slot_id: number;
-  spool_id: number;
-  used_weight: number;
+export interface LocalSpool {
+  tag_id: string;
+  variant_id: string | null;
+  material: string | null;
+  product: string | null;
+  color_hex: string | null;
+  color_name: string | null;
+  weight: number | null;
+  remain: number | null;
+  last_used: string | null;
+  first_seen: string;
+  last_updated: string;
+}
+
+export interface SpoolSyncResult {
+  tag_id: string;
+  spoolman_spool_id: number;
   created_filament: boolean;
   created_spool: boolean;
 }
 
-export interface SyncAllResult {
-  synced: SyncOutcome[];
-  skipped: Array<{
-    printer_serial: string;
-    ams_id: number;
-    slot_id: number;
-    reason: string;
-  }>;
-  errors: Array<{
-    printer_serial: string;
-    ams_id: number;
-    slot_id: number;
-    error: string;
-  }>;
+export interface SyncResult {
+  synced: SpoolSyncResult[];
+  skipped: Array<{ tag_id: string; reason: string }>;
+  errors: Array<{ tag_id: string; error: string }>;
 }
 
 export interface Spool {
@@ -172,6 +173,14 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export function collectActiveTagIds(state: AppState): string[] {
+  return state.printers.flatMap((p) =>
+    p.ams_units.flatMap((u) =>
+      u.slots.map((s) => s.slot.spool?.uid).filter((uid): uid is string => !!uid)
+    )
+  );
+}
+
 export const api = {
   getConfig: () => req<{ config: Config }>("/api/config"),
   putConfig: (config: Config) =>
@@ -204,11 +213,10 @@ export const api = {
     }>("/api/spoolman/test", {
       method: "POST"
     }),
-  syncAllSpoolman: () =>
-    req<SyncAllResult>("/api/spoolman/sync", { method: "POST" }),
-  syncSlotSpoolman: (serial: string, amsId: number, slotId: number) =>
-    req<SyncOutcome>(
-      `/api/spoolman/sync/${encodeURIComponent(serial)}/${amsId}/${slotId}`,
-      { method: "POST" }
-    )
+  syncSpoolman: (tagIds: string[]) =>
+    req<SyncResult>("/api/spoolman/sync", {
+      method: "POST",
+      body: JSON.stringify({ tag_ids: tagIds }),
+    }),
+  listSpools: () => req<LocalSpool[]>("/api/spools"),
 };

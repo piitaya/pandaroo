@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { configPath, loadConfig } from "./stores/config.store.js";
 import { createMapping, mappingCachePath } from "./stores/mapping.store.js";
 import { AppContext } from "./context.js";
+import { openDatabase } from "./db/database.js";
 
 import { configRoutes } from "./routes/config.routes.js";
 import { printerRoutes } from "./routes/printer.routes.js";
@@ -43,7 +44,8 @@ export async function buildApp() {
     onError: (err) => app.log.warn({ err }, "mapping refresh failed"),
   });
 
-  const ctx = new AppContext(config, cfgPath, mapping, app.log);
+  const { db, sqlite } = openDatabase();
+  const ctx = new AppContext(config, cfgPath, db, sqlite, mapping, app.log);
   ctx.syncFromConfig();
 
   await app.register(configRoutes, { ctx });

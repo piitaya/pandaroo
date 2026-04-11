@@ -2,9 +2,26 @@ import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
 import type { RouteDeps } from "../context.js";
-import { syncAll, syncSlot } from "../services/sync.service.js";
-import { ErrorResponse, SyncOutcomeResponse, SyncAllResultResponse } from "./schemas.js";
+import { syncByTagIds } from "../services/sync.service.js";
+import { ErrorResponse } from "./schemas.js";
 import { errorMessage } from "../utils.js";
+
+const SpoolSyncResultResponse = Type.Object({
+  tag_id: Type.String(),
+  spoolman_spool_id: Type.Number(),
+  created_filament: Type.Boolean(),
+  created_spool: Type.Boolean(),
+});
+
+const SyncResultResponse = Type.Object({
+  synced: Type.Array(SpoolSyncResultResponse),
+  skipped: Type.Array(
+    Type.Object({ tag_id: Type.String(), reason: Type.String() }),
+  ),
+  errors: Type.Array(
+    Type.Object({ tag_id: Type.String(), error: Type.String() }),
+  ),
+});
 
 export const spoolmanRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) => {
   app.post("/api/spoolman/test", {
@@ -44,45 +61,29 @@ export const spoolmanRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }
   app.post("/api/spoolman/sync", {
     schema: {
       tags: ["Spoolman"],
-      description: "Sync all matched AMS slots to Spoolman",
-      response: { 200: SyncAllResultResponse, 400: ErrorResponse },
+      description: "Sync spools to Spoolman by tag IDs",
+      body: Type.Object({
+        tag_ids: Type.Array(Type.String(), { minItems: 1 }),
+      }),
+      response: { 200: SyncResultResponse, 400: ErrorResponse },
     },
-  }, async (_req, reply) => {
+  }, async (req, reply) => {
+    const { tag_ids } = req.body as { tag_ids: string[] };
+    const url = ctx.config.spoolman.url;
+    if (!url) {
+      reply.code(400);
+      return { error: "Spoolman URL is not configured." };
+    }
     try {
-      return await syncAll(ctx);
+      return await syncByTagIds({
+        spoolRepo: ctx.spoolRepo,
+        mapping: ctx.mapping.byId,
+        spoolmanUrl: url,
+        archiveOnEmpty: ctx.config.spoolman.archive_on_empty ?? false,
+      }, tag_ids);
     } catch (err) {
       reply.code(400);
       return { error: errorMessage(err) };
     }
   });
-
-  app.post<{ Params: { serial: string; amsId: string; slotId: string } }>(
-    "/api/spoolman/sync/:serial/:amsId/:slotId",
-    {
-      schema: {
-        tags: ["Spoolman"],
-        description: "Sync a single AMS slot to Spoolman",
-        params: Type.Object({
-          serial: Type.String(),
-          amsId: Type.String(),
-          slotId: Type.String(),
-        }),
-        response: { 200: SyncOutcomeResponse, 400: ErrorResponse },
-      },
-    },
-    async (req, reply) => {
-      const amsId = Number(req.params.amsId);
-      const slotId = Number(req.params.slotId);
-      if (!Number.isFinite(amsId) || !Number.isFinite(slotId)) {
-        reply.code(400);
-        return { error: "Invalid amsId or slotId." };
-      }
-      try {
-        return await syncSlot(ctx, req.params.serial, amsId, slotId);
-      } catch (err) {
-        reply.code(400);
-        return { error: errorMessage(err) };
-      }
-    },
-  );
 };

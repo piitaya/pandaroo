@@ -1,95 +1,38 @@
-import type { AmsSlot, Spool } from "../domain/spool.js";
-import { matchSpool, type FilamentEntry } from "../domain/matcher.js";
-import {
-  type SyncStateStore,
-  syncStateKey,
-  slotSignature,
-} from "../stores/sync-state.store.js";
+import { computeUsedWeight } from "../domain/spool.js";
+import type { FilamentEntry } from "../domain/matcher.js";
 import {
   type SpoolmanClient,
   type SpoolmanSpool,
   createSpoolmanClient,
   decodeExtraString,
 } from "../clients/spoolman.client.js";
-import { type MqttState, listRuntimes } from "../clients/bambu.client.js";
-import type { AppContext } from "../context.js";
+import type { SpoolRow, SpoolRepository } from "../db/spool.repository.js";
 import { errorMessage } from "../utils.js";
 
-export type SkipReason =
-  | "not_matched"
-  | "no_spool"
-  | "missing_uid"
-  | "missing_weight"
-  | "missing_remain";
-
 export interface SpoolSyncResult {
-  spool_id: number;
-  used_weight: number | null;
-  created_filament: boolean;
-  created_spool: boolean;
-}
-
-export interface SyncOutcome {
-  printer_serial: string;
-  ams_id: number;
-  slot_id: number;
-  spool_id: number;
-  used_weight: number | null;
+  tag_id: string;
+  spoolman_spool_id: number;
   created_filament: boolean;
   created_spool: boolean;
 }
 
 export interface SyncAllResult {
-  synced: SyncOutcome[];
-  skipped: Array<{
-    printer_serial: string;
-    ams_id: number;
-    slot_id: number;
-    reason: string;
-  }>;
-  errors: Array<{
-    printer_serial: string;
-    ams_id: number;
-    slot_id: number;
-    error: string;
-  }>;
+  synced: SpoolSyncResult[];
+  skipped: Array<{ tag_id: string; reason: string }>;
+  errors: Array<{ tag_id: string; error: string }>;
 }
 
-function computeUsedWeight(weight: number, remain: number): number {
-  return Math.max(0, weight * (1 - remain / 100));
-}
-
-export function evaluateSpoolForSync(
-  spool: Spool | null,
-  mapping: Map<string, FilamentEntry>,
-):
-  | { ok: true; spoolmanId: string; weight: number; usedWeight: number }
-  | { ok: false; reason: SkipReason } {
-  if (!spool) return { ok: false, reason: "no_spool" };
-  const match = matchSpool(spool, mapping);
-  if (match.type !== "matched" || !match.entry?.spoolman_id) {
-    return { ok: false, reason: "not_matched" };
-  }
-  if (!spool.uid) return { ok: false, reason: "missing_uid" };
-  if (spool.weight == null) return { ok: false, reason: "missing_weight" };
-  if (spool.remain == null) return { ok: false, reason: "missing_remain" };
-  const weight = spool.weight;
-  if (!Number.isFinite(weight) || weight <= 0) {
-    return { ok: false, reason: "missing_weight" };
-  }
-  return {
-    ok: true,
-    spoolmanId: match.entry.spoolman_id,
-    weight,
-    usedWeight: computeUsedWeight(weight, spool.remain),
-  };
+export interface SyncDeps {
+  spoolRepo: SpoolRepository;
+  mapping: Map<string, FilamentEntry>;
+  spoolmanUrl: string;
+  archiveOnEmpty: boolean;
 }
 
 async function syncOneSpool(
   client: SpoolmanClient,
-  spool: Spool,
+  row: SpoolRow,
   spoolmanId: string,
-  usedWeight: number | null,
   options: { archiveOnEmpty: boolean },
   allSpools?: SpoolmanSpool[],
 ): Promise<SpoolSyncResult> {
@@ -100,211 +43,76 @@ async function syncOneSpool(
     createdFilament = true;
   }
 
-  const uid = spool.uid!;
   const spoolmanSpools = allSpools ?? await client.listSpools();
   let spoolmanSpool =
-    spoolmanSpools.find((s) => decodeExtraString(s.extra?.tag) === uid) ?? null;
+    spoolmanSpools.find((s) => decodeExtraString(s.extra?.tag) === row.tagId) ?? null;
   let createdSpool = false;
   if (!spoolmanSpool) {
-    spoolmanSpool = await client.createSpool(filament.id, uid);
+    spoolmanSpool = await client.createSpool(filament.id, row.tagId);
     createdSpool = true;
   }
 
-  const now = new Date().toISOString();
-  const shouldArchive = options.archiveOnEmpty && spool.remain === 0;
+  let usedWeight: number | null = null;
+  if (row.weight != null && row.remain != null && row.weight > 0) {
+    usedWeight = computeUsedWeight(row.weight, row.remain);
+  }
+
+  const shouldArchive = options.archiveOnEmpty && row.remain === 0;
   await client.updateSpool(spoolmanSpool.id, {
     ...(usedWeight != null ? { used_weight: usedWeight } : {}),
-    last_used: now,
-    ...(spoolmanSpool.first_used ? {} : { first_used: now }),
+    ...(row.lastUsed ? { last_used: row.lastUsed } : {}),
+    ...(spoolmanSpool.first_used ? {} : { first_used: row.firstSeen }),
     ...(shouldArchive ? { archived: true } : {}),
   });
+
   return {
-    spool_id: spoolmanSpool.id,
-    used_weight: usedWeight,
+    tag_id: row.tagId,
+    spoolman_spool_id: spoolmanSpool.id,
     created_filament: createdFilament,
     created_spool: createdSpool,
   };
 }
 
-export async function syncSpool(
-  spool: Spool,
+function resolveSpoolmanId(
+  row: SpoolRow,
   mapping: Map<string, FilamentEntry>,
-  spoolmanUrl: string,
-  options: { archiveOnEmpty: boolean } = { archiveOnEmpty: false },
-  clientFactory: (url: string) => SpoolmanClient = createSpoolmanClient,
-): Promise<SpoolSyncResult> {
-  if (!spool.uid) throw new Error("Spool has no UID.");
-  const match = matchSpool(spool, mapping);
-  if (match.type !== "matched" || !match.entry?.spoolman_id) {
-    throw new Error(`Spool cannot be synced: not_matched.`);
-  }
-  let usedWeight: number | null = null;
-  if (spool.weight != null && spool.remain != null) {
-    const w = spool.weight;
-    if (Number.isFinite(w) && w > 0) {
-      usedWeight = computeUsedWeight(w, spool.remain);
-    }
-  }
-  const client = clientFactory(spoolmanUrl);
-  return syncOneSpool(
-    client,
-    spool,
-    match.entry.spoolman_id,
-    usedWeight,
-    options,
-  );
+): string | null {
+  if (!row.variantId) return null;
+  const entry = mapping.get(row.variantId);
+  return entry?.spoolman_id ?? null;
 }
 
-function findSlot(
-  mqttState: MqttState,
-  printerSerial: string,
-  amsId: number,
-  slotId: number,
-): AmsSlot | null {
-  const client = mqttState.get(printerSerial);
-  if (!client) return null;
-  const unit = client.ams_units.find((u) => u.id === amsId);
-  if (!unit) return null;
-  return unit.slots.find((s) => s.slot_id === slotId) ?? null;
-}
-
-function recordSyncSuccess(
-  syncState: SyncStateStore,
-  key: string,
-  slot: AmsSlot,
-  spoolId: number,
-): void {
-  syncState.set(key, {
-    status: "synced",
-    at: new Date().toISOString(),
-    signature: slotSignature(slot),
-    spool_id: spoolId,
-  });
-}
-
-function recordSyncError(
-  syncState: SyncStateStore,
-  key: string,
-  slot: AmsSlot,
-  error: string,
-): void {
-  syncState.set(key, {
-    status: "error",
-    at: new Date().toISOString(),
-    signature: slotSignature(slot),
-    error,
-  });
-}
-
-export async function syncSlot(
-  ctx: AppContext,
-  printerSerial: string,
-  amsId: number,
-  slotId: number,
-  clientFactory: (url: string) => SpoolmanClient = createSpoolmanClient,
-): Promise<SyncOutcome> {
-  const url = ctx.config.spoolman.url;
-  if (!url) throw new Error("Spoolman URL is not configured.");
-
-  const slot = findSlot(ctx.mqttState, printerSerial, amsId, slotId);
-  if (!slot) {
-    throw new Error(
-      `Slot ${amsId}/${slotId} on printer ${printerSerial} is not available.`,
-    );
-  }
-  const evaluated = evaluateSpoolForSync(slot.spool, ctx.mapping.byId);
-  if (!evaluated.ok) {
-    throw new Error(`Slot cannot be synced: ${evaluated.reason}.`);
-  }
-  const key = syncStateKey(printerSerial, amsId, slotId);
-  try {
-    const client = clientFactory(url);
-    const outcome = await syncOneSpool(
-      client,
-      slot.spool!,
-      evaluated.spoolmanId,
-      evaluated.usedWeight,
-      { archiveOnEmpty: ctx.config.spoolman.archive_on_empty ?? false },
-    );
-    recordSyncSuccess(ctx.syncState, key, slot, outcome.spool_id);
-    return {
-      printer_serial: printerSerial,
-      ams_id: amsId,
-      slot_id: slotId,
-      ...outcome,
-    };
-  } catch (err) {
-    recordSyncError(
-      ctx.syncState,
-      key,
-      slot,
-      errorMessage(err),
-    );
-    throw err;
-  }
-}
-
-export async function syncAll(
-  ctx: AppContext,
+export async function syncByTagIds(
+  deps: SyncDeps,
+  tagIds: string[],
   clientFactory: (url: string) => SpoolmanClient = createSpoolmanClient,
 ): Promise<SyncAllResult> {
-  const url = ctx.config.spoolman.url;
-  if (!url) throw new Error("Spoolman URL is not configured.");
-  const client = clientFactory(url);
-  const options = {
-    archiveOnEmpty: ctx.config.spoolman.archive_on_empty ?? false,
-  };
+  const client = clientFactory(deps.spoolmanUrl);
+  const options = { archiveOnEmpty: deps.archiveOnEmpty };
 
-  // Pre-fetch once to avoid N+1 HTTP calls per slot
   const allSpools = await client.listSpools();
-
   const result: SyncAllResult = { synced: [], skipped: [], errors: [] };
-  for (const runtime of listRuntimes(ctx.mqttState)) {
-    for (const unit of runtime.ams_units) {
-      for (const slot of unit.slots) {
-        const evaluated = evaluateSpoolForSync(slot.spool, ctx.mapping.byId);
-        if (!evaluated.ok) {
-          result.skipped.push({
-            printer_serial: runtime.printer.serial,
-            ams_id: slot.ams_id,
-            slot_id: slot.slot_id,
-            reason: evaluated.reason,
-          });
-          continue;
-        }
-        const key = syncStateKey(
-          runtime.printer.serial,
-          slot.ams_id,
-          slot.slot_id,
-        );
-        try {
-          const outcome = await syncOneSpool(
-            client,
-            slot.spool!,
-            evaluated.spoolmanId,
-            evaluated.usedWeight,
-            options,
-            allSpools,
-          );
-          recordSyncSuccess(ctx.syncState, key, slot, outcome.spool_id);
-          result.synced.push({
-            printer_serial: runtime.printer.serial,
-            ams_id: slot.ams_id,
-            slot_id: slot.slot_id,
-            ...outcome,
-          });
-        } catch (err) {
-          const message = errorMessage(err);
-          recordSyncError(ctx.syncState, key, slot, message);
-          result.errors.push({
-            printer_serial: runtime.printer.serial,
-            ams_id: slot.ams_id,
-            slot_id: slot.slot_id,
-            error: message,
-          });
-        }
-      }
+
+  for (const tagId of tagIds) {
+    const row = deps.spoolRepo.findByTagId(tagId);
+    if (!row) {
+      result.skipped.push({ tag_id: tagId, reason: "not_found" });
+      continue;
+    }
+
+    const spoolmanId = resolveSpoolmanId(row, deps.mapping);
+    if (!spoolmanId) {
+      result.skipped.push({ tag_id: tagId, reason: "not_matched" });
+      continue;
+    }
+
+    try {
+      const outcome = await syncOneSpool(client, row, spoolmanId, options, allSpools);
+      result.synced.push(outcome);
+    } catch (err) {
+      result.errors.push({ tag_id: tagId, error: errorMessage(err) });
     }
   }
+
   return result;
 }

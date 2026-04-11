@@ -7,7 +7,8 @@ import {
   IconDashboard,
   IconPrinter,
   IconRefresh,
-  IconSettings
+  IconSettings,
+  IconCylinder
 } from "@tabler/icons-react";
 
 export default function Layout() {
@@ -23,6 +24,7 @@ export default function Layout() {
   const links = [
     { to: "/", label: t("nav.dashboard"), icon: IconDashboard },
     { to: "/printers", label: t("nav.printers"), icon: IconPrinter },
+    { to: "/spools", label: t("nav.spools"), icon: IconCylinder },
     { to: "/sync", label: t("nav.sync"), icon: IconRefresh },
     { to: "/settings", label: t("nav.settings"), icon: IconSettings }
   ];
