@@ -202,13 +202,12 @@ export const useTestSpoolman = () => {
   });
 };
 
-export const useSyncSpoolman = () => {
+function useSyncResultHandlers() {
   const qc = useQueryClient();
   const { t } = useTranslation();
   const toast = useToasts();
-  return useMutation({
-    mutationFn: (tagIds: string[]) => api.syncSpoolman(tagIds),
-    onSuccess: (result) => {
+  return {
+    onSuccess: (result: Awaited<ReturnType<typeof api.syncSpoolman>>) => {
       qc.invalidateQueries({ queryKey: STATE_KEY });
       qc.invalidateQueries({ queryKey: SPOOLS_KEY });
       if (result.errors.length > 0) {
@@ -230,5 +229,21 @@ export const useSyncSpoolman = () => {
       );
     },
     onError: toast.error
+  };
+}
+
+export const useSyncSpoolman = () => {
+  const handlers = useSyncResultHandlers();
+  return useMutation({
+    mutationFn: (tagIds: string[]) => api.syncSpoolman(tagIds),
+    ...handlers
+  });
+};
+
+export const useSyncAllSpoolman = () => {
+  const handlers = useSyncResultHandlers();
+  return useMutation({
+    mutationFn: () => api.syncAllSpoolman(),
+    ...handlers
   });
 };

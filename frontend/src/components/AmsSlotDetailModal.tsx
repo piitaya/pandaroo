@@ -21,6 +21,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { amsLabel } from "./amsLabel";
 import { useMatchStatus } from "./matchStatus";
+import { syncStatusColor } from "./syncStatusColor";
 import {
   useConfig,
   useSpoolmanBaseUrl,
@@ -119,14 +120,7 @@ export function AmsSlotDetailModal({
   const autoSync = Boolean(configData?.config.spoolman?.auto_sync);
   const canManualSync =
     slot.type === "matched" && spoolmanConfigured && !autoSync;
-  const syncDotColor =
-    slot.sync.status === "synced"
-      ? "var(--mantine-color-teal-6)"
-      : slot.sync.status === "stale"
-        ? "var(--mantine-color-yellow-6)"
-        : slot.sync.status === "error"
-          ? "var(--mantine-color-red-6)"
-          : "var(--mantine-color-gray-5)";
+  const syncDotColor = syncStatusColor(slot.sync.status);
   const s = slot.slot;
   const sp = s.spool;
   const slotName = t("slot.label", { n: s.slot_id + 1 });

@@ -17,3 +17,12 @@ export const spools = sqliteTable("spools", {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+export const spoolSyncState = sqliteTable("spool_sync_state", {
+  tagId: text("tag_id")
+    .primaryKey()
+    .references(() => spools.tagId, { onDelete: "cascade" }),
+  spoolmanSpoolId: integer("spoolman_spool_id"),
+  lastSynced: text("last_synced"),
+  lastSyncError: text("last_sync_error"),
+});

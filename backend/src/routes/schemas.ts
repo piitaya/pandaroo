@@ -36,6 +36,7 @@ export const MatchTypeEnum = Type.Union([
 export const LocalSpoolResponse = Type.Object({
   tag_id: Type.String(),
   variant_id: NullableString,
+  match_type: MatchTypeEnum,
   material: NullableString,
   product: NullableString,
   color_hex: NullableString,
@@ -45,5 +46,7 @@ export const LocalSpoolResponse = Type.Object({
   last_used: NullableString,
   first_seen: Type.String(),
   last_updated: Type.String(),
+  last_synced: NullableString,
+  last_sync_error: NullableString,
 });
 

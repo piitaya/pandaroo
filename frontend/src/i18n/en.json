@@ -20,7 +20,11 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "sync_all": "Sync all to Spoolman",
+    "sync_all": "Sync to Spoolman",
+    "sync_menu": {
+      "all_spools": "Sync all spools",
+      "ams_loaded": "Sync AMS loaded spools"
+    },
     "auto_sync_on": "Auto-sync on",
     "help_aria_label": "What do the slot statuses mean?",
     "failed_to_load": "Failed to load state",
@@ -97,7 +101,7 @@
       "never_tooltip": "Not yet synced to Spoolman",
       "synced_tooltip": "Synced to spool #{{spool_id}} · {{at}}",
       "stale_tooltip": "Spool #{{spool_id}} out of date since {{at}} — slot changed",
-      "error_tooltip": "Last sync failed {{at}}",
+      "error_tooltip": "Last sync failed: {{error}}",
       "open_in_spoolman": "Open in Spoolman"
     }
   },
@@ -185,8 +189,8 @@
       "title": "Spoolman connection",
       "hint": "Point this at your Spoolman instance to enable syncing matched AMS slots as spools.",
       "url": "Spoolman URL",
-      "auto_sync": "Auto-sync on AMS updates",
-      "auto_sync_hint": "When a matched slot changes, push it to Spoolman automatically.",
+      "auto_sync": "Auto-sync on spool updates",
+      "auto_sync_hint": "When spool data changes, push it to Spoolman automatically.",
       "archive_on_empty": "Archive empty spools",
       "archive_on_empty_hint": "When a spool's remaining weight reaches zero, archive it in Spoolman.",
       "test": "Test connection",
@@ -203,7 +207,15 @@
     "title": "Spools",
     "empty": "No spools scanned yet. Spools are automatically tracked when detected in the AMS.",
     "failed_to_load": "Failed to load spools",
-    "last_updated": "Last updated"
+    "last_updated": "Last updated",
+    "sync_all": "Sync all to Spoolman",
+    "sync_status": "Sync",
+    "sync_tooltip": {
+      "never": "Not yet synced to Spoolman",
+      "synced": "Synced · {{at}}",
+      "stale": "Spool data changed since last sync",
+      "error": "Last sync failed: {{error}}"
+    }
   },
   "spoolman": {
     "sync_slot": {

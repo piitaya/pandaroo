@@ -28,6 +28,7 @@ export interface Config {
 export interface LocalSpool {
   tag_id: string;
   variant_id: string | null;
+  match_type: MatchType;
   material: string | null;
   product: string | null;
   color_hex: string | null;
@@ -37,6 +38,15 @@ export interface LocalSpool {
   last_used: string | null;
   first_seen: string;
   last_updated: string;
+  last_synced: string | null;
+  last_sync_error: string | null;
+}
+
+export function spoolSyncStatus(spool: LocalSpool): SyncStatus {
+  if (spool.last_sync_error) return "error";
+  if (!spool.last_synced) return "never";
+  if (spool.last_updated > spool.last_synced) return "stale";
+  return "synced";
 }
 
 export interface SpoolSyncResult {
@@ -90,11 +100,13 @@ export interface FilamentEntry {
   spoolman_id?: string | null;
 }
 
+export type SyncStatus = "never" | "synced" | "stale" | "error";
+
 export type SlotSyncView =
   | { status: "never" }
   | { status: "synced"; spool_id: number; at: string }
   | { status: "stale"; spool_id: number; at: string }
-  | { status: "error"; error: string; at: string };
+  | { status: "error"; error: string };
 
 export interface AmsMatchedSlot {
   slot: AmsSlot;
@@ -218,5 +230,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ tag_ids: tagIds }),
     }),
+  syncAllSpoolman: () =>
+    req<SyncResult>("/api/spoolman/sync-all", { method: "POST" }),
   listSpools: () => req<LocalSpool[]>("/api/spools"),
 };

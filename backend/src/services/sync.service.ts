@@ -7,6 +7,7 @@ import {
   decodeExtraString,
 } from "../clients/spoolman.client.js";
 import type { SpoolRow, SpoolRepository } from "../db/spool.repository.js";
+import type { SyncStateRepository } from "../db/sync-state.repository.js";
 import { errorMessage } from "../utils.js";
 
 export interface SpoolSyncResult {
@@ -24,6 +25,7 @@ export interface SyncAllResult {
 
 export interface SyncDeps {
   spoolRepo: SpoolRepository;
+  syncStateRepo: SyncStateRepository;
   mapping: Map<string, FilamentEntry>;
   spoolmanUrl: string;
   archiveOnEmpty: boolean;
@@ -109,8 +111,15 @@ export async function syncByTagIds(
     try {
       const outcome = await syncOneSpool(client, row, spoolmanId, options, allSpools);
       result.synced.push(outcome);
+      deps.syncStateRepo.markSynced(
+        tagId,
+        new Date().toISOString(),
+        outcome.spoolman_spool_id,
+      );
     } catch (err) {
-      result.errors.push({ tag_id: tagId, error: errorMessage(err) });
+      const message = errorMessage(err);
+      result.errors.push({ tag_id: tagId, error: message });
+      deps.syncStateRepo.markError(tagId, message);
     }
   }
 

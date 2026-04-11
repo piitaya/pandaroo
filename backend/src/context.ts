@@ -3,10 +3,6 @@ import type Database from "better-sqlite3";
 import { saveConfig, type Config } from "./stores/config.store.js";
 import type { Mapping } from "./stores/mapping.store.js";
 import {
-  createSyncStateStore,
-  type SyncStateStore,
-} from "./stores/sync-state.store.js";
-import {
   createMqttState,
   disconnectAll,
   syncPrinters,
@@ -17,6 +13,10 @@ import {
   createSpoolRepository,
   type SpoolRepository,
 } from "./db/spool.repository.js";
+import {
+  createSyncStateRepository,
+  type SyncStateRepository,
+} from "./db/sync-state.repository.js";
 import {
   createSpoolService,
   type SpoolService,
@@ -31,10 +31,10 @@ export interface RouteDeps {
 export class AppContext {
   config: Config;
   readonly spoolRepo: SpoolRepository;
+  readonly syncStateRepo: SyncStateRepository;
   readonly spoolService: SpoolService;
   readonly mapping: Mapping;
   readonly mqttState: MqttState;
-  readonly syncState: SyncStateStore;
 
   private configFilePath: string;
   private log: FastifyBaseLogger;
@@ -54,11 +54,11 @@ export class AppContext {
     this.configFilePath = configFilePath;
     this.sqlite = sqlite;
     this.spoolRepo = createSpoolRepository(db);
+    this.syncStateRepo = createSyncStateRepository(db);
     this.spoolService = createSpoolService(this.spoolRepo);
     this.mapping = mapping;
     this.log = log;
     this.mqttState = createMqttState();
-    this.syncState = createSyncStateStore();
   }
 
   syncFromConfig(): void {
@@ -68,6 +68,7 @@ export class AppContext {
     const spoolmanSync = createSpoolmanSync(
       {
         spoolRepo: this.spoolRepo,
+        syncStateRepo: this.syncStateRepo,
         mapping: this.mapping.byId,
         spoolmanUrl: this.config.spoolman.url ?? "",
         archiveOnEmpty: this.config.spoolman.archive_on_empty ?? false,

@@ -27,7 +27,7 @@ export interface MatchResult {
 }
 
 export function matchSpool(
-  spool: Spool,
+  spool: Pick<Spool, "variant_id" | "material" | "product">,
   mapping: Map<string, FilamentEntry>,
 ): MatchResult {
   const hasInfo = !!spool.material || !!spool.variant_id || !!spool.product;

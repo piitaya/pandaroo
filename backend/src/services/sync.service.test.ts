@@ -10,12 +10,12 @@ import {
 } from "../clients/spoolman.client.js";
 import type { FilamentEntry } from "../domain/matcher.js";
 import type { AmsSlot } from "../domain/spool.js";
+import { deriveSlotSyncView } from "../domain/sync-view.js";
 import type { SpoolRow, SpoolRepository } from "../db/spool.repository.js";
-import {
-  createSyncStateStore,
-  getSlotSyncView,
-  syncStateKey,
-} from "../stores/sync-state.store.js";
+import type {
+  SpoolSyncStateRow,
+  SyncStateRepository,
+} from "../db/sync-state.repository.js";
 
 const mapping = new Map<string, FilamentEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
@@ -50,9 +50,42 @@ function fakeSpoolRepo(rows: SpoolRow[]): SpoolRepository {
   };
 }
 
+function fakeSyncStateRepo(): SyncStateRepository & {
+  records: Map<string, SpoolSyncStateRow>;
+} {
+  const records = new Map<string, SpoolSyncStateRow>();
+  return {
+    records,
+    markSynced(tagId, syncedAt, spoolmanSpoolId) {
+      records.set(tagId, {
+        tagId,
+        spoolmanSpoolId,
+        lastSynced: syncedAt,
+        lastSyncError: null,
+      });
+    },
+    markError(tagId, error) {
+      const existing = records.get(tagId);
+      records.set(tagId, {
+        tagId,
+        spoolmanSpoolId: existing?.spoolmanSpoolId ?? null,
+        lastSynced: existing?.lastSynced ?? null,
+        lastSyncError: error,
+      });
+    },
+    findByTagId(tagId) {
+      return records.get(tagId);
+    },
+    listAll() {
+      return [...records.values()];
+    },
+  };
+}
+
 function buildDeps(rows: SpoolRow[], overrides?: Partial<SyncDeps>): SyncDeps {
   return {
     spoolRepo: fakeSpoolRepo(rows),
+    syncStateRepo: fakeSyncStateRepo(),
     mapping,
     spoolmanUrl: "http://spoolman.local",
     archiveOnEmpty: false,
@@ -115,47 +148,54 @@ describe("encodeExtraString / decodeExtraString", () => {
   });
 });
 
-describe("getSlotSyncView", () => {
-  it("returns never when no sync has been recorded", () => {
-    expect(getSlotSyncView(createSyncStateStore(), slot())).toEqual({
+describe("deriveSlotSyncView", () => {
+  it("returns never when sync row is absent", () => {
+    expect(deriveSlotSyncView(slot(), makeSpoolRow(), undefined)).toEqual({
       status: "never",
     });
   });
-  it("returns synced when slot signature matches", () => {
-    const store = createSyncStateStore();
-    store.set(syncStateKey("AC12", 0, 0), {
+  it("returns never when slot has no spool", () => {
+    expect(
+      deriveSlotSyncView(slot(null), undefined, undefined),
+    ).toEqual({ status: "never" });
+  });
+  it("returns synced when lastSynced >= lastUpdated", () => {
+    const spoolRow = makeSpoolRow({ lastUpdated: "2024-01-01T00:00:00Z" });
+    const syncRow: SpoolSyncStateRow = {
+      tagId: "UID-1",
+      spoolmanSpoolId: 9,
+      lastSynced: "2024-01-02T00:00:00Z",
+      lastSyncError: null,
+    };
+    expect(deriveSlotSyncView(slot(), spoolRow, syncRow)).toEqual({
       status: "synced",
-      at: "2024-01-01T00:00:00Z",
-      signature: "UID-1|75",
       spool_id: 9,
-    });
-    expect(getSlotSyncView(store, slot())).toEqual({
-      status: "synced",
-      at: "2024-01-01T00:00:00Z",
-      spool_id: 9,
+      at: "2024-01-02T00:00:00Z",
     });
   });
-  it("returns stale when spool uid changed since last sync", () => {
-    const store = createSyncStateStore();
-    store.set(syncStateKey("AC12", 0, 0), {
-      status: "synced",
-      at: "2024-01-01T00:00:00Z",
-      signature: "UID-OLD|75",
+  it("returns stale when spool has been updated after last sync", () => {
+    const spoolRow = makeSpoolRow({ lastUpdated: "2024-01-03T00:00:00Z" });
+    const syncRow: SpoolSyncStateRow = {
+      tagId: "UID-1",
+      spoolmanSpoolId: 9,
+      lastSynced: "2024-01-02T00:00:00Z",
+      lastSyncError: null,
+    };
+    expect(deriveSlotSyncView(slot(), spoolRow, syncRow)).toEqual({
+      status: "stale",
       spool_id: 9,
+      at: "2024-01-02T00:00:00Z",
     });
-    expect(getSlotSyncView(store, slot()).status).toBe("stale");
   });
-  it("returns error with message and timestamp", () => {
-    const store = createSyncStateStore();
-    store.set(syncStateKey("AC12", 0, 0), {
+  it("returns error when lastSyncError is set", () => {
+    const syncRow: SpoolSyncStateRow = {
+      tagId: "UID-1",
+      spoolmanSpoolId: 9,
+      lastSynced: "2024-01-02T00:00:00Z",
+      lastSyncError: "boom",
+    };
+    expect(deriveSlotSyncView(slot(), makeSpoolRow(), syncRow)).toEqual({
       status: "error",
-      at: "2024-01-01T00:00:00Z",
-      signature: "UID-1|75",
-      error: "boom",
-    });
-    expect(getSlotSyncView(store, slot())).toEqual({
-      status: "error",
-      at: "2024-01-01T00:00:00Z",
       error: "boom",
     });
   });
@@ -215,6 +255,36 @@ describe("syncByTagIds", () => {
     expect(r.skipped).toEqual([{ tag_id: "UID-1", reason: "not_matched" }]);
   });
 
+  it("does not write sync state for skipped spools", async () => {
+    const syncStateRepo = fakeSyncStateRepo();
+    const deps = buildDeps([makeSpoolRow({ variantId: "A18-B0" })], {
+      syncStateRepo,
+    });
+    await syncByTagIds(deps, ["UID-1", "MISSING"], () => fakeClient());
+    expect(syncStateRepo.records.size).toBe(0);
+  });
+
+  it("marks sync state on success", async () => {
+    const syncStateRepo = fakeSyncStateRepo();
+    const client = fakeClient({
+      async findFilamentByExternalId() { return { id: 42 }; },
+      async listSpools() {
+        return [{
+          id: 9,
+          filament: { id: 42 },
+          first_used: "2024-01-01",
+          extra: { tag: encodeExtraString("UID-1") },
+        }];
+      },
+    });
+    const deps = buildDeps([makeSpoolRow()], { syncStateRepo });
+    await syncByTagIds(deps, ["UID-1"], () => client);
+    const row = syncStateRepo.records.get("UID-1");
+    expect(row?.spoolmanSpoolId).toBe(9);
+    expect(row?.lastSynced).toBeTruthy();
+    expect(row?.lastSyncError).toBeNull();
+  });
+
   it("collects errors without aborting", async () => {
     let calls = 0;
     const client = fakeClient({
@@ -224,13 +294,49 @@ describe("syncByTagIds", () => {
         return { id: 42 };
       },
     });
-    const deps = buildDeps([
-      makeSpoolRow({ tagId: "UID-1" }),
-      makeSpoolRow({ tagId: "UID-2" }),
-    ]);
+    const syncStateRepo = fakeSyncStateRepo();
+    const deps = buildDeps(
+      [
+        makeSpoolRow({ tagId: "UID-1" }),
+        makeSpoolRow({ tagId: "UID-2" }),
+      ],
+      { syncStateRepo },
+    );
     const r = await syncByTagIds(deps, ["UID-1", "UID-2"], () => client);
     expect(r.errors).toHaveLength(1);
     expect(r.synced).toHaveLength(1);
+    expect(syncStateRepo.records.get("UID-1")?.lastSyncError).toBe("boom");
+    expect(syncStateRepo.records.get("UID-2")?.lastSyncError).toBeNull();
+  });
+
+  it("preserves last_synced when a subsequent sync fails", async () => {
+    let succeed = true;
+    const client = fakeClient({
+      async findFilamentByExternalId() {
+        if (!succeed) throw new Error("later failure");
+        return { id: 42 };
+      },
+      async listSpools() {
+        return [{
+          id: 9,
+          filament: { id: 42 },
+          first_used: "2024-01-01",
+          extra: { tag: encodeExtraString("UID-1") },
+        }];
+      },
+    });
+    const syncStateRepo = fakeSyncStateRepo();
+    const deps = buildDeps([makeSpoolRow()], { syncStateRepo });
+    await syncByTagIds(deps, ["UID-1"], () => client);
+    const firstSynced = syncStateRepo.records.get("UID-1")?.lastSynced;
+    expect(firstSynced).toBeTruthy();
+
+    succeed = false;
+    await syncByTagIds(deps, ["UID-1"], () => client);
+    const row = syncStateRepo.records.get("UID-1");
+    expect(row?.lastSyncError).toBe("later failure");
+    expect(row?.lastSynced).toBe(firstSynced);
+    expect(row?.spoolmanSpoolId).toBe(9);
   });
 
   it("archives spool when remain is 0 and archive_on_empty is true", async () => {

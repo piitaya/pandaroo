@@ -1,10 +1,20 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
-import type { RouteDeps } from "../context.js";
-import { syncByTagIds } from "../services/sync.service.js";
+import type { AppContext, RouteDeps } from "../context.js";
+import { syncByTagIds, type SyncDeps } from "../services/sync.service.js";
 import { ErrorResponse } from "./schemas.js";
 import { errorMessage } from "../utils.js";
+
+function syncDepsFrom(ctx: AppContext, url: string): SyncDeps {
+  return {
+    spoolRepo: ctx.spoolRepo,
+    syncStateRepo: ctx.syncStateRepo,
+    mapping: ctx.mapping.byId,
+    spoolmanUrl: url,
+    archiveOnEmpty: ctx.config.spoolman.archive_on_empty ?? false,
+  };
+}
 
 const SpoolSyncResultResponse = Type.Object({
   tag_id: Type.String(),
@@ -75,12 +85,31 @@ export const spoolmanRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }
       return { error: "Spoolman URL is not configured." };
     }
     try {
-      return await syncByTagIds({
-        spoolRepo: ctx.spoolRepo,
-        mapping: ctx.mapping.byId,
-        spoolmanUrl: url,
-        archiveOnEmpty: ctx.config.spoolman.archive_on_empty ?? false,
-      }, tag_ids);
+      return await syncByTagIds(syncDepsFrom(ctx, url), tag_ids);
+    } catch (err) {
+      reply.code(400);
+      return { error: errorMessage(err) };
+    }
+  });
+
+  app.post("/api/spoolman/sync-all", {
+    schema: {
+      tags: ["Spoolman"],
+      description: "Sync every spool in the local DB to Spoolman",
+      response: { 200: SyncResultResponse, 400: ErrorResponse },
+    },
+  }, async (_req, reply) => {
+    const url = ctx.config.spoolman.url;
+    if (!url) {
+      reply.code(400);
+      return { error: "Spoolman URL is not configured." };
+    }
+    const tagIds = ctx.spoolRepo.list().map((row) => row.tagId);
+    if (tagIds.length === 0) {
+      return { synced: [], skipped: [], errors: [] };
+    }
+    try {
+      return await syncByTagIds(syncDepsFrom(ctx, url), tagIds);
     } catch (err) {
       reply.code(400);
       return { error: errorMessage(err) };

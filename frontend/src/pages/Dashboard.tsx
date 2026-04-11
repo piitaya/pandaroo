@@ -6,6 +6,7 @@ import {
   Card,
   Group,
   Loader,
+  Menu,
   Stack,
   Text,
   Title
@@ -13,6 +14,7 @@ import {
 // Alert is still used for the load-error state below.
 import { useDisclosure } from "@mantine/hooks";
 import {
+  IconChevronDown,
   IconHelp,
   IconPlugConnected,
   IconPlus,
@@ -24,12 +26,18 @@ import { Link } from "react-router-dom";
 import { PrinterBlock } from "../components/PrinterBlock";
 import { StatusLegend } from "../components/StatusLegend";
 import { collectActiveTagIds } from "../api";
-import { useAppState, useConfig, useSyncSpoolman } from "../hooks";
+import {
+  useAppState,
+  useConfig,
+  useSyncAllSpoolman,
+  useSyncSpoolman
+} from "../hooks";
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error } = useAppState();
   const { data: configData } = useConfig();
   const syncSpoolman = useSyncSpoolman();
+  const syncAllSpoolman = useSyncAllSpoolman();
   const { t } = useTranslation();
   const [legendOpened, { open: openLegend, close: closeLegend }] =
     useDisclosure(false);
@@ -66,14 +74,30 @@ export default function DashboardPage() {
           </ActionIcon>
         </Group>
         {showSyncAll && (
-          <Button
-            leftSection={<IconRefresh size={16} />}
-            variant="default"
-            loading={syncSpoolman.isPending}
-            onClick={() => syncSpoolman.mutate(data ? collectActiveTagIds(data) : [])}
-          >
-            {t("dashboard.sync_all")}
-          </Button>
+          <Menu position="bottom-end" withArrow>
+            <Menu.Target>
+              <Button
+                leftSection={<IconRefresh size={16} />}
+                rightSection={<IconChevronDown size={14} />}
+                variant="default"
+                loading={syncSpoolman.isPending || syncAllSpoolman.isPending}
+              >
+                {t("dashboard.sync_all")}
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item onClick={() => syncAllSpoolman.mutate()}>
+                {t("dashboard.sync_menu.all_spools")}
+              </Menu.Item>
+              <Menu.Item
+                onClick={() =>
+                  syncSpoolman.mutate(data ? collectActiveTagIds(data) : [])
+                }
+              >
+                {t("dashboard.sync_menu.ams_loaded")}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         )}
         {spoolmanConfigured && autoSync && (
           <Badge

@@ -9,48 +9,17 @@ import {
   Tooltip
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import {
-  IconCircleFilled,
-  IconInfoCircle,
-  IconRefresh
-} from "@tabler/icons-react";
+import { IconCircleFilled, IconInfoCircle } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { AmsSlotDetailModal } from "./AmsSlotDetailModal";
 import { useMatchStatus } from "./matchStatus";
 import { spoolFillColor } from "./spoolFillColor";
-import { useConfig, useSyncSpoolman } from "../hooks";
+import { syncStatusColor } from "./syncStatusColor";
+import { useConfig } from "../hooks";
 import type { AmsMatchedSlot, SlotSyncView } from "../api";
 
 function SyncIndicator({ sync }: { sync: SlotSyncView }) {
-  const color =
-    sync.status === "synced"
-      ? "var(--mantine-color-teal-6)"
-      : sync.status === "stale"
-        ? "var(--mantine-color-yellow-6)"
-        : sync.status === "error"
-          ? "var(--mantine-color-red-6)"
-          : "var(--mantine-color-gray-5)";
-  return <IconCircleFilled size={10} style={{ color }} />;
-}
-
-function SyncButton({
-  sync,
-  loading,
-  onClick
-}: {
-  sync: SlotSyncView;
-  loading: boolean;
-  onClick: () => void;
-}) {
   const { t } = useTranslation();
-  const color =
-    sync.status === "synced"
-      ? "teal"
-      : sync.status === "stale"
-        ? "yellow"
-        : sync.status === "error"
-          ? "red"
-          : "gray";
   const tooltip =
     sync.status === "synced"
       ? t("slot.sync_status.synced_tooltip", {
@@ -63,23 +32,11 @@ function SyncButton({
             at: new Date(sync.at).toLocaleString()
           })
         : sync.status === "error"
-          ? t("slot.sync_status.error_tooltip", {
-              error: sync.error,
-              at: new Date(sync.at).toLocaleString()
-            })
+          ? t("slot.sync_status.error_tooltip", { error: sync.error })
           : t("slot.sync_status.never_tooltip");
   return (
     <Tooltip label={tooltip} multiline maw={320}>
-      <ActionIcon
-        variant="subtle"
-        color={color}
-        size="sm"
-        loading={loading}
-        onClick={onClick}
-        aria-label={t("slot.sync_aria_label")}
-      >
-        <IconRefresh size={16} />
-      </ActionIcon>
+      <IconCircleFilled size={10} style={{ color: syncStatusColor(sync.status) }} />
     </Tooltip>
   );
 }
@@ -177,11 +134,7 @@ export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
   const matchStatus = useMatchStatus();
   const status = matchStatus[s.type];
   const { data: configData } = useConfig();
-  const syncSpoolman = useSyncSpoolman();
   const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
-  const autoSync = Boolean(configData?.config.spoolman?.auto_sync);
-  const canSync = s.type === "matched" && spoolmanConfigured && !autoSync;
-  const showIndicator = s.type === "matched" && spoolmanConfigured && autoSync;
 
   // When we have a mapped color name, promote it to the headline and
   // push the material to the secondary line. Otherwise fall back to
@@ -217,16 +170,8 @@ export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
             <Badge color={status.color} variant="light">
               {status.label}
             </Badge>
-            {showIndicator && <SyncIndicator sync={s.sync} />}
-            {canSync && (
-              <SyncButton
-                sync={s.sync}
-                loading={syncSpoolman.isPending}
-                onClick={() => {
-                  const uid = s.slot.spool?.uid;
-                  if (uid) syncSpoolman.mutate([uid]);
-                }}
-              />
+            {s.type === "matched" && spoolmanConfigured && (
+              <SyncIndicator sync={s.sync} />
             )}
             <ActionIcon
               variant="subtle"
