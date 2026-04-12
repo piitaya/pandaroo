@@ -240,6 +240,20 @@ export const useSyncSpoolman = () => {
   });
 };
 
+export const useRemoveSpool = () => {
+  const qc = useQueryClient();
+  const { t } = useTranslation();
+  const toast = useToasts();
+  return useMutation({
+    mutationFn: (tagId: string) => api.removeSpool(tagId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: SPOOLS_KEY });
+      toast.success(t("spools.notifications.removed"));
+    },
+    onError: toast.error,
+  });
+};
+
 export const useSyncAllSpoolman = () => {
   const handlers = useSyncResultHandlers();
   return useMutation({

@@ -190,7 +190,7 @@
       "hint": "Renseignez l'URL de votre instance Spoolman pour activer la synchronisation des slots AMS correspondants.",
       "url": "URL Spoolman",
       "auto_sync": "Synchronisation automatique des bobines",
-      "auto_sync_hint": "Lorsque les données d'une bobine changent, elle est envoyée automatiquement à Spoolman.",
+      "auto_sync_hint": "Synchroniser automatiquement les changements de bobines avec Spoolman, y compris les mises à jour et les suppressions.",
       "archive_on_empty": "Archiver les bobines vides",
       "archive_on_empty_hint": "Quand le poids restant d'une bobine atteint zéro, elle est archivée dans Spoolman.",
       "test": "Tester la connexion",
@@ -215,6 +215,11 @@
       "synced": "Synchronisée · {{at}}",
       "stale": "Les données de la bobine ont changé depuis la dernière synchronisation",
       "error": "Dernière synchronisation échouée : {{error}}"
+    },
+    "remove_confirm_title": "Retirer la bobine ?",
+    "remove_confirm_body": "« {{name}} » sera retirée de la base locale.",
+    "notifications": {
+      "removed": "Bobine retirée"
     }
   },
   "spoolman": {

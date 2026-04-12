@@ -190,7 +190,7 @@
       "hint": "Point this at your Spoolman instance to enable syncing matched AMS slots as spools.",
       "url": "Spoolman URL",
       "auto_sync": "Auto-sync on spool updates",
-      "auto_sync_hint": "When spool data changes, push it to Spoolman automatically.",
+      "auto_sync_hint": "Automatically sync spool changes to Spoolman, including updates and removals.",
       "archive_on_empty": "Archive empty spools",
       "archive_on_empty_hint": "When a spool's remaining weight reaches zero, archive it in Spoolman.",
       "test": "Test connection",
@@ -215,6 +215,11 @@
       "synced": "Synced · {{at}}",
       "stale": "Spool data changed since last sync",
       "error": "Last sync failed: {{error}}"
+    },
+    "remove_confirm_title": "Remove spool?",
+    "remove_confirm_body": "\"{{name}}\" will be removed from the local database.",
+    "notifications": {
+      "removed": "Spool removed"
     }
   },
   "spoolman": {
