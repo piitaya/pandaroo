@@ -233,4 +233,8 @@ export const api = {
   syncAllSpoolman: () =>
     req<SyncResult>("/api/spoolman/sync-all", { method: "POST" }),
   listSpools: () => req<LocalSpool[]>("/api/spools"),
+  removeSpool: (tagId: string) =>
+    req<{ ok: true }>(`/api/spools/${encodeURIComponent(tagId)}`, {
+      method: "DELETE",
+    }),
 };

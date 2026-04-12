@@ -82,6 +82,7 @@ export interface SpoolmanClient {
       archived?: boolean;
     },
   ): Promise<SpoolmanSpool>;
+  deleteSpool(spoolId: number): Promise<void>;
 }
 
 function normalizeBaseUrl(raw: string): string {
@@ -240,6 +241,10 @@ export function createSpoolmanClient(
         `/api/v1/spool/${spoolId}`,
         patch,
       );
+    },
+
+    async deleteSpool(spoolId) {
+      await request<void>("DELETE", `/api/v1/spool/${spoolId}`);
     },
   };
 }

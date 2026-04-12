@@ -1,22 +1,24 @@
 import {
+  ActionIcon,
   Alert,
   Button,
   Card,
   ColorSwatch,
   Group,
   Loader,
+  Modal,
   Progress,
   Stack,
   Text,
   Title,
   Tooltip
 } from "@mantine/core";
-import { IconCircleFilled, IconRefresh } from "@tabler/icons-react";
+import { IconCircleFilled, IconRefresh, IconTrash } from "@tabler/icons-react";
 import { DataTable, type DataTableSortStatus } from "mantine-datatable";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { spoolSyncStatus, type LocalSpool, type SyncStatus } from "../api";
-import { useConfig, useSpools, useSyncAllSpoolman } from "../hooks";
+import { useConfig, useRemoveSpool, useSpools, useSyncAllSpoolman } from "../hooks";
 import { useMatchStatus } from "../components/matchStatus";
 import { spoolFillColor } from "../components/spoolFillColor";
 import { syncStatusColor } from "../components/syncStatusColor";
@@ -60,12 +62,14 @@ export default function SpoolsPage() {
   const { data: spools, isLoading, isError, error } = useSpools();
   const { data: configData } = useConfig();
   const syncAllSpoolman = useSyncAllSpoolman();
+  const removeSpool = useRemoveSpool();
   const matchStatus = useMatchStatus();
   const { t } = useTranslation();
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<LocalSpool>>({
     columnAccessor: "last_updated",
     direction: "desc",
   });
+  const [toRemove, setToRemove] = useState<LocalSpool | null>(null);
   const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
 
   const sorted = useMemo(
@@ -224,9 +228,59 @@ export default function SpoolsPage() {
                 );
               },
             },
+            {
+              accessor: "actions",
+              title: "",
+              width: 50,
+              textAlign: "center",
+              render: (spool) => (
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  size="sm"
+                  onClick={() => setToRemove(spool)}
+                  aria-label={t("common.remove")}
+                >
+                  <IconTrash size={16} />
+                </ActionIcon>
+              ),
+            },
           ]}
         />
       )}
+
+      <Modal
+        opened={toRemove !== null}
+        onClose={() => setToRemove(null)}
+        title={t("spools.remove_confirm_title")}
+        centered
+        size="sm"
+      >
+        <Stack>
+          <Text size="sm">
+            {t("spools.remove_confirm_body", {
+              name: toRemove?.color_name ?? toRemove?.tag_id,
+            })}
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setToRemove(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              color="red"
+              loading={removeSpool.isPending}
+              onClick={() => {
+                if (!toRemove) return;
+                removeSpool.mutate(toRemove.tag_id, {
+                  onSettled: () => setToRemove(null),
+                });
+              }}
+            >
+              {t("common.remove")}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

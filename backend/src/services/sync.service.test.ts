@@ -40,7 +40,9 @@ function makeSpoolRow(over: Partial<SpoolRow> = {}): SpoolRow {
 
 function fakeSpoolRepo(rows: SpoolRow[]): SpoolRepository {
   return {
-    upsert() {},
+    create() {},
+    update() {},
+    delete() { return false; },
     findByTagId(tagId) {
       return rows.find((r) => r.tagId === tagId);
     },
