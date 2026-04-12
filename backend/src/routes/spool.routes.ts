@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
-import { SpoolScanSchema, type SpoolScan } from "../domain/spool.js";
+import { SpoolScanSchema, type SpoolScan, type Spool } from "../domain/spool.js";
 import { matchSpool, type FilamentEntry } from "../domain/matcher.js";
 import type { RouteDeps } from "../context.js";
 import type { SpoolRow } from "../db/spool.repository.js";
@@ -82,10 +82,15 @@ export const spoolRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) =
       response: { 200: LocalSpoolResponse },
     },
   }, async (req) => {
-    const scan = req.body as SpoolScan;
+    const body = req.body as SpoolScan;
+    const scan: Spool = {
+      ...body,
+      color_hexes: body.color_hexes ?? null,
+      remain: body.remain ?? null,
+    };
     ctx.spoolService.upsert(scan);
-    const row = ctx.spoolRepo.findByTagId(scan.uid)!;
-    const syncRow = ctx.syncStateRepo.findByTagId(scan.uid);
+    const row = ctx.spoolRepo.findByTagId(body.uid)!;
+    const syncRow = ctx.syncStateRepo.findByTagId(body.uid);
     return toLocalSpoolResponse(row, syncRow, ctx.mapping.byId);
   });
 

@@ -107,6 +107,7 @@ function fakeClient(over: Partial<SpoolmanClient> = {}): SpoolmanClient {
     async ensureSpoolTagField() {},
     async createSpool() { return { id: 7, filament: { id: 42 } } as SpoolmanSpool; },
     async updateSpool(id) { return { id, filament: { id: 42 } } as SpoolmanSpool; },
+    async deleteSpool() {},
     ...over,
   };
 }

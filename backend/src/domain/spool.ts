@@ -39,15 +39,15 @@ export interface AmsUnit {
 
 export const SpoolScanSchema = Type.Object({
   uid: Type.String({ minLength: 1 }),
-  variant_id: Type.Union([Type.String(), Type.Null()], { default: null }),
-  material: Type.Union([Type.String(), Type.Null()], { default: null }),
-  product: Type.Union([Type.String(), Type.Null()], { default: null }),
-  color_hex: Type.Union([Type.String(), Type.Null()], { default: null }),
-  color_hexes: Type.Union([Type.Array(Type.String()), Type.Null()], { default: null }),
-  weight: Type.Union([Type.Number(), Type.Null()], { default: null }),
-  temp_min: Type.Union([Type.Number(), Type.Null()], { default: null }),
-  temp_max: Type.Union([Type.Number(), Type.Null()], { default: null }),
-  remain: Type.Union([Type.Number(), Type.Null()], { default: null }),
+  variant_id: Type.String(),
+  material: Type.String(),
+  product: Type.String(),
+  color_hex: Type.String(),
+  weight: Type.Number(),
+  temp_min: Type.Number(),
+  temp_max: Type.Number(),
+  color_hexes: Type.Optional(Type.Union([Type.Array(Type.String()), Type.Null()])),
+  remain: Type.Optional(Type.Union([Type.Number(), Type.Null()])),
 });
 export type SpoolScan = Static<typeof SpoolScanSchema>;
 

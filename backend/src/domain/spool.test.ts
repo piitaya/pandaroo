@@ -6,6 +6,20 @@ const mapping = new Map<string, FilamentEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
 ]);
 
+function makeScan(over: Record<string, unknown> = {}) {
+  return {
+    uid: "TEST",
+    variant_id: "A01-B6",
+    material: "PLA",
+    product: "PLA Matte",
+    color_hex: "042F56",
+    weight: 1000,
+    temp_min: 190,
+    temp_max: 230,
+    ...over,
+  };
+}
+
 describe("SpoolScanSchema", () => {
   it("validates a full scan payload", () => {
     const result = parseSpoolScan({
@@ -25,12 +39,26 @@ describe("SpoolScanSchema", () => {
     }
   });
 
-  it("validates a minimal payload with only uid", () => {
+  it("rejects a payload with only uid (missing required fields)", () => {
     const result = parseSpoolScan({ uid: "ABC" });
+    expect(result.success).toBe(false);
+  });
+
+  it("validates a complete payload with optional fields omitted", () => {
+    const result = parseSpoolScan({
+      uid: "ABC",
+      variant_id: "A01-B6",
+      material: "PLA",
+      product: "PLA Matte",
+      color_hex: "042F56",
+      weight: 1000,
+      temp_min: 190,
+      temp_max: 230,
+    });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.variant_id).toBeNull();
-      expect(result.data.material).toBeNull();
+      expect(result.data.remain).toBeUndefined();
+      expect(result.data.color_hexes).toBeUndefined();
     }
   });
 
@@ -39,7 +67,7 @@ describe("SpoolScanSchema", () => {
   });
 
   it("matches a known variant", () => {
-    const result = parseSpoolScan({ uid: "Y", variant_id: "A01-B6" });
+    const result = parseSpoolScan(makeScan({ variant_id: "A01-B6" }));
     expect(result.success).toBe(true);
     if (result.success) {
       const match = matchSpool(result.data, mapping);
@@ -49,7 +77,7 @@ describe("SpoolScanSchema", () => {
   });
 
   it("returns unknown_variant for unrecognized variant_id", () => {
-    const result = parseSpoolScan({ uid: "Y", variant_id: "X99-Z9" });
+    const result = parseSpoolScan(makeScan({ variant_id: "X99-Z9" }));
     expect(result.success).toBe(true);
     if (result.success) {
       expect(matchSpool(result.data, mapping).type).toBe("unknown_variant");
