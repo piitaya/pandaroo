@@ -10,8 +10,6 @@ export const PrinterSchema = Type.Object({
   access_code: Type.String({ minLength: 1 }),
   enabled: Type.Boolean({ default: true }),
 });
-export type Printer = Static<typeof PrinterSchema>;
-
 export const ConfigSchema = Type.Object({
   printers: Type.Array(PrinterSchema, { default: [] }),
   mapping: Type.Object(

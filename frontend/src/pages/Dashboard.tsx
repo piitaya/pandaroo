@@ -11,7 +11,6 @@ import {
   Text,
   Title
 } from "@mantine/core";
-// Alert is still used for the load-error state below.
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconChevronDown,
@@ -24,6 +23,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { PrinterBlock } from "../components/PrinterBlock";
+import { EmptyStateCard } from "../components/EmptyStateCard";
 import { StatusLegend } from "../components/StatusLegend";
 import { collectActiveTagIds } from "../api";
 import {
@@ -112,36 +112,28 @@ export default function DashboardPage() {
       </Group>
 
       {printers.length === 0 && !hasAnyPrinter && (
-        <Card withBorder padding="xl" radius="md">
-          <Stack gap="md" align="center" ta="center">
-            <Title order={3}>{t("dashboard.no_printers_title")}</Title>
-            <Text c="dimmed" maw={420}>
-              {t("dashboard.no_printers_body")}
-            </Text>
-            <Button
-              component={Link}
-              to="/printers"
-              state={{ openAdd: true }}
-              leftSection={<IconPlus size={16} />}
-            >
-              {t("dashboard.no_printers_action")}
-            </Button>
-          </Stack>
-        </Card>
+        <EmptyStateCard
+          title={t("dashboard.no_printers_title")}
+          description={t("dashboard.no_printers_body")}
+          action={{
+            label: t("dashboard.no_printers_action"),
+            to: "/printers",
+            state: { openAdd: true },
+            icon: <IconPlus size={16} />,
+          }}
+        />
       )}
 
       {printers.length === 0 && hasAnyPrinter && (
-        <Card withBorder padding="xl" radius="md">
-          <Stack gap="md" align="center" ta="center">
-            <Title order={3}>{t("dashboard.all_disabled_title")}</Title>
-            <Text c="dimmed" maw={420}>
-              {t("dashboard.all_disabled_body")}
-            </Text>
-            <Button component={Link} to="/printers" variant="default">
-              {t("dashboard.all_disabled_action")}
-            </Button>
-          </Stack>
-        </Card>
+        <EmptyStateCard
+          title={t("dashboard.all_disabled_title")}
+          description={t("dashboard.all_disabled_body")}
+          action={{
+            label: t("dashboard.all_disabled_action"),
+            to: "/printers",
+            variant: "default",
+          }}
+        />
       )}
 
       {printers.length > 0 && !spoolmanConfigured && (

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { matchSlot, matchSpool, type FilamentEntry } from "./matcher.js";
-import type { AmsSlot, Spool } from "./spool.js";
+import { matchSlot, matchSpool, type FilamentEntry } from "./mapping.js";
+import type { AmsSlot, SpoolData } from "@bambu-spoolman-sync/shared";
 
 const mapping = new Map<string, FilamentEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
   ["A18-B0", { id: "A18-B0", spoolman_id: null }],
 ]);
 
-const spool = (over: Partial<Spool> = {}): Spool => ({
+const spool = (over: Partial<SpoolData> = {}): SpoolData => ({
   uid: "UUID1",
   variant_id: "A01-B6",
   material: "PLA",
@@ -22,7 +22,7 @@ const spool = (over: Partial<Spool> = {}): Spool => ({
 });
 
 const slot = (over?: {
-  spool?: Spool | null;
+  spool?: SpoolData | null;
   has_spool?: boolean;
 }): AmsSlot => ({
   printer_serial: "AC12",

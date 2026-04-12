@@ -1,6 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import { matchSlot } from "../domain/matcher.js";
-import { deriveSlotSyncView } from "../domain/sync-view.js";
+import { matchSlot } from "../mapping.js";
 import type { RouteDeps } from "../context.js";
 import { listRuntimes } from "../clients/bambu.client.js";
 
@@ -11,14 +10,10 @@ export const stateRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) =
       description: "Get live printer status, AMS contents, and sync state",
     },
   }, async () => {
-    const { config, mapping, mqttState, spoolRepo, syncStateRepo } = ctx;
-    const runtimes = listRuntimes(mqttState);
+    const { config, mapping, printerConnections, spoolService } = ctx;
+    const runtimes = listRuntimes(printerConnections);
     const bySerial = new Map(runtimes.map((r) => [r.printer.serial, r]));
-
-    const spoolRows = new Map(spoolRepo.list().map((row) => [row.tagId, row]));
-    const syncRows = new Map(
-      syncStateRepo.listAll().map((row) => [row.tagId, row]),
-    );
+    const syncStates = spoolService.listSyncStates();
 
     const printers = config.printers.map((p) => {
       const runtime = bySerial.get(p.serial);
@@ -27,12 +22,10 @@ export const stateRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) =
         nozzle_id: unit.nozzle_id,
         slots: unit.slots.map((slot) => {
           const uid = slot.spool?.uid ?? null;
-          const spoolRow = uid ? spoolRows.get(uid) : undefined;
-          const syncRow = uid ? syncRows.get(uid) : undefined;
           return {
             slot,
             ...matchSlot(slot, mapping.byId),
-            sync: deriveSlotSyncView(slot, spoolRow, syncRow),
+            sync: (uid && syncStates.get(uid)) ?? { status: "never" as const },
           };
         }),
       }));

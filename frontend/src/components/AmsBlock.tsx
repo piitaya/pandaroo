@@ -2,7 +2,7 @@ import { Badge, Group, SimpleGrid, Stack, Title } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import { amsLabel } from "./amsLabel";
 import { AmsSlotCard, amsSlotKey } from "./AmsSlotCard";
-import type { AmsUnit } from "../api";
+import type { AmsUnitView } from "../api";
 
 function NozzleBadge({ nozzleId }: { nozzleId: number | null }) {
   const { t } = useTranslation();
@@ -17,7 +17,7 @@ function NozzleBadge({ nozzleId }: { nozzleId: number | null }) {
   );
 }
 
-export function AmsBlock({ ams }: { ams: AmsUnit }) {
+export function AmsBlock({ ams }: { ams: AmsUnitView }) {
   return (
     <Stack gap="xs">
       <Group gap="xs" align="center">

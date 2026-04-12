@@ -1,7 +1,8 @@
 import {
   useMutation,
   useQuery,
-  useQueryClient
+  useQueryClient,
+  type QueryKey,
 } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
@@ -33,10 +34,9 @@ export const useSpools = () =>
     queryFn: api.listSpools,
   });
 
-const invalidateAll = (qc: ReturnType<typeof useQueryClient>) => {
-  qc.invalidateQueries({ queryKey: CONFIG_KEY });
-  qc.invalidateQueries({ queryKey: STATE_KEY });
-};
+// ---------------------------------------------------------------------------
+// Toast helpers
+// ---------------------------------------------------------------------------
 
 function useToasts() {
   const { t } = useTranslation();
@@ -52,93 +52,98 @@ function useToasts() {
   };
 }
 
-export const useCreatePrinter = () => {
+// ---------------------------------------------------------------------------
+// Mutation factory — eliminates toast/invalidation boilerplate
+// ---------------------------------------------------------------------------
+
+function useMutationWithToast<TData, TVariables>(opts: {
+  mutationFn: (vars: TVariables) => Promise<TData>;
+  successMessage: string;
+  invalidate?: readonly QueryKey[];
+  onError?: (err: unknown) => void;
+}) {
   const qc = useQueryClient();
-  const { t } = useTranslation();
   const toast = useToasts();
   return useMutation({
-    mutationFn: (input: PrinterInput) => api.createPrinter(input),
+    mutationFn: opts.mutationFn,
     onSuccess: () => {
-      invalidateAll(qc);
-      toast.success(t("printers.notifications.added"));
-    },
-    onError: (err) => {
-      // Friendly message for the "serial already exists" case.
-      if (err instanceof ApiError && err.status === 409) {
-        toast.error(new Error(t("printers.notifications.duplicate_serial")));
-        return;
+      for (const key of opts.invalidate ?? []) {
+        qc.invalidateQueries({ queryKey: key });
       }
-      toast.error(err);
+      toast.success(opts.successMessage);
+    },
+    onError: opts.onError ?? toast.error,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Printer mutations
+// ---------------------------------------------------------------------------
+
+function usePrinterConflictHandler() {
+  const { t } = useTranslation();
+  const toast = useToasts();
+  return (err: unknown) => {
+    if (err instanceof ApiError && err.status === 409) {
+      toast.error(new Error(t("printers.notifications.duplicate_serial")));
+      return;
     }
+    toast.error(err);
+  };
+}
+
+export const useCreatePrinter = () => {
+  const { t } = useTranslation();
+  return useMutationWithToast({
+    mutationFn: (input: PrinterInput) => api.createPrinter(input),
+    successMessage: t("printers.notifications.added"),
+    invalidate: [CONFIG_KEY, STATE_KEY],
+    onError: usePrinterConflictHandler(),
   });
 };
 
 export const useUpdatePrinter = () => {
-  const qc = useQueryClient();
   const { t } = useTranslation();
-  const toast = useToasts();
-  return useMutation({
-    mutationFn: ({
-      serial,
-      patch
-    }: {
-      serial: string;
-      patch: PrinterPatch;
-    }) => api.updatePrinter(serial, patch),
-    onSuccess: () => {
-      invalidateAll(qc);
-      toast.success(t("printers.notifications.updated"));
-    },
-    onError: (err) => {
-      // Friendly message when a serial rename collides with an
-      // existing printer.
-      if (err instanceof ApiError && err.status === 409) {
-        toast.error(new Error(t("printers.notifications.duplicate_serial")));
-        return;
-      }
-      toast.error(err);
-    }
+  return useMutationWithToast({
+    mutationFn: ({ serial, patch }: { serial: string; patch: PrinterPatch }) =>
+      api.updatePrinter(serial, patch),
+    successMessage: t("printers.notifications.updated"),
+    invalidate: [CONFIG_KEY, STATE_KEY],
+    onError: usePrinterConflictHandler(),
   });
 };
 
 export const useRemovePrinter = () => {
-  const qc = useQueryClient();
   const { t } = useTranslation();
-  const toast = useToasts();
-  return useMutation({
+  return useMutationWithToast({
     mutationFn: (serial: string) => api.removePrinter(serial),
-    onSuccess: () => {
-      invalidateAll(qc);
-      toast.success(t("printers.notifications.removed"));
-    },
-    onError: toast.error
+    successMessage: t("printers.notifications.removed"),
+    invalidate: [CONFIG_KEY, STATE_KEY],
   });
 };
 
 export const usePutConfig = () => {
-  const qc = useQueryClient();
   const { t } = useTranslation();
-  const toast = useToasts();
-  return useMutation({
+  return useMutationWithToast({
     mutationFn: (config: Config) => api.putConfig(config),
-    onSuccess: () => {
-      invalidateAll(qc);
-      toast.success(t("settings.saved"));
-    },
-    onError: toast.error
+    successMessage: t("settings.saved"),
+    invalidate: [CONFIG_KEY, STATE_KEY],
   });
 };
 
-/**
- * Silent reorder mutation for the printer list. The visual order is
- * owned locally by the Printers page (so dnd-kit's settle animation
- * runs against a stable source of truth), this hook just pushes the
- * new order to the server and re-syncs the state query. On success
- * we deliberately skip invalidating the config query — our local
- * state already matches and a refetch would cause a visual jump
- * mid-animation. On error we invalidate to let the component pull
- * the real server order back.
- */
+export const useRemoveSpool = () => {
+  const { t } = useTranslation();
+  return useMutationWithToast({
+    mutationFn: (tagId: string) => api.removeSpool(tagId),
+    successMessage: t("spools.notifications.removed"),
+    invalidate: [SPOOLS_KEY],
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Reorder — silent (no success toast, selective invalidation)
+// ---------------------------------------------------------------------------
+
 export const useReorderPrinters = () => {
   const qc = useQueryClient();
   const toast = useToasts();
@@ -154,9 +159,13 @@ export const useReorderPrinters = () => {
   });
 };
 
+// ---------------------------------------------------------------------------
+// Mapping
+// ---------------------------------------------------------------------------
+
 export const useRefreshMapping = () => {
-  const qc = useQueryClient();
   const { t } = useTranslation();
+  const qc = useQueryClient();
   const toast = useToasts();
   return useMutation({
     mutationFn: () => api.refreshMapping(),
@@ -168,9 +177,10 @@ export const useRefreshMapping = () => {
   });
 };
 
-// Reads Spoolman's own `base_url` setting (used for building links
-// to spools). Cached for the lifetime of the session; refetched when
-// the saved Spoolman URL changes.
+// ---------------------------------------------------------------------------
+// Spoolman
+// ---------------------------------------------------------------------------
+
 export const useSpoolmanBaseUrl = () => {
   const { data: configData } = useConfig();
   const url = configData?.config.spoolman?.url;
@@ -193,9 +203,7 @@ export const useTestSpoolman = () => {
     mutationFn: () => api.testSpoolman(),
     onSuccess: ({ info }) => {
       toast.success(
-        t("sync.connection_card.test_ok", {
-          version: info.version ?? "?"
-        })
+        t("sync.connection_card.test_ok", { version: info.version ?? "?" })
       );
     },
     onError: toast.error
@@ -237,20 +245,6 @@ export const useSyncSpoolman = () => {
   return useMutation({
     mutationFn: (tagIds: string[]) => api.syncSpoolman(tagIds),
     ...handlers
-  });
-};
-
-export const useRemoveSpool = () => {
-  const qc = useQueryClient();
-  const { t } = useTranslation();
-  const toast = useToasts();
-  return useMutation({
-    mutationFn: (tagId: string) => api.removeSpool(tagId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: SPOOLS_KEY });
-      toast.success(t("spools.notifications.removed"));
-    },
-    onError: toast.error,
   });
 };
 

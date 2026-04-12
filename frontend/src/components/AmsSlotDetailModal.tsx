@@ -326,7 +326,7 @@ export function AmsSlotDetailModal({
                         truncate
                         style={{ flex: 1, minWidth: 0 }}
                       >
-                        #{slot.sync.spool_id}
+                        #{slot.sync.spoolman_spool_id}
                       </Text>
                       {spoolmanUrl && (
                         <Tooltip
@@ -339,7 +339,7 @@ export function AmsSlotDetailModal({
                             variant="subtle"
                             color="gray"
                             component="a"
-                            href={`${spoolmanUrl}/spool/show/${slot.sync.spool_id}`}
+                            href={`${spoolmanUrl}/spool/show/${slot.sync.spoolman_spool_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={t("slot.sync_status.open_in_spoolman")}

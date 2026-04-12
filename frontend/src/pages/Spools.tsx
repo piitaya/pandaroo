@@ -2,11 +2,9 @@ import {
   ActionIcon,
   Alert,
   Button,
-  Card,
   ColorSwatch,
   Group,
   Loader,
-  Modal,
   Progress,
   Stack,
   Text,
@@ -17,11 +15,13 @@ import { IconCircleFilled, IconRefresh, IconTrash } from "@tabler/icons-react";
 import { DataTable, type DataTableSortStatus } from "mantine-datatable";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { spoolSyncStatus, type LocalSpool, type SyncStatus } from "../api";
+import type { Spool, SyncStatus } from "../api";
 import { useConfig, useRemoveSpool, useSpools, useSyncAllSpoolman } from "../hooks";
 import { useMatchStatus } from "../components/matchStatus";
 import { spoolFillColor } from "../components/spoolFillColor";
 import { syncStatusColor } from "../components/syncStatusColor";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { EmptyStateCard } from "../components/EmptyStateCard";
 
 function formatDate(value: string): string {
   const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
@@ -36,19 +36,19 @@ const syncSortRank: Record<SyncStatus, number> = {
 };
 const UNMATCHED_SORT_RANK = 4;
 
-function syncSortValue(spool: LocalSpool): number {
+function syncSortValue(spool: Spool): number {
   return spool.match_type === "matched"
-    ? syncSortRank[spoolSyncStatus(spool)]
+    ? syncSortRank[spool.sync.status]
     : UNMATCHED_SORT_RANK;
 }
 
-function sortData(data: LocalSpool[], { columnAccessor, direction }: DataTableSortStatus<LocalSpool>): LocalSpool[] {
+function sortData(data: Spool[], { columnAccessor, direction }: DataTableSortStatus<Spool>): Spool[] {
   const sorted = [...data].sort((a, b) => {
     if (columnAccessor === "sync_status") {
       return syncSortValue(a) - syncSortValue(b);
     }
-    const aVal = a[columnAccessor as keyof LocalSpool];
-    const bVal = b[columnAccessor as keyof LocalSpool];
+    const aVal = a[columnAccessor as keyof Spool];
+    const bVal = b[columnAccessor as keyof Spool];
     if (aVal == null && bVal == null) return 0;
     if (aVal == null) return 1;
     if (bVal == null) return -1;
@@ -65,11 +65,11 @@ export default function SpoolsPage() {
   const removeSpool = useRemoveSpool();
   const matchStatus = useMatchStatus();
   const { t } = useTranslation();
-  const [sortStatus, setSortStatus] = useState<DataTableSortStatus<LocalSpool>>({
+  const [sortStatus, setSortStatus] = useState<DataTableSortStatus<Spool>>({
     columnAccessor: "last_updated",
     direction: "desc",
   });
-  const [toRemove, setToRemove] = useState<LocalSpool | null>(null);
+  const [toRemove, setToRemove] = useState<Spool | null>(null);
   const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
 
   const sorted = useMemo(
@@ -103,13 +103,7 @@ export default function SpoolsPage() {
       </Group>
 
       {(!spools || spools.length === 0) ? (
-        <Card withBorder padding="xl" radius="md">
-          <Stack gap="md" align="center" ta="center">
-            <Text c="dimmed" maw={420}>
-              {t("spools.empty")}
-            </Text>
-          </Stack>
-        </Card>
+        <EmptyStateCard description={t("spools.empty")} />
       ) : (
         <DataTable
           withTableBorder
@@ -205,24 +199,24 @@ export default function SpoolsPage() {
                     </Text>
                   );
                 }
-                const status = spoolSyncStatus(spool);
+                const { sync } = spool;
                 const tooltip =
-                  status === "error"
+                  sync.status === "error"
                     ? t("spools.sync_tooltip.error", {
-                        error: spool.last_sync_error,
+                        error: sync.error,
                       })
-                    : status === "stale"
+                    : sync.status === "stale"
                       ? t("spools.sync_tooltip.stale")
-                      : status === "synced" && spool.last_synced
+                      : sync.status === "synced"
                         ? t("spools.sync_tooltip.synced", {
-                            at: formatDate(spool.last_synced),
+                            at: formatDate(sync.at),
                           })
                         : t("spools.sync_tooltip.never");
                 return (
                   <Tooltip label={tooltip} multiline maw={320}>
                     <IconCircleFilled
                       size={12}
-                      style={{ color: syncStatusColor(status) }}
+                      style={{ color: syncStatusColor(sync.status) }}
                     />
                   </Tooltip>
                 );
@@ -249,38 +243,21 @@ export default function SpoolsPage() {
         />
       )}
 
-      <Modal
+      <ConfirmModal
         opened={toRemove !== null}
         onClose={() => setToRemove(null)}
+        onConfirm={() => {
+          if (!toRemove) return;
+          removeSpool.mutate(toRemove.tag_id, {
+            onSettled: () => setToRemove(null),
+          });
+        }}
         title={t("spools.remove_confirm_title")}
-        centered
-        size="sm"
-      >
-        <Stack>
-          <Text size="sm">
-            {t("spools.remove_confirm_body", {
-              name: toRemove?.color_name ?? toRemove?.tag_id,
-            })}
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setToRemove(null)}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              color="red"
-              loading={removeSpool.isPending}
-              onClick={() => {
-                if (!toRemove) return;
-                removeSpool.mutate(toRemove.tag_id, {
-                  onSettled: () => setToRemove(null),
-                });
-              }}
-            >
-              {t("common.remove")}
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+        body={t("spools.remove_confirm_body", {
+          name: toRemove?.color_name ?? toRemove?.tag_id,
+        })}
+        loading={removeSpool.isPending}
+      />
     </Stack>
   );
 }

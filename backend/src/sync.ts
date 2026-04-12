@@ -1,26 +1,18 @@
-import { computeUsedWeight } from "../domain/spool.js";
-import type { FilamentEntry } from "../domain/matcher.js";
+import type { FilamentEntry, SpoolSyncResult, SyncResult } from "@bambu-spoolman-sync/shared";
 import {
   type SpoolmanClient,
   type SpoolmanSpool,
   createSpoolmanClient,
-  decodeExtraString,
-} from "../clients/spoolman.client.js";
-import type { SpoolRow, SpoolRepository } from "../db/spool.repository.js";
-import type { SyncStateRepository } from "../db/sync-state.repository.js";
-import { errorMessage } from "../utils.js";
+} from "./clients/spoolman.client.js";
+import type { SpoolRow, SpoolRepository } from "./db/spool.repository.js";
+import type { SyncStateRepository } from "./db/sync-state.repository.js";
 
-export interface SpoolSyncResult {
-  tag_id: string;
-  spoolman_spool_id: number;
-  created_filament: boolean;
-  created_spool: boolean;
+function computeUsedWeight(weight: number, remain: number): number {
+  return Math.max(0, weight * (1 - remain / 100));
 }
 
-export interface SyncAllResult {
-  synced: SpoolSyncResult[];
-  skipped: Array<{ tag_id: string; reason: string }>;
-  errors: Array<{ tag_id: string; error: string }>;
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 export interface SyncDeps {
@@ -45,9 +37,7 @@ async function syncOneSpool(
     createdFilament = true;
   }
 
-  const spoolmanSpools = allSpools ?? await client.listSpools();
-  let spoolmanSpool =
-    spoolmanSpools.find((s) => decodeExtraString(s.extra?.tag) === row.tagId) ?? null;
+  let spoolmanSpool = await client.findSpoolByTag(row.tagId, allSpools);
   let createdSpool = false;
   if (!spoolmanSpool) {
     spoolmanSpool = await client.createSpool(filament.id, row.tagId);
@@ -88,12 +78,12 @@ export async function syncByTagIds(
   deps: SyncDeps,
   tagIds: string[],
   clientFactory: (url: string) => SpoolmanClient = createSpoolmanClient,
-): Promise<SyncAllResult> {
+): Promise<SyncResult> {
   const client = clientFactory(deps.spoolmanUrl);
   const options = { archiveOnEmpty: deps.archiveOnEmpty };
 
   const allSpools = await client.listSpools();
-  const result: SyncAllResult = { synced: [], skipped: [], errors: [] };
+  const result: SyncResult = { synced: [], skipped: [], errors: [] };
 
   for (const tagId of tagIds) {
     const row = deps.spoolRepo.findByTagId(tagId);

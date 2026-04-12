@@ -1,19 +1,12 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
-import type { AppContext, RouteDeps } from "../context.js";
-import { syncByTagIds, type SyncDeps } from "../services/sync.service.js";
+import type { RouteDeps } from "../context.js";
+import { syncByTagIds } from "../sync.js";
 import { ErrorResponse } from "./schemas.js";
-import { errorMessage } from "../utils.js";
 
-function syncDepsFrom(ctx: AppContext, url: string): SyncDeps {
-  return {
-    spoolRepo: ctx.spoolRepo,
-    syncStateRepo: ctx.syncStateRepo,
-    mapping: ctx.mapping.byId,
-    spoolmanUrl: url,
-    archiveOnEmpty: ctx.config.spoolman.archive_on_empty ?? false,
-  };
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 const SpoolSyncResultResponse = Type.Object({
@@ -85,7 +78,7 @@ export const spoolmanRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }
       return { error: "Spoolman URL is not configured." };
     }
     try {
-      return await syncByTagIds(syncDepsFrom(ctx, url), tag_ids);
+      return await syncByTagIds(ctx.createSyncDeps(), tag_ids);
     } catch (err) {
       reply.code(400);
       return { error: errorMessage(err) };
@@ -104,12 +97,12 @@ export const spoolmanRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }
       reply.code(400);
       return { error: "Spoolman URL is not configured." };
     }
-    const tagIds = ctx.spoolRepo.list().map((row) => row.tagId);
+    const tagIds = ctx.spoolService.listTagIds();
     if (tagIds.length === 0) {
       return { synced: [], skipped: [], errors: [] };
     }
     try {
-      return await syncByTagIds(syncDepsFrom(ctx, url), tagIds);
+      return await syncByTagIds(ctx.createSyncDeps(), tagIds);
     } catch (err) {
       reply.code(400);
       return { error: errorMessage(err) };

@@ -2,9 +2,8 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadConfig, saveConfig } from "./config.store.js";
+import { loadConfig, saveConfig, ConfigSchema } from "./config.js";
 import { Value } from "@sinclair/typebox/value";
-import { ConfigSchema } from "./config.store.js";
 
 describe("ConfigSchema", () => {
   it("applies defaults to an empty object", () => {

@@ -16,19 +16,19 @@ import { useMatchStatus } from "./matchStatus";
 import { spoolFillColor } from "./spoolFillColor";
 import { syncStatusColor } from "./syncStatusColor";
 import { useConfig } from "../hooks";
-import type { AmsMatchedSlot, SlotSyncView } from "../api";
+import type { AmsMatchedSlot, SyncState } from "../api";
 
-function SyncIndicator({ sync }: { sync: SlotSyncView }) {
+function SyncIndicator({ sync }: { sync: SyncState }) {
   const { t } = useTranslation();
   const tooltip =
     sync.status === "synced"
       ? t("slot.sync_status.synced_tooltip", {
-          spool_id: sync.spool_id,
+          spool_id: sync.spoolman_spool_id,
           at: new Date(sync.at).toLocaleString()
         })
       : sync.status === "stale"
         ? t("slot.sync_status.stale_tooltip", {
-            spool_id: sync.spool_id,
+            spool_id: sync.spoolman_spool_id,
             at: new Date(sync.at).toLocaleString()
           })
         : sync.status === "error"

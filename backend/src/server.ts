@@ -6,9 +6,9 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { configPath, loadConfig } from "./stores/config.store.js";
-import { createMapping, mappingCachePath } from "./stores/mapping.store.js";
-import { AppContext } from "./context.js";
+import { configPath, loadConfig } from "./config.js";
+import { createMapping, mappingCachePath } from "./mapping.js";
+import { createAppContext } from "./context.js";
 import { openDatabase } from "./db/database.js";
 
 import { configRoutes } from "./routes/config.routes.js";
@@ -45,7 +45,7 @@ export async function buildApp() {
   });
 
   const { db, sqlite } = openDatabase();
-  const ctx = new AppContext(config, cfgPath, db, sqlite, mapping, app.log);
+  const ctx = createAppContext(config, cfgPath, db, sqlite, mapping, app.log);
   ctx.syncFromConfig();
 
   await app.register(configRoutes, { ctx });

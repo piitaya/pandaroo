@@ -1,16 +1,45 @@
 import mqtt, { type MqttClient } from "mqtt";
-import type { Printer } from "../stores/config.store.js";
-import { toSpool, type AmsUnit } from "../domain/spool.js";
+import type { SpoolData, AmsSlot, Printer, PrinterErrorCode, PrinterStatus } from "@bambu-spoolman-sync/shared";
+import type { AppEventBus } from "../events.js";
 
-export type PrinterErrorCode =
-  | "unauthorized"
-  | "no_response"
-  | "unreachable"
-  | "other";
+export interface AmsUnit {
+  id: number;
+  nozzle_id: number | null;
+  slots: AmsSlot[];
+}
 
-export interface PrinterStatus {
-  lastError: string | null;
-  errorCode: PrinterErrorCode | null;
+function toSpoolData(tray: unknown): SpoolData | null {
+  const t = tray as Record<string, unknown> | null;
+
+  const rawUuid = t?.tray_uuid as string | undefined;
+  const uid = rawUuid && !/^0+$/.test(rawUuid) ? rawUuid : null;
+
+  const rawCols = t?.cols;
+  const colorHexes = Array.isArray(rawCols)
+    ? (rawCols as unknown[]).filter((c): c is string => typeof c === "string")
+    : null;
+
+  const hasInfo =
+    !!uid || !!t?.tray_id_name || !!t?.tray_type || !!t?.tray_sub_brands;
+  if (!hasInfo) return null;
+
+  const rawWeight = (t?.tray_weight as string) ?? null;
+  const weight = rawWeight && rawWeight !== "0" ? Number(rawWeight) : null;
+  const rawRemain = t?.remain != null ? Number(t.remain) : null;
+  const remain = rawRemain != null && rawRemain >= 0 ? rawRemain : null;
+
+  return {
+    uid,
+    variant_id: (t?.tray_id_name as string) ?? null,
+    material: (t?.tray_type as string) ?? null,
+    product: (t?.tray_sub_brands as string) ?? null,
+    color_hex: (t?.tray_color as string) ?? null,
+    color_hexes: colorHexes,
+    weight,
+    temp_min: t?.nozzle_temp_min != null ? Number(t.nozzle_temp_min) : null,
+    temp_max: t?.nozzle_temp_max != null ? Number(t.nozzle_temp_max) : null,
+    remain,
+  };
 }
 
 const NETWORK_ERROR_CODES = new Set([
@@ -43,9 +72,6 @@ export interface PrinterRuntime {
   ams_units: AmsUnit[];
   disconnect(): Promise<void>;
 }
-
-export type OnStatus = (printer: Printer, status: PrinterStatus) => void;
-export type OnAmsUpdate = (printer: Printer, ams_units: AmsUnit[]) => void;
 
 export function decodeNozzleId(info: unknown): number | null {
   if (info == null) return null;
@@ -90,7 +116,7 @@ export function parseAmsReport(
         slot_id: slotId,
         nozzle_id: nozzleId,
         has_spool: hasSpool,
-        spool: hasSpool ? toSpool(tray) : null,
+        spool: hasSpool ? toSpoolData(tray) : null,
       };
     });
     slots.sort((a, b) => a.slot_id - b.slot_id);
@@ -107,11 +133,7 @@ interface InternalClient {
   disconnect(): Promise<void>;
 }
 
-function connect(
-  printer: Printer,
-  onStatus?: OnStatus,
-  onAmsUpdate?: OnAmsUpdate,
-): InternalClient {
+function connect(printer: Printer, bus: AppEventBus): InternalClient {
   const status: PrinterStatus = {
     lastError: null,
     errorCode: null,
@@ -120,7 +142,7 @@ function connect(
   let hasEverReceivedMessage = false;
   let watchdog: NodeJS.Timeout | null = null;
 
-  const emitStatus = () => onStatus?.(printer, { ...status });
+  const emitStatus = () => bus.emit("printer:status", printer, { ...status });
 
   const armWatchdog = () => {
     if (hasEverReceivedMessage || watchdog) return;
@@ -195,7 +217,7 @@ function connect(
     clearWatchdog();
     status.errorCode = null;
     status.lastError = null;
-    onAmsUpdate?.(printer, amsUnits);
+    bus.emit("ams:update", printer, amsUnits);
   });
 
   return {
@@ -220,17 +242,16 @@ function connect(
   };
 }
 
-export type MqttState = Map<string, InternalClient>;
+export type PrinterConnectionPool = Map<string, InternalClient>;
 
-export function createMqttState(): MqttState {
+export function createPrinterConnectionPool(): PrinterConnectionPool {
   return new Map();
 }
 
 export function syncPrinters(
   target: Printer[],
-  state: MqttState,
-  onStatus?: OnStatus,
-  onAmsUpdate?: OnAmsUpdate,
+  state: PrinterConnectionPool,
+  bus: AppEventBus,
 ): void {
   const wanted = new Map(
     target.filter((p) => p.enabled).map((p) => [p.serial, p]),
@@ -252,11 +273,11 @@ export function syncPrinters(
 
   for (const printer of wanted.values()) {
     if (state.has(printer.serial)) continue;
-    state.set(printer.serial, connect(printer, onStatus, onAmsUpdate));
+    state.set(printer.serial, connect(printer, bus));
   }
 }
 
-export function listRuntimes(state: MqttState): PrinterRuntime[] {
+export function listRuntimes(state: PrinterConnectionPool): PrinterRuntime[] {
   return Array.from(state.values()).map((c) => ({
     printer: c.printer,
     status: c.status,
@@ -265,7 +286,7 @@ export function listRuntimes(state: MqttState): PrinterRuntime[] {
   }));
 }
 
-export async function disconnectAll(state: MqttState): Promise<void> {
+export async function disconnectAll(state: PrinterConnectionPool): Promise<void> {
   await Promise.all(Array.from(state.values()).map((c) => c.disconnect()));
   state.clear();
 }

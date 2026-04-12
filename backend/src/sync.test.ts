@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { syncByTagIds, type SyncDeps } from "./sync.service.js";
+import { syncByTagIds, type SyncDeps } from "./sync.js";
 import {
   createSpoolmanClient,
   encodeExtraString,
@@ -7,15 +7,14 @@ import {
   type SpoolmanClient,
   type SpoolmanFilament,
   type SpoolmanSpool,
-} from "../clients/spoolman.client.js";
-import type { FilamentEntry } from "../domain/matcher.js";
-import type { AmsSlot } from "../domain/spool.js";
-import { deriveSlotSyncView } from "../domain/sync-view.js";
-import type { SpoolRow, SpoolRepository } from "../db/spool.repository.js";
+} from "./clients/spoolman.client.js";
+import type { FilamentEntry } from "./mapping.js";
+import { deriveSyncState } from "./services/spool.service.js";
+import type { SpoolRow, SpoolRepository } from "./db/spool.repository.js";
 import type {
   SpoolSyncStateRow,
   SyncStateRepository,
-} from "../db/sync-state.repository.js";
+} from "./db/sync-state.repository.js";
 
 const mapping = new Map<string, FilamentEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
@@ -105,6 +104,10 @@ function fakeClient(over: Partial<SpoolmanClient> = {}): SpoolmanClient {
     async createFilamentFromExternal() { return { id: 42 } as SpoolmanFilament; },
     async listSpools() { return []; },
     async ensureSpoolTagField() {},
+    async findSpoolByTag(_tag, spools) {
+      const list = spools ?? await this.listSpools();
+      return list.find((s) => decodeExtraString(s.extra?.tag) === _tag) ?? null;
+    },
     async createSpool() { return { id: 7, filament: { id: 42 } } as SpoolmanSpool; },
     async updateSpool(id) { return { id, filament: { id: 42 } } as SpoolmanSpool; },
     async deleteSpool() {},
@@ -112,32 +115,6 @@ function fakeClient(over: Partial<SpoolmanClient> = {}): SpoolmanClient {
   };
 }
 
-// ---------- Helpers ----------
-
-const slot = (
-  overSpool?: Partial<AmsSlot["spool"]> | null,
-  overSlot?: Partial<AmsSlot>,
-): AmsSlot => ({
-  printer_serial: "AC12",
-  ams_id: 0,
-  slot_id: 0,
-  nozzle_id: 0,
-  has_spool: true,
-  spool: overSpool === null ? null : {
-    uid: "UID-1",
-    variant_id: "A01-B6",
-    material: "PLA",
-    product: "PLA Matte",
-    color_hex: "042F56FF",
-    color_hexes: null,
-    weight: 1000,
-    temp_min: 220,
-    temp_max: 240,
-    remain: 75,
-    ...overSpool,
-  },
-  ...overSlot,
-});
 
 describe("encodeExtraString / decodeExtraString", () => {
   it("round-trips a value through JSON encoding", () => {
@@ -151,16 +128,16 @@ describe("encodeExtraString / decodeExtraString", () => {
   });
 });
 
-describe("deriveSlotSyncView", () => {
+describe("deriveSyncState", () => {
   it("returns never when sync row is absent", () => {
-    expect(deriveSlotSyncView(slot(), makeSpoolRow(), undefined)).toEqual({
+    expect(deriveSyncState(makeSpoolRow(), undefined)).toEqual({
       status: "never",
     });
   });
-  it("returns never when slot has no spool", () => {
-    expect(
-      deriveSlotSyncView(slot(null), undefined, undefined),
-    ).toEqual({ status: "never" });
+  it("returns never when no spool row and no sync row", () => {
+    expect(deriveSyncState(undefined, undefined)).toEqual({
+      status: "never",
+    });
   });
   it("returns synced when lastSynced >= lastUpdated", () => {
     const spoolRow = makeSpoolRow({ lastUpdated: "2024-01-01T00:00:00Z" });
@@ -170,9 +147,9 @@ describe("deriveSlotSyncView", () => {
       lastSynced: "2024-01-02T00:00:00Z",
       lastSyncError: null,
     };
-    expect(deriveSlotSyncView(slot(), spoolRow, syncRow)).toEqual({
+    expect(deriveSyncState(spoolRow, syncRow)).toEqual({
       status: "synced",
-      spool_id: 9,
+      spoolman_spool_id: 9,
       at: "2024-01-02T00:00:00Z",
     });
   });
@@ -184,9 +161,9 @@ describe("deriveSlotSyncView", () => {
       lastSynced: "2024-01-02T00:00:00Z",
       lastSyncError: null,
     };
-    expect(deriveSlotSyncView(slot(), spoolRow, syncRow)).toEqual({
+    expect(deriveSyncState(spoolRow, syncRow)).toEqual({
       status: "stale",
-      spool_id: 9,
+      spoolman_spool_id: 9,
       at: "2024-01-02T00:00:00Z",
     });
   });
@@ -197,7 +174,7 @@ describe("deriveSlotSyncView", () => {
       lastSynced: "2024-01-02T00:00:00Z",
       lastSyncError: "boom",
     };
-    expect(deriveSlotSyncView(slot(), makeSpoolRow(), syncRow)).toEqual({
+    expect(deriveSyncState(makeSpoolRow(), syncRow)).toEqual({
       status: "error",
       error: "boom",
     });

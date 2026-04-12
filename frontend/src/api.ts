@@ -1,150 +1,28 @@
-export interface Printer {
-  name: string;
-  host: string;
-  serial: string;
-  access_code: string;
-  enabled: boolean;
-}
+export type {
+  Printer,
+  PrinterInput,
+  PrinterPatch,
+  Config,
+  MatchType,
+  Spool,
+  SyncState,
+  SyncStatus,
+  AmsMatchedSlot,
+  AmsUnitView,
+  PrinterErrorCode,
+  PrinterStateView,
+} from "@bambu-spoolman-sync/shared";
 
-// Creation accepts the full printer. Updates may include a new
-// serial — the URL still identifies the printer as it currently
-// is; the backend reconciles the change by tearing down and
-// reconnecting the MQTT client with the new topic prefix.
-export type PrinterInput = Printer;
-export type PrinterPatch = Partial<Printer>;
 
-export interface Config {
-  printers: Printer[];
-  mapping: {
-    refresh_interval_hours: number;
-  };
-  spoolman: {
-    url?: string;
-    auto_sync: boolean;
-    archive_on_empty: boolean;
-  };
-}
-
-export interface LocalSpool {
-  tag_id: string;
-  variant_id: string | null;
-  match_type: MatchType;
-  material: string | null;
-  product: string | null;
-  color_hex: string | null;
-  color_name: string | null;
-  weight: number | null;
-  remain: number | null;
-  last_used: string | null;
-  first_seen: string;
-  last_updated: string;
-  last_synced: string | null;
-  last_sync_error: string | null;
-}
-
-export function spoolSyncStatus(spool: LocalSpool): SyncStatus {
-  if (spool.last_sync_error) return "error";
-  if (!spool.last_synced) return "never";
-  if (spool.last_updated > spool.last_synced) return "stale";
-  return "synced";
-}
-
-export interface SpoolSyncResult {
-  tag_id: string;
-  spoolman_spool_id: number;
-  created_filament: boolean;
-  created_spool: boolean;
-}
-
-export interface SyncResult {
-  synced: SpoolSyncResult[];
-  skipped: Array<{ tag_id: string; reason: string }>;
-  errors: Array<{ tag_id: string; error: string }>;
-}
-
-export interface Spool {
-  uid: string | null;
-  variant_id: string | null;
-  material: string | null;
-  product: string | null;
-  color_hex: string | null;
-  color_hexes: string[] | null;
-  weight: string | null;
-  temp_min: number | null;
-  temp_max: number | null;
-  remain: number | null;
-}
-
-export interface AmsSlot {
-  printer_serial: string;
-  ams_id: number;
-  slot_id: number;
-  nozzle_id: number | null;
-  has_spool: boolean;
-  spool: Spool | null;
-}
-
-export type MatchType =
-  | "matched"
-  | "known_unmapped"
-  | "unknown_variant"
-  | "third_party"
-  | "unknown_spool"
-  | "empty";
-
-export interface FilamentEntry {
-  id: string;
-  material?: string;
-  color_name?: string;
-  color_hex?: string;
-  spoolman_id?: string | null;
-}
-
-export type SyncStatus = "never" | "synced" | "stale" | "error";
-
-export type SlotSyncView =
-  | { status: "never" }
-  | { status: "synced"; spool_id: number; at: string }
-  | { status: "stale"; spool_id: number; at: string }
-  | { status: "error"; error: string };
-
-export interface AmsMatchedSlot {
-  slot: AmsSlot;
-  type: MatchType;
-  entry?: FilamentEntry;
-  sync: SlotSyncView;
-}
-
-export type PrinterErrorCode =
-  | "unauthorized"
-  | "no_response"
-  | "unreachable"
-  | "other";
-
-export interface AmsUnit {
-  id: number;
-  nozzle_id: number | null;
-  slots: AmsMatchedSlot[];
-}
-
-export interface PrinterStateView {
-  serial: string;
-  name: string;
-  enabled: boolean;
-  status: {
-    lastError: string | null;
-    errorCode: PrinterErrorCode | null;
-  };
-  ams_units: AmsUnit[];
-}
-
-export interface AppState {
-  printers: PrinterStateView[];
-  mapping: {
-    count: number;
-    fetched_at: string | null;
-  };
-}
+import type {
+  Config,
+  Printer,
+  PrinterInput,
+  PrinterPatch,
+  Spool,
+  AppState,
+  SyncResult,
+} from "@bambu-spoolman-sync/shared";
 
 /**
  * Thrown by `req()` on non-2xx responses. Carries the HTTP status
@@ -232,7 +110,7 @@ export const api = {
     }),
   syncAllSpoolman: () =>
     req<SyncResult>("/api/spoolman/sync-all", { method: "POST" }),
-  listSpools: () => req<LocalSpool[]>("/api/spools"),
+  listSpools: () => req<Spool[]>("/api/spools"),
   removeSpool: (tagId: string) =>
     req<{ ok: true }>(`/api/spools/${encodeURIComponent(tagId)}`, {
       method: "DELETE",

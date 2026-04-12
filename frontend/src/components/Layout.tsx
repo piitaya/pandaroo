@@ -3,6 +3,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { ErrorBoundary } from "./ErrorBoundary";
 import {
   IconDashboard,
   IconPrinter,
@@ -64,7 +65,9 @@ export default function Layout() {
         ))}
       </AppShell.Navbar>
       <AppShell.Main>
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </AppShell.Main>
     </AppShell>
   );

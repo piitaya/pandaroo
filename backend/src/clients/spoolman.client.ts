@@ -82,6 +82,7 @@ export interface SpoolmanClient {
       archived?: boolean;
     },
   ): Promise<SpoolmanSpool>;
+  findSpoolByTag(tag: string, spools?: SpoolmanSpool[]): Promise<SpoolmanSpool | null>;
   deleteSpool(spoolId: number): Promise<void>;
 }
 
@@ -241,6 +242,11 @@ export function createSpoolmanClient(
         `/api/v1/spool/${spoolId}`,
         patch,
       );
+    },
+
+    async findSpoolByTag(tag, spools) {
+      const list = spools ?? await this.listSpools();
+      return list.find((s) => decodeExtraString(s.extra?.tag) === tag) ?? null;
     },
 
     async deleteSpool(spoolId) {

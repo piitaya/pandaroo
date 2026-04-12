@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
-import { PrinterSchema } from "../stores/config.store.js";
+import { PrinterSchema } from "../config.js";
 import type { RouteDeps } from "../context.js";
 import { ErrorResponse, OkResponse } from "./schemas.js";
 

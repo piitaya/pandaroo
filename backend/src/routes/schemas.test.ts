@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseSpoolScan } from "./spool.js";
-import { matchSpool, type FilamentEntry } from "./matcher.js";
+import { parseSpoolScan } from "./schemas.js";
+import { matchSpool, type FilamentEntry } from "../mapping.js";
 
 const mapping = new Map<string, FilamentEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
