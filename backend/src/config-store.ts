@@ -1,3 +1,4 @@
+import type { FastifyBaseLogger } from "fastify";
 import { saveConfig, type Config } from "./config.js";
 import type { AppEventBus } from "./events.js";
 
@@ -10,6 +11,7 @@ export function createConfigStore(
   initialConfig: Config,
   configFilePath: string,
   bus: AppEventBus,
+  log: FastifyBaseLogger,
 ): ConfigStore {
   let config = initialConfig;
 
@@ -20,6 +22,11 @@ export function createConfigStore(
     async apply(next) {
       const validated = await saveConfig(configFilePath, next);
       config = validated;
+      log.info({
+        printerCount: config.printers.length,
+        spoolmanUrl: config.spoolman.url ?? null,
+        autoSync: config.spoolman.auto_sync,
+      }, "Config saved");
       bus.emit("config:changed", config);
     },
   };

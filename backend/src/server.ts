@@ -22,7 +22,22 @@ const MAPPING_SOURCE_URL =
   "https://raw.githubusercontent.com/piitaya/bambu-spoolman-db/main/filaments.json";
 
 export async function buildApp() {
-  const app = Fastify({ logger: true });
+  const useJsonLogs = process.env.LOG_FORMAT === "json";
+  const app = Fastify({
+    logger: {
+      level: process.env.LOG_LEVEL ?? "info",
+      ...(!useJsonLogs && {
+        transport: {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            singleLine: true,
+            ignore: "pid,hostname",
+          },
+        },
+      }),
+    },
+  });
 
   await app.register(fastifySwagger, {
     openapi: {
@@ -41,10 +56,10 @@ export async function buildApp() {
     url: MAPPING_SOURCE_URL,
     cachePath: mappingCachePath(),
     intervalHours: config.filament_catalog.refresh_interval_hours,
-    onError: (err) => app.log.warn({ err }, "mapping refresh failed"),
+    onError: (err) => app.log.warn({ err }, "Mapping refresh failed"),
   });
 
-  const { db, sqlite } = openDatabase();
+  const { db, sqlite } = openDatabase(undefined, app.log.child({ module: "db" }));
   const services = createServices(config, cfgPath, db, sqlite, mapping, app.log);
   services.startAll();
 
@@ -99,11 +114,11 @@ if (isMain) {
   buildApp()
     .then(async ({ app }) => {
       const shutdown = async (signal: string) => {
-        app.log.info({ signal }, "shutting down");
+        app.log.info({ signal }, "Shutting down");
         try {
           await app.close();
         } catch (err) {
-          app.log.error({ err }, "error during shutdown");
+          app.log.error({ err }, "Error during shutdown");
         }
         process.exit(0);
       };

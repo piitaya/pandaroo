@@ -1,3 +1,5 @@
+import type { FastifyBaseLogger } from "fastify";
+
 export interface SpoolmanVendor {
   id: number;
   name: string;
@@ -93,6 +95,7 @@ function normalizeBaseUrl(raw: string): string {
 export function createSpoolmanClient(
   baseUrl: string,
   fetchImpl: typeof fetch = fetch,
+  log?: FastifyBaseLogger,
 ): SpoolmanClient {
   const base = normalizeBaseUrl(baseUrl);
   let tagFieldRegistered: Promise<void> | null = null;
@@ -103,6 +106,7 @@ export function createSpoolmanClient(
     body?: unknown,
     signal?: AbortSignal,
   ): Promise<T> {
+    log?.debug({ method, path }, "Spoolman request");
     const res = await fetchImpl(`${base}${path}`, {
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -111,12 +115,14 @@ export function createSpoolmanClient(
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+      log?.warn({ method, path, status: res.status }, "Spoolman request failed");
       throw new Error(
         `Spoolman ${method} ${path} failed: ${res.status} ${res.statusText}${
           text ? ` — ${text}` : ""
         }`,
       );
     }
+    log?.debug({ method, path, status: res.status }, "Spoolman response");
     return (await res.json()) as T;
   }
 

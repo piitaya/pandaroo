@@ -1,10 +1,7 @@
+import type { FastifyBaseLogger } from "fastify";
 import type { Config } from "@bambu-spoolman-sync/shared";
 import type { AppEventBus } from "../events.js";
 import { syncByTagIds, type SyncDeps } from "../spoolman-sync.js";
-
-interface Logger {
-  warn(obj: object, msg: string): void;
-}
 
 export interface SpoolmanSyncListener {
   start(): void;
@@ -14,7 +11,7 @@ export interface SpoolmanSyncListener {
 export interface SpoolmanSyncListenerDeps {
   createSyncDeps: () => SyncDeps;
   bus: AppEventBus;
-  log: Logger;
+  log: FastifyBaseLogger;
   getConfig: () => Config;
 }
 
@@ -28,6 +25,7 @@ export function createSpoolmanSyncListener(
     const config = deps.getConfig();
     if (!config.spoolman.auto_sync || !config.spoolman.url) return;
 
+    deps.log.debug({ tagId }, "Spool update queued for sync");
     pendingSync.add(tagId);
 
     if (debounceTimer) return;
@@ -37,8 +35,9 @@ export function createSpoolmanSyncListener(
       const tagIds = [...pendingSync];
       pendingSync.clear();
 
+      deps.log.debug({ tagCount: tagIds.length }, "Auto-syncing spools");
       syncByTagIds(deps.createSyncDeps(), tagIds).catch((err) => {
-        deps.log.warn({ err }, "spoolman sync failed");
+        deps.log.warn({ err }, "Spoolman sync failed");
       });
     }, 2000);
   };

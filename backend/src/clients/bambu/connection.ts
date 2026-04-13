@@ -1,4 +1,5 @@
 import mqtt, { type MqttClient } from "mqtt";
+import type { FastifyBaseLogger } from "fastify";
 import type { Printer, PrinterStatus } from "@bambu-spoolman-sync/shared";
 import type { AppEventBus } from "../../events.js";
 import { classifyMqttError } from "./errors.js";
@@ -19,7 +20,8 @@ export interface InternalClient {
   disconnect(): Promise<void>;
 }
 
-export function connect(printer: Printer, bus: AppEventBus): InternalClient {
+export function connect(printer: Printer, bus: AppEventBus, log: FastifyBaseLogger): InternalClient {
+  const ctx = { serial: printer.serial, name: printer.name };
   const status: PrinterStatus = {
     lastError: null,
     errorCode: null,
@@ -37,6 +39,7 @@ export function connect(printer: Printer, bus: AppEventBus): InternalClient {
       if (hasEverReceivedMessage) return;
       status.errorCode = "no_response";
       status.lastError = null;
+      log.warn({ ...ctx, host: printer.host }, "Printer not responding (check IP and network)");
       emitStatus();
     }, 15_000);
   };
@@ -47,6 +50,8 @@ export function connect(printer: Printer, bus: AppEventBus): InternalClient {
       watchdog = null;
     }
   };
+
+  log.info({ ...ctx, host: printer.host }, "Connecting to printer");
 
   const url = `mqtts://${printer.host}:8883`;
   const client = mqtt.connect(url, {
@@ -63,11 +68,13 @@ export function connect(printer: Printer, bus: AppEventBus): InternalClient {
   const topic = `device/${printer.serial}/report`;
 
   client.on("connect", () => {
+    log.info(ctx, "Printer connected");
     status.lastError = null;
     status.errorCode = null;
     emitStatus();
     client.subscribe(topic, (err) => {
       if (err) {
+        log.warn({ ...ctx, err }, "MQTT subscribe failed");
         status.lastError = `subscribe: ${err.message}`;
         status.errorCode = "other";
         emitStatus();
@@ -83,7 +90,9 @@ export function connect(printer: Printer, bus: AppEventBus): InternalClient {
   });
 
   client.on("error", (err) => {
-    status.errorCode = classifyMqttError(err);
+    const errorCode = classifyMqttError(err);
+    log.warn({ ...ctx, errorCode, err: err.message }, "Printer connection error");
+    status.errorCode = errorCode;
     status.lastError = err.message;
     emitStatus();
   });
@@ -99,6 +108,9 @@ export function connect(printer: Printer, bus: AppEventBus): InternalClient {
     const parsed = parseAmsReport(printer.serial, payload);
     amsUnits.length = 0;
     amsUnits.push(...parsed);
+
+    log.debug({ serial: printer.serial, amsUnitCount: parsed.length }, "AMS report received");
+
     hasEverReceivedMessage = true;
     clearWatchdog();
     status.errorCode = null;
@@ -112,6 +124,7 @@ export function connect(printer: Printer, bus: AppEventBus): InternalClient {
     ams_units: amsUnits,
     mqtt: client,
     async disconnect() {
+      log.info(ctx, "Disconnecting from printer");
       clearWatchdog();
       const force = setTimeout(() => {
         try {

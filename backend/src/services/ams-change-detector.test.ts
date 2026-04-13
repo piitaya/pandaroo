@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAmsChangeDetector } from "./ams-change-detector.js";
 import { createEventBus } from "../events.js";
+import { createTestLogger } from "../test-helpers/logger.js";
 import type { Printer, AmsSlot, SpoolReading } from "@bambu-spoolman-sync/shared";
 
 const printer: Printer = {
@@ -37,7 +38,7 @@ function makeSlot(over: Partial<AmsSlot> = {}): AmsSlot {
 describe("AmsChangeDetector", () => {
   it("emits spool:detected on first AMS report with spool data", () => {
     const bus = createEventBus();
-    const detector = createAmsChangeDetector(bus);
+    const detector = createAmsChangeDetector(bus, createTestLogger());
     detector.start();
 
     const detected = vi.fn();
@@ -58,7 +59,7 @@ describe("AmsChangeDetector", () => {
 
   it("does not re-emit when same data is reported twice", () => {
     const bus = createEventBus();
-    const detector = createAmsChangeDetector(bus);
+    const detector = createAmsChangeDetector(bus, createTestLogger());
     detector.start();
 
     const detected = vi.fn();
@@ -75,7 +76,7 @@ describe("AmsChangeDetector", () => {
 
   it("re-emits when remain changes", () => {
     const bus = createEventBus();
-    const detector = createAmsChangeDetector(bus);
+    const detector = createAmsChangeDetector(bus, createTestLogger());
     detector.start();
 
     const detected = vi.fn();
@@ -98,7 +99,7 @@ describe("AmsChangeDetector", () => {
 
   it("does not emit for slots without tag_id", () => {
     const bus = createEventBus();
-    const detector = createAmsChangeDetector(bus);
+    const detector = createAmsChangeDetector(bus, createTestLogger());
     detector.start();
 
     const detected = vi.fn();

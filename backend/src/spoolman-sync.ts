@@ -1,3 +1,4 @@
+import type { FastifyBaseLogger } from "fastify";
 import type { CatalogEntry, SpoolSyncResult, SyncResult } from "@bambu-spoolman-sync/shared";
 import {
   type SpoolmanClient,
@@ -18,6 +19,7 @@ export interface SyncDeps {
   mapping: Map<string, CatalogEntry>;
   spoolmanUrl: string;
   archiveOnEmpty: boolean;
+  log: FastifyBaseLogger;
 }
 
 async function syncOneSpool(
@@ -76,8 +78,11 @@ export async function syncByTagIds(
   tagIds: string[],
   clientFactory: (url: string) => SpoolmanClient = createSpoolmanClient,
 ): Promise<SyncResult> {
+  const { log } = deps;
   const client = clientFactory(deps.spoolmanUrl);
   const options = { archiveOnEmpty: deps.archiveOnEmpty };
+
+  log.debug({ tagCount: tagIds.length }, "Starting Spoolman sync");
 
   const allSpools = await client.listSpools();
   const result: SyncResult = { synced: [], skipped: [], errors: [] };
@@ -85,12 +90,14 @@ export async function syncByTagIds(
   for (const tagId of tagIds) {
     const row = deps.spoolRepo.findByTagId(tagId);
     if (!row) {
+      log.warn({ tagId, reason: "not_found" }, "Spool skipped");
       result.skipped.push({ tag_id: tagId, reason: "not_found" });
       continue;
     }
 
     const spoolmanId = resolveSpoolmanId(row, deps.mapping);
     if (!spoolmanId) {
+      log.warn({ tagId, reason: "not_matched" }, "Spool skipped");
       result.skipped.push({ tag_id: tagId, reason: "not_matched" });
       continue;
     }
@@ -103,12 +110,15 @@ export async function syncByTagIds(
         new Date().toISOString(),
         outcome.spoolman_spool_id,
       );
+      log.debug({ tagId, spoolmanSpoolId: outcome.spoolman_spool_id }, "Spool synced");
     } catch (err) {
       const message = errorMessage(err);
       result.errors.push({ tag_id: tagId, error: message });
       deps.syncStateRepo.markError(tagId, message);
+      log.warn({ tagId, err: message }, "Spool sync failed");
     }
   }
 
+  log.debug({ synced: result.synced.length, skipped: result.skipped.length, errors: result.errors.length }, "Sync complete");
   return result;
 }

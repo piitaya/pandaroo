@@ -44,14 +44,21 @@ export function createServices(
   log: FastifyBaseLogger,
 ): AppServices {
   const bus = createEventBus();
-  const configStore = createConfigStore(initialConfig, configFilePath, bus);
+
+  const mqttLog = log.child({ module: "mqtt" });
+  const spoolmanLog = log.child({ module: "spoolman" });
+  const spoolLog = log.child({ module: "spool" });
+  const amsLog = log.child({ module: "ams" });
+  const configLog = log.child({ module: "config" });
+
+  const configStore = createConfigStore(initialConfig, configFilePath, bus, configLog);
 
   const spoolRepo = createSpoolRepository(db);
   const syncStateRepo = createSyncStateRepository(db);
 
-  const spoolService = createSpoolService(spoolRepo, syncStateRepo, mapping, bus);
+  const spoolService = createSpoolService(spoolRepo, syncStateRepo, mapping, bus, spoolLog);
   const printerPool = createPrinterConnectionPool();
-  const amsDetector = createAmsChangeDetector(bus);
+  const amsDetector = createAmsChangeDetector(bus, amsLog);
 
   const createSyncDeps = (): SyncDeps => {
     const config = configStore.current;
@@ -61,13 +68,14 @@ export function createServices(
       mapping: mapping.byId,
       spoolmanUrl: config.spoolman.url ?? "",
       archiveOnEmpty: config.spoolman.archive_on_empty ?? false,
+      log: spoolmanLog,
     };
   };
 
   const syncListener = createSpoolmanSyncListener({
     createSyncDeps,
     bus,
-    log,
+    log: spoolmanLog,
     getConfig: () => configStore.current,
   });
 
@@ -78,16 +86,22 @@ export function createServices(
   });
 
   bus.on("printer:status-changed", (printer, status) => {
-    log.info(
+    mqttLog.info(
       { serial: printer.serial, name: printer.name, status },
-      "printer status",
+      "Printer status",
     );
   });
 
   bus.on("config:changed", (config) => {
     mapping.setInterval(config.filament_catalog.refresh_interval_hours);
-    syncPrinters(config.printers, printerPool, bus);
+    syncPrinters(config.printers, printerPool, bus, mqttLog);
   });
+
+  log.info({
+    printerCount: initialConfig.printers.length,
+    spoolmanUrl: initialConfig.spoolman.url ?? null,
+    autoSync: initialConfig.spoolman.auto_sync,
+  }, "Config loaded");
 
   return {
     configStore,
@@ -105,17 +119,19 @@ export function createServices(
     startAll() {
       amsDetector.start();
       syncListener.start();
-      // Initial sync from current config
       const config = configStore.current;
-      syncPrinters(config.printers, printerPool, bus);
+      syncPrinters(config.printers, printerPool, bus, mqttLog);
+      log.info("Services started");
     },
 
     async stopAll() {
+      log.info("Services stopping");
       syncListener.stop();
       amsDetector.stop();
       await disconnectAll(printerPool);
       mapping.stop();
       sqlite.close();
+      log.info("Services stopped");
     },
   };
 }

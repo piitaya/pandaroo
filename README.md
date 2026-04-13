@@ -161,11 +161,33 @@ For the curious:
 
 ### Environment variables
 
-| Var        | Default   | Purpose                                       |
-| ---------- | --------- | --------------------------------------------- |
-| `PORT`     | `4000`    | HTTP port                                     |
-| `HOST`     | `0.0.0.0` | Bind address                                  |
-| `DATA_DIR` | `./data`  | Where `config.json` and `filaments.json` live |
+| Var          | Default   | Purpose                                                    |
+| ------------ | --------- | ---------------------------------------------------------- |
+| `PORT`       | `4000`    | HTTP port                                                  |
+| `HOST`       | `0.0.0.0` | Bind address                                               |
+| `DATA_DIR`   | `./data`  | Where `config.json` and `filaments.json` live              |
+| `LOG_LEVEL`  | `info`    | Log verbosity: `fatal`, `error`, `warn`, `info`, `debug`  |
+| `LOG_FORMAT` | `pretty`  | Set to `json` for machine-readable JSON output             |
+
+### Logging
+
+Logs are written to stdout in human-readable format by default. At `info` level (the default) you see printer connections, new spools, errors, and config changes. Set `LOG_LEVEL=debug` for detailed diagnostics (AMS heartbeats, Spoolman HTTP calls, sync details).
+
+```yaml
+# docker-compose.yml
+services:
+  bambu-spoolman-sync:
+    environment:
+      - LOG_LEVEL=debug        # verbose output for troubleshooting
+      - LOG_FORMAT=json         # machine-readable (for log aggregation)
+```
+
+Common messages to look for when troubleshooting:
+
+* **`printer connection error` with `errorCode="unauthorized"`** — wrong access code
+* **`printer not responding`** — wrong IP, printer off, or firewall blocking port 8883
+* **`spoolman request failed`** — Spoolman URL is wrong or Spoolman is down
+* **`spool skipped` with `reason="not_matched"`** — spool variant not in the community filament catalog
 
 ## License
 

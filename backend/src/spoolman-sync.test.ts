@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createTestLogger } from "./test-helpers/logger.js";
 import { syncByTagIds, type SyncDeps } from "./spoolman-sync.js";
 import {
   createSpoolmanClient,
@@ -94,6 +95,7 @@ function buildDeps(rows: SpoolRow[], overrides?: Partial<SyncDeps>): SyncDeps {
     mapping,
     spoolmanUrl: "http://spoolman.local",
     archiveOnEmpty: false,
+    log: createTestLogger(),
     ...overrides,
   };
 }

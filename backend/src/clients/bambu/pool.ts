@@ -1,3 +1,4 @@
+import type { FastifyBaseLogger } from "fastify";
 import type { Printer } from "@bambu-spoolman-sync/shared";
 import type { AppEventBus } from "../../events.js";
 import { connect, type InternalClient, type PrinterRuntime } from "./connection.js";
@@ -12,6 +13,7 @@ export function syncPrinters(
   target: Printer[],
   state: PrinterConnectionPool,
   bus: AppEventBus,
+  log: FastifyBaseLogger,
 ): void {
   const wanted = new Map(
     target.filter((p) => p.enabled).map((p) => [p.serial, p]),
@@ -24,6 +26,7 @@ export function syncPrinters(
       client.printer.host !== next.host ||
       client.printer.access_code !== next.access_code;
     if (changed) {
+      log.info({ serial }, "Disconnecting printer (config changed)");
       client.disconnect().catch(() => {});
       state.delete(serial);
     } else {
@@ -33,7 +36,7 @@ export function syncPrinters(
 
   for (const printer of wanted.values()) {
     if (state.has(printer.serial)) continue;
-    state.set(printer.serial, connect(printer, bus));
+    state.set(printer.serial, connect(printer, bus, log));
   }
 }
 

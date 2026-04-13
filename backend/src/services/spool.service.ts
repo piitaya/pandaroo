@@ -3,6 +3,7 @@ import type { SpoolRepository, SpoolRow } from "../db/spool.repository.js";
 import type { SyncStateRepository, SpoolSyncStateRow } from "../db/sync-state.repository.js";
 import type { Mapping } from "../filament-catalog.js";
 import { matchSpool } from "../filament-catalog.js";
+import type { FastifyBaseLogger } from "fastify";
 import type { AppEventBus } from "../events.js";
 
 function hasTagId(data: SpoolReading): data is SpoolReading & { tag_id: string } {
@@ -95,6 +96,7 @@ export function createSpoolService(
   syncStateRepo: SyncStateRepository,
   mapping: Mapping,
   bus: AppEventBus,
+  log: FastifyBaseLogger,
 ): SpoolService {
   return {
     list() {
@@ -131,7 +133,9 @@ export function createSpoolService(
     },
 
     delete(tagId) {
-      return spoolRepo.delete(tagId);
+      const deleted = spoolRepo.delete(tagId);
+      if (deleted) log.info({ tagId }, "Spool deleted");
+      return deleted;
     },
 
     listTagIds() {
@@ -147,6 +151,7 @@ export function createSpoolService(
       const loc = options?.location;
 
       if (existing) {
+        log.debug({ tagId: data.tag_id, remain: data.remain }, "Spool updated");
         spoolRepo.update(data.tag_id, {
           variantId: data.variant_id ?? existing.variantId,
           material: data.material ?? existing.material,
@@ -164,6 +169,7 @@ export function createSpoolService(
           lastUpdated: now,
         });
       } else {
+        log.info({ tagId: data.tag_id, material: data.material, product: data.product }, "New spool detected");
         spoolRepo.create({
           tagId: data.tag_id,
           variantId: data.variant_id,

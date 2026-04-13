@@ -1,3 +1,4 @@
+import type { FastifyBaseLogger } from "fastify";
 import type { SpoolReading, AmsSlot } from "@bambu-spoolman-sync/shared";
 import type { AppEventBus } from "../events.js";
 
@@ -15,7 +16,7 @@ export interface AmsChangeDetector {
   stop(): void;
 }
 
-export function createAmsChangeDetector(bus: AppEventBus): AmsChangeDetector {
+export function createAmsChangeDetector(bus: AppEventBus, log: FastifyBaseLogger): AmsChangeDetector {
   const lastSignature = new Map<string, string>();
 
   const onAmsReported = (_printer: unknown, ams_units: { slots: AmsSlot[] }[]) => {
@@ -24,6 +25,9 @@ export function createAmsChangeDetector(bus: AppEventBus): AmsChangeDetector {
         const key = slotKey(slot);
 
         if (!slot.spool?.tag_id) {
+          if (lastSignature.has(key)) {
+            log.debug({ printerSerial: slot.printer_serial, amsId: slot.ams_id, slotId: slot.slot_id }, "AMS slot emptied");
+          }
           lastSignature.delete(key);
           continue;
         }
@@ -31,6 +35,8 @@ export function createAmsChangeDetector(bus: AppEventBus): AmsChangeDetector {
         const sig = slotSignature(slot);
         if (lastSignature.get(key) === sig) continue;
         lastSignature.set(key, sig);
+
+        log.debug({ printerSerial: slot.printer_serial, amsId: slot.ams_id, slotId: slot.slot_id, tagId: slot.spool.tag_id }, "AMS slot changed");
 
         bus.emit("spool:detected", slot.spool as SpoolReading & { tag_id: string }, {
           printer_serial: slot.printer_serial,

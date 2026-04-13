@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { createSpoolmanSyncListener } from "./spoolman-sync-listener.js";
 import { createEventBus, type AppEventBus } from "../events.js";
 import type { Config } from "@bambu-spoolman-sync/shared";
+import { createTestLogger } from "../test-helpers/logger.js";
 
 vi.mock("../spoolman-sync.js", () => ({
   syncByTagIds: vi.fn().mockResolvedValue({ synced: [], skipped: [], errors: [] }),
@@ -32,7 +33,7 @@ describe("SpoolmanSyncListener", () => {
     const listener = createSpoolmanSyncListener({
       createSyncDeps: () => ({} as any),
       bus,
-      log: { warn: vi.fn() },
+      log: createTestLogger(),
       getConfig: () => baseConfig,
     });
     listener.start();
@@ -60,7 +61,7 @@ describe("SpoolmanSyncListener", () => {
     const listener = createSpoolmanSyncListener({
       createSyncDeps: () => ({} as any),
       bus,
-      log: { warn: vi.fn() },
+      log: createTestLogger(),
       getConfig: () => disabledConfig,
     });
     listener.start();
@@ -77,7 +78,7 @@ describe("SpoolmanSyncListener", () => {
     const listener = createSpoolmanSyncListener({
       createSyncDeps: () => ({} as any),
       bus,
-      log: { warn: vi.fn() },
+      log: createTestLogger(),
       getConfig: () => baseConfig,
     });
     listener.start();
