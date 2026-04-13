@@ -1,6 +1,10 @@
 import { Type, type Static } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export const ErrorResponse = Type.Object({
   error: Type.String(),
 });
@@ -13,11 +17,11 @@ export const NullableString = Type.Union([Type.String(), Type.Null()]);
 export const NullableNumber = Type.Union([Type.Number(), Type.Null()]);
 
 export const MatchTypeEnum = Type.Union([
-  Type.Literal("matched"),
-  Type.Literal("known_unmapped"),
+  Type.Literal("mapped"),
+  Type.Literal("unmapped"),
   Type.Literal("unknown_variant"),
   Type.Literal("third_party"),
-  Type.Literal("unknown_spool"),
+  Type.Literal("unidentified"),
   Type.Literal("empty"),
 ]);
 
@@ -70,10 +74,14 @@ export const LocalSpoolResponse = Type.Object({
   material: NullableString,
   product: NullableString,
   color_hex: NullableString,
+  color_hexes: Type.Union([Type.Array(Type.String()), Type.Null()]),
   color_name: NullableString,
   weight: NullableNumber,
   remain: NullableNumber,
   last_used: NullableString,
+  last_printer_serial: NullableString,
+  last_ams_id: NullableNumber,
+  last_slot_id: NullableNumber,
   first_seen: Type.String(),
   last_updated: Type.String(),
   sync: SyncStateSchema,

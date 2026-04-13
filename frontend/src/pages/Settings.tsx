@@ -44,30 +44,30 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    if (data?.config.mapping) {
+    if (data?.config.filament_catalog) {
       form.setValues({
-        refresh_interval_hours: data.config.mapping.refresh_interval_hours
+        refresh_interval_hours: data.config.filament_catalog.refresh_interval_hours
       });
       form.resetDirty({
-        refresh_interval_hours: data.config.mapping.refresh_interval_hours
+        refresh_interval_hours: data.config.filament_catalog.refresh_interval_hours
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.config.mapping.refresh_interval_hours]);
+  }, [data?.config.filament_catalog.refresh_interval_hours]);
 
   const save = async (values: FormValues) => {
     if (!data) return;
     await put.mutateAsync({
       ...data.config,
-      mapping: {
-        ...data.config.mapping,
+      filament_catalog: {
+        ...data.config.filament_catalog,
         refresh_interval_hours: values.refresh_interval_hours
       }
     });
   };
 
-  const fetchedAt = state?.mapping.fetched_at
-    ? new Date(state.mapping.fetched_at).toLocaleString()
+  const fetchedAt = state?.filament_catalog.fetched_at
+    ? new Date(state.filament_catalog.fetched_at).toLocaleString()
     : t("settings.mapping_card.never");
 
   const languageOptions = useMemo(
@@ -128,7 +128,7 @@ export default function SettingsPage() {
             <br />
             {t("settings.mapping_card.last_fetched", {
               when: fetchedAt,
-              count: state?.mapping.count ?? 0
+              count: state?.filament_catalog.count ?? 0
             })}
           </Text>
           <form onSubmit={form.onSubmit(save)}>

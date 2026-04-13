@@ -9,21 +9,21 @@ export interface MatchStatusInfo {
 }
 
 const MATCH_COLORS: Record<MatchType, string> = {
-  matched: "teal",
-  known_unmapped: "yellow",
+  mapped: "teal",
+  unmapped: "yellow",
   unknown_variant: "orange",
   third_party: "gray",
-  unknown_spool: "gray",
+  unidentified: "gray",
   empty: "gray"
 };
 
 /** Canonical display order for the legend. */
 export const MATCH_STATUS_ORDER: MatchType[] = [
-  "matched",
-  "known_unmapped",
+  "mapped",
+  "unmapped",
   "unknown_variant",
   "third_party",
-  "unknown_spool",
+  "unidentified",
   "empty"
 ];
 
@@ -36,14 +36,14 @@ export function useMatchStatus(): Record<MatchType, MatchStatusInfo> {
   const { t, i18n } = useTranslation();
   return useMemo(
     () => ({
-      matched: {
+      mapped: {
         label: t("status.mapped.label"),
-        color: MATCH_COLORS.matched,
+        color: MATCH_COLORS.mapped,
         description: t("status.mapped.description")
       },
-      known_unmapped: {
+      unmapped: {
         label: t("status.unmapped.label"),
-        color: MATCH_COLORS.known_unmapped,
+        color: MATCH_COLORS.unmapped,
         description: t("status.unmapped.description")
       },
       unknown_variant: {
@@ -56,10 +56,10 @@ export function useMatchStatus(): Record<MatchType, MatchStatusInfo> {
         color: MATCH_COLORS.third_party,
         description: t("status.third_party.description")
       },
-      unknown_spool: {
-        label: t("status.unknown_spool.label"),
-        color: MATCH_COLORS.unknown_spool,
-        description: t("status.unknown_spool.description")
+      unidentified: {
+        label: t("status.unidentified.label"),
+        color: MATCH_COLORS.unidentified,
+        description: t("status.unidentified.description")
       },
       empty: {
         label: t("status.empty.label"),

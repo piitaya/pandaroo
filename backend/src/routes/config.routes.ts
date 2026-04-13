@@ -1,10 +1,14 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
 import { ConfigSchema } from "../config.js";
-import type { RouteDeps } from "../context.js";
+import type { ConfigStore } from "../config-store.js";
 import { ErrorResponse } from "./schemas.js";
 
-export const configRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) => {
+export interface ConfigRouteDeps {
+  configStore: ConfigStore;
+}
+
+export const configRoutes: FastifyPluginAsync<ConfigRouteDeps> = async (app, { configStore }) => {
   app.get("/api/health", {
     schema: {
       tags: ["System"],
@@ -18,7 +22,7 @@ export const configRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) 
       tags: ["Config"],
       description: "Get the current configuration",
     },
-  }, async () => ({ config: ctx.config }));
+  }, async () => ({ config: configStore.current }));
 
   app.put("/api/config", {
     schema: {
@@ -28,7 +32,7 @@ export const configRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) 
       response: { 400: ErrorResponse },
     },
   }, async (req) => {
-    await ctx.applyConfig(req.body as Record<string, unknown>);
-    return { config: ctx.config };
+    await configStore.apply(req.body as Record<string, unknown>);
+    return { config: configStore.current };
   });
 };

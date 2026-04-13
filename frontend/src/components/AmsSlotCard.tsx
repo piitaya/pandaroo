@@ -128,7 +128,7 @@ function SlotFill({
 
 export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
   const isEmpty = s.type === "empty";
-  const isUnknownSpool = s.type === "unknown_spool";
+  const isUnknownSpool = s.type === "unidentified";
   const [opened, { open, close }] = useDisclosure(false);
   const { t } = useTranslation();
   const matchStatus = useMatchStatus();
@@ -146,7 +146,7 @@ export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
   const headline = isEmpty
     ? t("slot.no_spool_loaded")
     : isUnknownSpool
-      ? t("slot.unknown_spool")
+      ? t("slot.unidentified")
       : (colorName ?? material ?? "—");
   const secondary =
     isEmpty || isUnknownSpool
@@ -170,7 +170,7 @@ export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
             <Badge color={status.color} variant="light">
               {status.label}
             </Badge>
-            {s.type === "matched" && spoolmanConfigured && (
+            {s.type === "mapped" && spoolmanConfigured && (
               <SyncIndicator sync={s.sync} />
             )}
             <ActionIcon

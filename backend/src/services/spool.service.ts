@@ -1,12 +1,31 @@
-import type { SpoolData, Spool, SyncState, FilamentEntry } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading, Spool, SyncState, CatalogEntry } from "@bambu-spoolman-sync/shared";
 import type { SpoolRepository, SpoolRow } from "../db/spool.repository.js";
 import type { SyncStateRepository, SpoolSyncStateRow } from "../db/sync-state.repository.js";
-import type { Mapping } from "../mapping.js";
-import { matchSpool } from "../mapping.js";
+import type { Mapping } from "../filament-catalog.js";
+import { matchSpool } from "../filament-catalog.js";
 import type { AppEventBus } from "../events.js";
 
-function hasUid(data: SpoolData): data is SpoolData & { uid: string } {
-  return !!data.uid;
+function hasTagId(data: SpoolReading): data is SpoolReading & { tag_id: string } {
+  return !!data.tag_id;
+}
+
+function isStringArray(arr: unknown[]): arr is string[] {
+  return arr.every((v) => typeof v === "string");
+}
+
+function parseColorHexes(raw: string | null): string[] | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && isStringArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function serializeColorHexes(hexes: string[] | null): string | null {
+  if (!hexes || hexes.length === 0) return null;
+  return isStringArray(hexes) ? JSON.stringify(hexes) : null;
 }
 
 export function deriveSyncState(
@@ -29,7 +48,7 @@ export function deriveSyncState(
 function enrichSpool(
   row: SpoolRow,
   syncRow: SpoolSyncStateRow | undefined,
-  mapping: Map<string, FilamentEntry>,
+  mapping: Map<string, CatalogEntry>,
 ): Spool {
   const match = matchSpool(
     { variant_id: row.variantId, material: row.material, product: row.product },
@@ -42,14 +61,23 @@ function enrichSpool(
     material: row.material,
     product: row.product,
     color_hex: row.colorHex,
+    color_hexes: parseColorHexes(row.colorHexes),
     color_name: match.entry?.color_name ?? null,
     weight: row.weight,
     remain: row.remain,
     last_used: row.lastUsed,
+    last_printer_serial: row.lastPrinterSerial,
+    last_ams_id: row.lastAmsId,
+    last_slot_id: row.lastSlotId,
     first_seen: row.firstSeen,
     last_updated: row.lastUpdated,
     sync: deriveSyncState(row, syncRow),
   };
+}
+
+export interface UpsertOptions {
+  lastUsed?: string;
+  location?: { printer_serial: string; ams_id: number; slot_id: number };
 }
 
 export interface SpoolService {
@@ -59,7 +87,7 @@ export interface SpoolService {
   listSyncStates(): Map<string, SyncState>;
   delete(tagId: string): boolean;
   listTagIds(): string[];
-  upsert(data: SpoolData, options?: { lastUsed?: string }): void;
+  upsert(data: SpoolReading, options?: UpsertOptions): void;
 }
 
 export function createSpoolService(
@@ -111,37 +139,50 @@ export function createSpoolService(
     },
 
     upsert(data, options) {
-      if (!hasUid(data)) return;
+      if (!hasTagId(data)) return;
       const now = new Date().toISOString();
-      const existing = spoolRepo.findByTagId(data.uid);
+      const existing = spoolRepo.findByTagId(data.tag_id);
+
+      const colorHexes = serializeColorHexes(data.color_hexes);
+      const loc = options?.location;
 
       if (existing) {
-        spoolRepo.update(data.uid, {
+        spoolRepo.update(data.tag_id, {
           variantId: data.variant_id ?? existing.variantId,
           material: data.material ?? existing.material,
           product: data.product ?? existing.product,
           colorHex: data.color_hex ?? existing.colorHex,
+          colorHexes: colorHexes ?? existing.colorHexes,
           weight: data.weight ?? existing.weight,
           remain: data.remain ?? existing.remain,
           lastUsed: options?.lastUsed ?? existing.lastUsed,
+          ...(loc && {
+            lastPrinterSerial: loc.printer_serial,
+            lastAmsId: loc.ams_id,
+            lastSlotId: loc.slot_id,
+          }),
           lastUpdated: now,
         });
       } else {
         spoolRepo.create({
-          tagId: data.uid,
+          tagId: data.tag_id,
           variantId: data.variant_id,
           material: data.material,
           product: data.product,
           colorHex: data.color_hex,
+          colorHexes,
           weight: data.weight,
           remain: data.remain,
           lastUsed: options?.lastUsed,
+          lastPrinterSerial: loc?.printer_serial ?? null,
+          lastAmsId: loc?.ams_id ?? null,
+          lastSlotId: loc?.slot_id ?? null,
           lastUpdated: now,
           firstSeen: now,
         });
       }
 
-      bus.emit("spool:changed", data.uid);
+      bus.emit("spool:updated", data.tag_id);
     },
   };
 }

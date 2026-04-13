@@ -1,17 +1,25 @@
 import type { FastifyPluginAsync } from "fastify";
-import { matchSlot } from "../mapping.js";
-import type { RouteDeps } from "../context.js";
-import { listRuntimes } from "../clients/bambu.client.js";
+import { matchSlot, type Mapping } from "../filament-catalog.js";
+import type { ConfigStore } from "../config-store.js";
+import type { SpoolService } from "../services/spool.service.js";
+import { listRuntimes, type PrinterConnectionPool } from "../clients/bambu/index.js";
 
-export const stateRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) => {
+export interface StateRouteDeps {
+  configStore: ConfigStore;
+  mapping: Mapping;
+  printerPool: PrinterConnectionPool;
+  spoolService: SpoolService;
+}
+
+export const stateRoutes: FastifyPluginAsync<StateRouteDeps> = async (app, { configStore, mapping, printerPool, spoolService }) => {
   app.get("/api/state", {
     schema: {
       tags: ["State"],
       description: "Get live printer status, AMS contents, and sync state",
     },
   }, async () => {
-    const { config, mapping, printerConnections, spoolService } = ctx;
-    const runtimes = listRuntimes(printerConnections);
+    const config = configStore.current;
+    const runtimes = listRuntimes(printerPool);
     const bySerial = new Map(runtimes.map((r) => [r.printer.serial, r]));
     const syncStates = spoolService.listSyncStates();
 
@@ -21,11 +29,11 @@ export const stateRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) =
         id: unit.id,
         nozzle_id: unit.nozzle_id,
         slots: unit.slots.map((slot) => {
-          const uid = slot.spool?.uid ?? null;
+          const tagId = slot.spool?.tag_id ?? null;
           return {
             slot,
             ...matchSlot(slot, mapping.byId),
-            sync: (uid && syncStates.get(uid)) ?? { status: "never" as const },
+            sync: (tagId && syncStates.get(tagId)) ?? { status: "never" as const },
           };
         }),
       }));
@@ -41,7 +49,7 @@ export const stateRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) =
 
     return {
       printers,
-      mapping: {
+      filament_catalog: {
         count: mapping.byId.size,
         fetched_at: mapping.fetchedAt,
       },

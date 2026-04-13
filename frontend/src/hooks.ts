@@ -168,7 +168,7 @@ export const useRefreshMapping = () => {
   const qc = useQueryClient();
   const toast = useToasts();
   return useMutation({
-    mutationFn: () => api.refreshMapping(),
+    mutationFn: () => api.refreshFilamentCatalog(),
     onSuccess: ({ count }) => {
       qc.invalidateQueries({ queryKey: STATE_KEY });
       toast.success(t("settings.mapping_card.refreshed", { count }));

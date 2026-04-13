@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { matchSlot, matchSpool, type FilamentEntry } from "./mapping.js";
-import type { AmsSlot, SpoolData } from "@bambu-spoolman-sync/shared";
+import { matchSlot, matchSpool, type CatalogEntry } from "./filament-catalog.js";
+import type { AmsSlot, SpoolReading } from "@bambu-spoolman-sync/shared";
 
-const mapping = new Map<string, FilamentEntry>([
+const mapping = new Map<string, CatalogEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
   ["A18-B0", { id: "A18-B0", spoolman_id: null }],
 ]);
 
-const spool = (over: Partial<SpoolData> = {}): SpoolData => ({
-  uid: "UUID1",
+const spool = (over: Partial<SpoolReading> = {}): SpoolReading => ({
+  tag_id: "UUID1",
   variant_id: "A01-B6",
   material: "PLA",
   product: "PLA Matte",
@@ -22,7 +22,7 @@ const spool = (over: Partial<SpoolData> = {}): SpoolData => ({
 });
 
 const slot = (over?: {
-  spool?: SpoolData | null;
+  spool?: SpoolReading | null;
   has_spool?: boolean;
 }): AmsSlot => ({
   printer_serial: "AC12",
@@ -36,13 +36,13 @@ const slot = (over?: {
 describe("matchSpool", () => {
   it("matches a known variant with a spoolman_id", () => {
     const r = matchSpool(spool(), mapping);
-    expect(r.type).toBe("matched");
+    expect(r.type).toBe("mapped");
     expect(r.entry?.id).toBe("A01-B6");
   });
 
-  it("returns known_unmapped when variant exists but spoolman_id is null", () => {
+  it("returns unmapped when variant exists but spoolman_id is null", () => {
     const r = matchSpool(spool({ variant_id: "A18-B0" }), mapping);
-    expect(r.type).toBe("known_unmapped");
+    expect(r.type).toBe("unmapped");
   });
 
   it("returns unknown_variant for an id not in the mapping", () => {
@@ -58,12 +58,12 @@ describe("matchSpool", () => {
     expect(r.type).toBe("third_party");
   });
 
-  it("returns unknown_spool when no info at all", () => {
+  it("returns unidentified when no info at all", () => {
     const r = matchSpool(
       spool({ variant_id: null, material: null, product: null }),
       mapping,
     );
-    expect(r.type).toBe("unknown_spool");
+    expect(r.type).toBe("unidentified");
   });
 });
 
@@ -72,14 +72,14 @@ describe("matchSlot", () => {
     expect(matchSlot(slot({ has_spool: false }), mapping).type).toBe("empty");
   });
 
-  it("returns unknown_spool when spool is present but has no data", () => {
+  it("returns unidentified when spool is present but has no data", () => {
     expect(
       matchSlot(slot({ spool: null, has_spool: true }), mapping).type,
-    ).toBe("unknown_spool");
+    ).toBe("unidentified");
   });
 
   it("delegates to matchSpool when spool exists", () => {
-    expect(matchSlot(slot(), mapping).type).toBe("matched");
+    expect(matchSlot(slot(), mapping).type).toBe("mapped");
   });
 
   it("does not try to match by color or name", () => {

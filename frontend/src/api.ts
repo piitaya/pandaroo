@@ -66,7 +66,7 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 export function collectActiveTagIds(state: AppState): string[] {
   return state.printers.flatMap((p) =>
     p.ams_units.flatMap((u) =>
-      u.slots.map((s) => s.slot.spool?.uid).filter((uid): uid is string => !!uid)
+      u.slots.map((s) => s.slot.spool?.tag_id).filter((tag_id): tag_id is string => !!tag_id)
     )
   );
 }
@@ -93,8 +93,8 @@ export const api = {
       method: "DELETE"
     }),
   getState: () => req<AppState>("/api/state"),
-  refreshMapping: () =>
-    req<{ count: number }>("/api/mapping/refresh", { method: "POST" }),
+  refreshFilamentCatalog: () =>
+    req<{ count: number }>("/api/filament-catalog/refresh", { method: "POST" }),
   testSpoolman: () =>
     req<{
       ok: true;

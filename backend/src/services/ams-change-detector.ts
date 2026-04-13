@@ -1,0 +1,53 @@
+import type { SpoolReading, AmsSlot } from "@bambu-spoolman-sync/shared";
+import type { AppEventBus } from "../events.js";
+
+function slotKey(slot: AmsSlot): string {
+  return `${slot.printer_serial}|${slot.ams_id}|${slot.slot_id}`;
+}
+
+function slotSignature(slot: AmsSlot): string {
+  const s = slot.spool;
+  return `${s?.tag_id}|${s?.remain}|${s?.weight}`;
+}
+
+export interface AmsChangeDetector {
+  start(): void;
+  stop(): void;
+}
+
+export function createAmsChangeDetector(bus: AppEventBus): AmsChangeDetector {
+  const lastSignature = new Map<string, string>();
+
+  const onAmsReported = (_printer: unknown, ams_units: { slots: AmsSlot[] }[]) => {
+    for (const unit of ams_units) {
+      for (const slot of unit.slots) {
+        const key = slotKey(slot);
+
+        if (!slot.spool?.tag_id) {
+          lastSignature.delete(key);
+          continue;
+        }
+
+        const sig = slotSignature(slot);
+        if (lastSignature.get(key) === sig) continue;
+        lastSignature.set(key, sig);
+
+        bus.emit("spool:detected", slot.spool as SpoolReading & { tag_id: string }, {
+          printer_serial: slot.printer_serial,
+          ams_id: slot.ams_id,
+          slot_id: slot.slot_id,
+        });
+      }
+    }
+  };
+
+  return {
+    start() {
+      bus.on("ams:reported", onAmsReported);
+    },
+    stop() {
+      bus.off("ams:reported", onAmsReported);
+      lastSignature.clear();
+    },
+  };
+}

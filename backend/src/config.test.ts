@@ -12,7 +12,7 @@ describe("ConfigSchema", () => {
     expect(Value.Check(ConfigSchema, coerced)).toBe(true);
     const c = coerced as any;
     expect(c.printers).toEqual([]);
-    expect(c.mapping.refresh_interval_hours).toBe(24);
+    expect(c.filament_catalog.refresh_interval_hours).toBe(24);
   });
 
   it("rejects a printer missing required fields", () => {

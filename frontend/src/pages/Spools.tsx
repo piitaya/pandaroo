@@ -37,7 +37,7 @@ const syncSortRank: Record<SyncStatus, number> = {
 const UNMATCHED_SORT_RANK = 4;
 
 function syncSortValue(spool: Spool): number {
-  return spool.match_type === "matched"
+  return spool.match_type === "mapped"
     ? syncSortRank[spool.sync.status]
     : UNMATCHED_SORT_RANK;
 }
@@ -188,7 +188,7 @@ export default function SpoolsPage() {
               width: 90,
               textAlign: "center",
               render: (spool) => {
-                if (spool.match_type !== "matched") {
+                if (spool.match_type !== "mapped") {
                   return (
                     <Text
                       c="dimmed"

@@ -1,12 +1,18 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
-import type { SpoolData } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading } from "@bambu-spoolman-sync/shared";
 import { SpoolScanSchema, type SpoolScan } from "./schemas.js";
-import type { RouteDeps } from "../context.js";
+import type { ConfigStore } from "../config-store.js";
+import type { SpoolService } from "../services/spool.service.js";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
 import { ErrorResponse, LocalSpoolResponse, OkResponse } from "./schemas.js";
 
-export const spoolRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) => {
+export interface SpoolRouteDeps {
+  configStore: ConfigStore;
+  spoolService: SpoolService;
+}
+
+export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { configStore, spoolService }) => {
   app.get("/api/spools", {
     schema: {
       tags: ["Spools"],
@@ -14,7 +20,7 @@ export const spoolRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) =
       response: { 200: Type.Array(LocalSpoolResponse) },
     },
   }, async () => {
-    return ctx.spoolService.list();
+    return spoolService.list();
   });
 
   app.get<{ Params: { tagId: string } }>("/api/spools/:tagId", {
@@ -25,7 +31,7 @@ export const spoolRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) =
       response: { 200: LocalSpoolResponse, 404: ErrorResponse },
     },
   }, async (req, reply) => {
-    const spool = ctx.spoolService.findByTagId(req.params.tagId);
+    const spool = spoolService.findByTagId(req.params.tagId);
     if (!spool) {
       reply.code(404);
       return { error: "No spool found with this tag id." };
@@ -42,13 +48,20 @@ export const spoolRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) =
     },
   }, async (req) => {
     const body = req.body as SpoolScan;
-    const scan: SpoolData = {
-      ...body,
+    const scan: SpoolReading = {
+      tag_id: body.uid,
+      variant_id: body.variant_id,
+      material: body.material,
+      product: body.product,
+      color_hex: body.color_hex,
       color_hexes: body.color_hexes ?? null,
+      weight: body.weight,
+      temp_min: body.temp_min,
+      temp_max: body.temp_max,
       remain: body.remain ?? null,
     };
-    ctx.spoolService.upsert(scan);
-    return ctx.spoolService.findByTagId(body.uid)!;
+    spoolService.upsert(scan);
+    return spoolService.findByTagId(body.uid)!;
   });
 
   app.delete<{ Params: { tagId: string } }>("/api/spools/:tagId", {
@@ -60,22 +73,23 @@ export const spoolRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) =
     },
   }, async (req, reply) => {
     const { tagId } = req.params;
-    const spool = ctx.spoolService.findByTagId(tagId);
+    const spool = spoolService.findByTagId(tagId);
 
-    const deleted = ctx.spoolService.delete(tagId);
+    const deleted = spoolService.delete(tagId);
     if (!deleted) {
       reply.code(404);
       return { error: "No spool found with this tag id." };
     }
 
+    const { spoolman } = configStore.current;
     if (
-      ctx.config.spoolman.auto_sync &&
-      ctx.config.spoolman.url &&
+      spoolman.auto_sync &&
+      spoolman.url &&
       spool &&
       (spool.sync.status === "synced" || spool.sync.status === "stale")
     ) {
       try {
-        const client = createSpoolmanClient(ctx.config.spoolman.url);
+        const client = createSpoolmanClient(spoolman.url);
         await client.deleteSpool(spool.sync.spoolman_spool_id);
       } catch {
         // Best-effort: local spool is already deleted

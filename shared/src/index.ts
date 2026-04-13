@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
-// Spool data — raw attributes from MQTT or NFC scan
+// Spool reading — raw attributes from MQTT or NFC scan
 // ---------------------------------------------------------------------------
 
-export interface SpoolData {
-  uid: string | null;
+export interface SpoolReading {
+  tag_id: string | null;
   variant_id: string | null;
   material: string | null;
   product: string | null;
@@ -21,7 +21,7 @@ export interface AmsSlot {
   slot_id: number;
   nozzle_id: number | null;
   has_spool: boolean;
-  spool: SpoolData | null;
+  spool: SpoolReading | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -29,19 +29,20 @@ export interface AmsSlot {
 // ---------------------------------------------------------------------------
 
 export type MatchType =
-  | "matched"
-  | "known_unmapped"
+  | "mapped"
+  | "unmapped"
   | "unknown_variant"
   | "third_party"
-  | "unknown_spool"
+  | "unidentified"
   | "empty";
 
-export interface FilamentEntry {
+export interface CatalogEntry {
   id: string;
   code?: string;
   material?: string;
   color_name?: string;
   color_hex?: string;
+  /** Spoolman external filament ID (field name matches community DB format) */
   spoolman_id?: string | null;
 }
 
@@ -68,10 +69,14 @@ export interface Spool {
   material: string | null;
   product: string | null;
   color_hex: string | null;
+  color_hexes: string[] | null;
   color_name: string | null;
   weight: number | null;
   remain: number | null;
   last_used: string | null;
+  last_printer_serial: string | null;
+  last_ams_id: number | null;
+  last_slot_id: number | null;
   first_seen: string;
   last_updated: string;
   sync: SyncState;
@@ -111,7 +116,7 @@ export type PrinterPatch = Partial<Printer>;
 
 export interface Config {
   printers: Printer[];
-  mapping: {
+  filament_catalog: {
     refresh_interval_hours: number;
   };
   spoolman: {
@@ -143,7 +148,7 @@ export interface PrinterStatus {
 export interface AmsMatchedSlot {
   slot: AmsSlot;
   type: MatchType;
-  entry?: FilamentEntry;
+  entry?: CatalogEntry;
   sync: SyncState;
 }
 
@@ -163,7 +168,7 @@ export interface PrinterStateView {
 
 export interface AppState {
   printers: PrinterStateView[];
-  mapping: {
+  filament_catalog: {
     count: number;
     fetched_at: string | null;
   };

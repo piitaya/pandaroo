@@ -7,13 +7,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { configPath, loadConfig } from "./config.js";
-import { createMapping, mappingCachePath } from "./mapping.js";
-import { createAppContext } from "./context.js";
+import { createMapping, mappingCachePath } from "./filament-catalog.js";
+import { createServices } from "./composition-root.js";
 import { openDatabase } from "./db/database.js";
 
 import { configRoutes } from "./routes/config.routes.js";
 import { printerRoutes } from "./routes/printer.routes.js";
-import { mappingRoutes } from "./routes/mapping.routes.js";
+import { filamentCatalogRoutes } from "./routes/filament-catalog.routes.js";
 import { spoolmanRoutes } from "./routes/spoolman.routes.js";
 import { spoolRoutes } from "./routes/spool.routes.js";
 import { stateRoutes } from "./routes/state.routes.js";
@@ -40,20 +40,32 @@ export async function buildApp() {
   const mapping = await createMapping({
     url: MAPPING_SOURCE_URL,
     cachePath: mappingCachePath(),
-    intervalHours: config.mapping.refresh_interval_hours,
+    intervalHours: config.filament_catalog.refresh_interval_hours,
     onError: (err) => app.log.warn({ err }, "mapping refresh failed"),
   });
 
   const { db, sqlite } = openDatabase();
-  const ctx = createAppContext(config, cfgPath, db, sqlite, mapping, app.log);
-  ctx.syncFromConfig();
+  const services = createServices(config, cfgPath, db, sqlite, mapping, app.log);
+  services.startAll();
 
-  await app.register(configRoutes, { ctx });
-  await app.register(printerRoutes, { ctx });
-  await app.register(mappingRoutes, { ctx });
-  await app.register(spoolmanRoutes, { ctx });
-  await app.register(spoolRoutes, { ctx });
-  await app.register(stateRoutes, { ctx });
+  await app.register(configRoutes, { configStore: services.configStore });
+  await app.register(printerRoutes, { configStore: services.configStore });
+  await app.register(filamentCatalogRoutes, { mapping: services.mapping });
+  await app.register(spoolmanRoutes, {
+    configStore: services.configStore,
+    spoolService: services.spoolService,
+    createSyncDeps: services.createSyncDeps,
+  });
+  await app.register(spoolRoutes, {
+    configStore: services.configStore,
+    spoolService: services.spoolService,
+  });
+  await app.register(stateRoutes, {
+    configStore: services.configStore,
+    mapping: services.mapping,
+    printerPool: services.printerPool,
+    spoolService: services.spoolService,
+  });
 
   const __dirname = dirname(fileURLToPath(import.meta.url));
   const frontendDist = resolve(__dirname, "../../frontend/dist");
@@ -72,9 +84,9 @@ export async function buildApp() {
     });
   }
 
-  app.addHook("onClose", () => ctx.shutdown());
+  app.addHook("onClose", () => services.stopAll());
 
-  return { app, ctx };
+  return { app, services };
 }
 
 const isMain =
