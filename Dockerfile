@@ -10,11 +10,13 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
 COPY package.json package-lock.json ./
+COPY shared/package.json shared/package.json
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 RUN npm ci
 
 COPY tsconfig.json ./
+COPY shared ./shared
 COPY backend ./backend
 COPY frontend ./frontend
 RUN npm run build
@@ -27,6 +29,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
+COPY shared/package.json shared/package.json
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 RUN npm ci --omit=dev
