@@ -28,10 +28,12 @@ export const useAppState = () =>
     refetchInterval: 3000
   });
 
+// TODO: Replace polling with WebSocket or SSE for real-time updates
 export const useSpools = () =>
   useQuery({
     queryKey: SPOOLS_KEY,
     queryFn: api.listSpools,
+    refetchInterval: 5000,
   });
 
 // ---------------------------------------------------------------------------
@@ -128,6 +130,16 @@ export const usePutConfig = () => {
     mutationFn: (config: Config) => api.putConfig(config),
     successMessage: t("settings.saved"),
     invalidate: [CONFIG_KEY, STATE_KEY],
+  });
+};
+
+export const usePatchSpool = () => {
+  const { t } = useTranslation();
+  return useMutationWithToast({
+    mutationFn: ({ tagId, data }: { tagId: string; data: { remain?: number } }) =>
+      api.patchSpool(tagId, data),
+    successMessage: t("spools.notifications.updated"),
+    invalidate: [SPOOLS_KEY],
   });
 };
 

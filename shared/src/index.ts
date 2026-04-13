@@ -73,6 +73,8 @@ export interface Spool {
   color_name: string | null;
   weight: number | null;
   remain: number | null;
+  temp_min: number | null;
+  temp_max: number | null;
   last_used: string | null;
   last_printer_serial: string | null;
   last_ams_id: number | null;

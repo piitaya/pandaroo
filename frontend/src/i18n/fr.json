@@ -72,7 +72,8 @@
       "identification": "Identification",
       "physical": "Caractéristiques",
       "sync": "Synchronisation",
-      "source": "Source"
+      "source": "Source",
+      "history": "Historique"
     },
     "fields": {
       "color_name": "Couleur",
@@ -91,16 +92,20 @@
       "spoolman_spool": "Bobine Spoolman",
       "sync_last": "Dernière synchronisation",
       "sync_error": "Erreur de synchronisation",
-      "printer_serial": "Imprimante"
+      "printer_serial": "Imprimante",
+      "last_location": "Dernier emplacement",
+      "first_seen": "Première détection",
+      "last_used": "Dernière utilisation",
+      "last_updated": "Dernière mise à jour"
     },
     "sync_status": {
       "never": "Jamais synchronisé",
       "synced": "Synchronisé",
-      "stale": "Obsolète",
+      "stale": "À synchroniser",
       "error": "Erreur",
       "never_tooltip": "Pas encore synchronisé avec Spoolman",
       "synced_tooltip": "Synchronisé avec la bobine #{{spool_id}} · {{at}}",
-      "stale_tooltip": "Bobine #{{spool_id}} obsolète depuis {{at}} — le slot a changé",
+      "stale_tooltip": "Bobine #{{spool_id}} modifiée depuis {{at}} — à synchroniser",
       "error_tooltip": "Dernière synchronisation échouée : {{error}}",
       "open_in_spoolman": "Ouvrir dans Spoolman"
     }
@@ -213,13 +218,17 @@
     "sync_tooltip": {
       "never": "Pas encore synchronisée avec Spoolman",
       "synced": "Synchronisée · {{at}}",
-      "stale": "Les données de la bobine ont changé depuis la dernière synchronisation",
+      "stale": "Les données ont changé depuis la dernière synchronisation",
       "error": "Dernière synchronisation échouée : {{error}}"
     },
+    "adjust_remain": "Ajuster le poids",
+    "adjust_remain_title": "Filament restant",
+    "adjust_remain_hint": "Si cette bobine est dans un AMS qui reporte le poids restant, cette valeur sera automatiquement remplacée.",
     "remove_confirm_title": "Retirer la bobine ?",
     "remove_confirm_body": "« {{name}} » sera retirée de la base locale.",
     "notifications": {
-      "removed": "Bobine retirée"
+      "removed": "Bobine retirée",
+      "updated": "Bobine mise à jour"
     }
   },
   "spoolman": {

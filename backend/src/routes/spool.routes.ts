@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
 import type { SpoolReading } from "@bambu-spoolman-sync/shared";
-import { SpoolScanSchema, type SpoolScan } from "./schemas.js";
+import { SpoolScanSchema, SpoolPatchSchema, type SpoolScan, type SpoolPatch } from "./schemas.js";
 import type { ConfigStore } from "../config-store.js";
 import type { SpoolService } from "../services/spool.service.js";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
@@ -62,6 +62,24 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     };
     spoolService.upsert(scan);
     return spoolService.findByTagId(body.uid)!;
+  });
+
+  app.patch<{ Params: { tagId: string } }>("/api/spools/:tagId", {
+    schema: {
+      tags: ["Spools"],
+      description: "Update spool fields (e.g. adjust remaining %)",
+      params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
+      body: SpoolPatchSchema,
+      response: { 200: LocalSpoolResponse, 404: ErrorResponse },
+    },
+  }, async (req, reply) => {
+    const body = req.body as SpoolPatch;
+    const spool = spoolService.patch(req.params.tagId, body);
+    if (!spool) {
+      reply.code(404);
+      return { error: "No spool found with this tag id." };
+    }
+    return spool;
   });
 
   app.delete<{ Params: { tagId: string } }>("/api/spools/:tagId", {

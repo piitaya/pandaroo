@@ -10,6 +10,8 @@ export const spools = sqliteTable("spools", {
   colorHexes: text("color_hexes"),
   weight: real(),
   remain: integer(),
+  tempMin: integer("temp_min"),
+  tempMax: integer("temp_max"),
   lastUsed: text("last_used"),
   lastPrinterSerial: text("last_printer_serial"),
   lastAmsId: integer("last_ams_id"),

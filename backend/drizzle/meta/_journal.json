@@ -22,6 +22,13 @@
       "when": 1776278400000,
       "tag": "0002_spool_extended_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1776364800000,
+      "tag": "0003_spool_temperature",
+      "breakpoints": true
     }
   ]
 }

@@ -43,6 +43,11 @@ const SyncStateSchema = Type.Union([
   }),
 ]);
 
+export const SpoolPatchSchema = Type.Object({
+  remain: Type.Optional(Type.Integer({ minimum: 0, maximum: 100 })),
+});
+export type SpoolPatch = Static<typeof SpoolPatchSchema>;
+
 export const SpoolScanSchema = Type.Object({
   uid: Type.String({ minLength: 1 }),
   variant_id: Type.String(),
@@ -78,6 +83,8 @@ export const LocalSpoolResponse = Type.Object({
   color_name: NullableString,
   weight: NullableNumber,
   remain: NullableNumber,
+  temp_min: NullableNumber,
+  temp_max: NullableNumber,
   last_used: NullableString,
   last_printer_serial: NullableString,
   last_ams_id: NullableNumber,

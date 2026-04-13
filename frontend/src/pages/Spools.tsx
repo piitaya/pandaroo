@@ -5,13 +5,14 @@ import {
   ColorSwatch,
   Group,
   Loader,
+  Menu,
   Progress,
   Stack,
   Text,
   Title,
   Tooltip
 } from "@mantine/core";
-import { IconCircleFilled, IconRefresh, IconTrash } from "@tabler/icons-react";
+import { IconCircleFilled, IconDots, IconGauge, IconRefresh, IconTrash } from "@tabler/icons-react";
 import { DataTable, type DataTableSortStatus } from "mantine-datatable";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,6 +23,8 @@ import { spoolFillColor } from "../components/spoolFillColor";
 import { syncStatusColor } from "../components/syncStatusColor";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { EmptyStateCard } from "../components/EmptyStateCard";
+import { SpoolDetailModal } from "../components/SpoolDetailModal";
+import { AdjustRemainModal } from "../components/AdjustRemainModal";
 
 function formatDate(value: string): string {
   const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
@@ -70,7 +73,16 @@ export default function SpoolsPage() {
     direction: "desc",
   });
   const [toRemove, setToRemove] = useState<Spool | null>(null);
+  const [toAdjustId, setToAdjustId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
+
+  const spoolsByTagId = useMemo(
+    () => new Map(spools?.map((s) => [s.tag_id, s]) ?? []),
+    [spools],
+  );
+  const selected = selectedId ? spoolsByTagId.get(selectedId) ?? null : null;
+  const toAdjust = toAdjustId ? spoolsByTagId.get(toAdjustId) ?? null : null;
 
   const sorted = useMemo(
     () => (spools ? sortData(spools, sortStatus) : []),
@@ -112,6 +124,7 @@ export default function SpoolsPage() {
           idAccessor="tag_id"
           sortStatus={sortStatus}
           onSortStatusChange={setSortStatus}
+          onRowClick={({ record }) => setSelectedId(record.tag_id)}
           columns={[
             {
               accessor: "color_hex",
@@ -228,18 +241,53 @@ export default function SpoolsPage() {
               width: 50,
               textAlign: "center",
               render: (spool) => (
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  size="sm"
-                  onClick={() => setToRemove(spool)}
-                  aria-label={t("common.remove")}
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
+                <Menu position="bottom-end" withinPortal>
+                  <Menu.Target>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      size="sm"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <IconDots size={16} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<IconGauge size={14} />}
+                      onClick={(e) => { e.stopPropagation(); setToAdjustId(spool.tag_id); }}
+                    >
+                      {t("spools.adjust_remain")}
+                    </Menu.Item>
+                    <Menu.Item
+                      color="red"
+                      leftSection={<IconTrash size={14} />}
+                      onClick={(e) => { e.stopPropagation(); setToRemove(spool); }}
+                    >
+                      {t("common.remove")}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
               ),
             },
           ]}
+        />
+      )}
+
+      {toAdjust && (
+        <AdjustRemainModal
+          key={toAdjust.tag_id}
+          spool={toAdjust}
+          opened
+          onClose={() => setToAdjustId(null)}
+        />
+      )}
+
+      {selected && (
+        <SpoolDetailModal
+          spool={selected}
+          opened
+          onClose={() => setSelectedId(null)}
         />
       )}
 

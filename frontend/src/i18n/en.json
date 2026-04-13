@@ -72,7 +72,8 @@
       "identification": "Identification",
       "physical": "Physical",
       "sync": "Sync",
-      "source": "Source"
+      "source": "Source",
+      "history": "History"
     },
     "fields": {
       "color_name": "Color",
@@ -91,7 +92,11 @@
       "spoolman_spool": "Spoolman spool",
       "sync_last": "Last sync",
       "sync_error": "Sync error",
-      "printer_serial": "Printer"
+      "printer_serial": "Printer",
+      "last_location": "Last location",
+      "first_seen": "First seen",
+      "last_used": "Last used",
+      "last_updated": "Last updated"
     },
     "sync_status": {
       "never": "Never synced",
@@ -216,10 +221,14 @@
       "stale": "Spool data changed since last sync",
       "error": "Last sync failed: {{error}}"
     },
+    "adjust_remain": "Adjust remaining",
+    "adjust_remain_title": "Adjust filament remaining",
+    "adjust_remain_hint": "If this spool is loaded in an AMS that tracks remaining filament, this value will be automatically overwritten.",
     "remove_confirm_title": "Remove spool?",
     "remove_confirm_body": "\"{{name}}\" will be removed from the local database.",
     "notifications": {
-      "removed": "Spool removed"
+      "removed": "Spool removed",
+      "updated": "Spool updated"
     }
   },
   "spoolman": {

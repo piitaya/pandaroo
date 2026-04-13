@@ -32,6 +32,8 @@ function makeSpoolRow(over: Partial<SpoolRow> = {}): SpoolRow {
     colorHexes: null,
     weight: 1000,
     remain: 75,
+    tempMin: null,
+    tempMax: null,
     lastUsed: null,
     lastPrinterSerial: null,
     lastAmsId: null,

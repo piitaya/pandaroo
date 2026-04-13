@@ -66,6 +66,8 @@ function enrichSpool(
     color_name: match.entry?.color_name ?? null,
     weight: row.weight,
     remain: row.remain,
+    temp_min: row.tempMin,
+    temp_max: row.tempMax,
     last_used: row.lastUsed,
     last_printer_serial: row.lastPrinterSerial,
     last_ams_id: row.lastAmsId,
@@ -88,6 +90,7 @@ export interface SpoolService {
   listSyncStates(): Map<string, SyncState>;
   delete(tagId: string): boolean;
   listTagIds(): string[];
+  patch(tagId: string, data: { remain?: number }): Spool | undefined;
   upsert(data: SpoolReading, options?: UpsertOptions): void;
 }
 
@@ -132,6 +135,17 @@ export function createSpoolService(
       return result;
     },
 
+    patch(tagId, data) {
+      if (!spoolRepo.findByTagId(tagId)) return undefined;
+      const now = new Date().toISOString();
+      spoolRepo.update(tagId, { ...data, lastUpdated: now });
+      log.info({ tagId, ...data }, "Spool updated manually");
+      bus.emit("spool:updated", tagId);
+      const row = spoolRepo.findByTagId(tagId)!;
+      const syncRow = syncStateRepo.findByTagId(tagId);
+      return enrichSpool(row, syncRow, mapping.byId);
+    },
+
     delete(tagId) {
       const deleted = spoolRepo.delete(tagId);
       if (deleted) log.info({ tagId }, "Spool deleted");
@@ -160,6 +174,8 @@ export function createSpoolService(
           colorHexes: colorHexes ?? existing.colorHexes,
           weight: data.weight ?? existing.weight,
           remain: data.remain ?? existing.remain,
+          tempMin: data.temp_min ?? existing.tempMin,
+          tempMax: data.temp_max ?? existing.tempMax,
           lastUsed: options?.lastUsed ?? existing.lastUsed,
           ...(loc && {
             lastPrinterSerial: loc.printer_serial,
@@ -179,6 +195,8 @@ export function createSpoolService(
           colorHexes,
           weight: data.weight,
           remain: data.remain,
+          tempMin: data.temp_min,
+          tempMax: data.temp_max,
           lastUsed: options?.lastUsed,
           lastPrinterSerial: loc?.printer_serial ?? null,
           lastAmsId: loc?.ams_id ?? null,
