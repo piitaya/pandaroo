@@ -1,16 +1,20 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
 import { PrinterSchema } from "../config.js";
-import type { RouteDeps } from "../context.js";
+import type { ConfigStore } from "../config-store.js";
 import { ErrorResponse, OkResponse } from "./schemas.js";
+
+export interface PrinterRouteDeps {
+  configStore: ConfigStore;
+}
 
 const PrinterUpdateSchema = Type.Partial(PrinterSchema);
 const SerialParams = Type.Object({ serial: Type.String() });
 
-export const printerRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx }) => {
+export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, { configStore }) => {
   app.get("/api/printers", {
     schema: { tags: ["Printers"], description: "List all configured printers" },
-  }, async () => ctx.config.printers);
+  }, async () => configStore.current.printers);
 
   app.post("/api/printers", {
     schema: {
@@ -20,13 +24,13 @@ export const printerRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx })
       response: { 409: ErrorResponse },
     },
   }, async (req, reply) => {
-    const printer = req.body as typeof ctx.config.printers[number];
-    const { config } = ctx;
+    const printer = req.body as typeof configStore.current.printers[number];
+    const config = configStore.current;
     if (config.printers.some((p) => p.serial === printer.serial)) {
       reply.code(409);
       return { error: "A printer with this serial already exists." };
     }
-    await ctx.applyConfig({
+    await configStore.apply({
       ...config,
       printers: [...config.printers, printer],
     });
@@ -42,8 +46,8 @@ export const printerRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx })
       response: { 404: ErrorResponse, 409: ErrorResponse },
     },
   }, async (req, reply) => {
-    const body = req.body as Partial<typeof ctx.config.printers[number]>;
-    const { config } = ctx;
+    const body = req.body as Partial<typeof configStore.current.printers[number]>;
+    const config = configStore.current;
     const idx = config.printers.findIndex(
       (p) => p.serial === req.params.serial,
     );
@@ -64,7 +68,7 @@ export const printerRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx })
     const updated = { ...config.printers[idx], ...body };
     const printers = [...config.printers];
     printers[idx] = updated;
-    await ctx.applyConfig({ ...config, printers });
+    await configStore.apply({ ...config, printers });
     return updated;
   });
 
@@ -76,12 +80,12 @@ export const printerRoutes: FastifyPluginAsync<RouteDeps> = async (app, { ctx })
       response: { 200: OkResponse, 404: ErrorResponse },
     },
   }, async (req, reply) => {
-    const { config } = ctx;
+    const config = configStore.current;
     if (!config.printers.some((p) => p.serial === req.params.serial)) {
       reply.code(404);
       return { error: "not found" };
     }
-    await ctx.applyConfig({
+    await configStore.apply({
       ...config,
       printers: config.printers.filter(
         (p) => p.serial !== req.params.serial,

@@ -2,12 +2,12 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { SpoolData, AmsSlot, MatchType, FilamentEntry } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading, AmsSlot, MatchType, CatalogEntry } from "@bambu-spoolman-sync/shared";
 import { dataDir } from "./config.js";
 
-export type { FilamentEntry };
+export type { CatalogEntry };
 
-export const FilamentEntrySchema = Type.Object({
+export const CatalogEntrySchema = Type.Object({
   id: Type.String(),
   code: Type.Optional(Type.String()),
   material: Type.Optional(Type.String()),
@@ -16,32 +16,32 @@ export const FilamentEntrySchema = Type.Object({
   spoolman_id: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
-export const FilamentsFileSchema = Type.Array(FilamentEntrySchema);
+export const FilamentsFileSchema = Type.Array(CatalogEntrySchema);
 
 export interface MatchResult {
   type: MatchType;
-  entry?: FilamentEntry;
+  entry?: CatalogEntry;
 }
 
 export function matchSpool(
-  spool: Pick<SpoolData, "variant_id" | "material" | "product">,
-  mapping: Map<string, FilamentEntry>,
+  spool: Pick<SpoolReading, "variant_id" | "material" | "product">,
+  mapping: Map<string, CatalogEntry>,
 ): MatchResult {
   const hasInfo = !!spool.material || !!spool.variant_id || !!spool.product;
-  if (!hasInfo) return { type: "unknown_spool" };
+  if (!hasInfo) return { type: "unidentified" };
   if (!spool.variant_id) return { type: "third_party" };
   const entry = mapping.get(spool.variant_id);
   if (!entry) return { type: "unknown_variant" };
-  if (!entry.spoolman_id) return { type: "known_unmapped", entry };
-  return { type: "matched", entry };
+  if (!entry.spoolman_id) return { type: "unmapped", entry };
+  return { type: "mapped", entry };
 }
 
 export function matchSlot(
   slot: AmsSlot,
-  mapping: Map<string, FilamentEntry>,
+  mapping: Map<string, CatalogEntry>,
 ): MatchResult {
   if (!slot.has_spool) return { type: "empty" };
-  if (!slot.spool) return { type: "unknown_spool" };
+  if (!slot.spool) return { type: "unidentified" };
   return matchSpool(slot.spool, mapping);
 }
 
@@ -53,7 +53,7 @@ export interface MappingOptions {
 }
 
 export interface Mapping {
-  readonly byId: Map<string, FilamentEntry>;
+  readonly byId: Map<string, CatalogEntry>;
   readonly fetchedAt: Date | null;
   refresh(): Promise<number>;
   setInterval(hours: number): void;
@@ -65,7 +65,7 @@ export function mappingCachePath(): string {
 }
 
 export async function createMapping(opts: MappingOptions): Promise<Mapping> {
-  let byId = new Map<string, FilamentEntry>();
+  let byId = new Map<string, CatalogEntry>();
   let fetchedAt: Date | null = null;
   let intervalHours = opts.intervalHours;
   let timer: NodeJS.Timeout | null = null;

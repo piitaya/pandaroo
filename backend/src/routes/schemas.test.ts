@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseSpoolScan } from "./schemas.js";
-import { matchSpool, type FilamentEntry } from "../mapping.js";
+import { matchSpool, type CatalogEntry } from "../filament-catalog.js";
 
-const mapping = new Map<string, FilamentEntry>([
+const mapping = new Map<string, CatalogEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
 ]);
 
@@ -71,7 +71,7 @@ describe("SpoolScanSchema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       const match = matchSpool(result.data, mapping);
-      expect(match.type).toBe("matched");
+      expect(match.type).toBe("mapped");
       expect(match.entry?.spoolman_id).toBe("bambulab_pla_matte_darkblue");
     }
   });

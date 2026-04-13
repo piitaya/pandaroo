@@ -15,6 +15,13 @@
       "when": 1775909578981,
       "tag": "0001_spool_sync_state",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1776278400000,
+      "tag": "0002_spool_extended_fields",
+      "breakpoints": true
     }
   ]
 }

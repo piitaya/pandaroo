@@ -1,4 +1,4 @@
-import type { FilamentEntry, SpoolSyncResult, SyncResult } from "@bambu-spoolman-sync/shared";
+import type { CatalogEntry, SpoolSyncResult, SyncResult } from "@bambu-spoolman-sync/shared";
 import {
   type SpoolmanClient,
   type SpoolmanSpool,
@@ -6,19 +6,16 @@ import {
 } from "./clients/spoolman.client.js";
 import type { SpoolRow, SpoolRepository } from "./db/spool.repository.js";
 import type { SyncStateRepository } from "./db/sync-state.repository.js";
+import { errorMessage } from "./routes/schemas.js";
 
 function computeUsedWeight(weight: number, remain: number): number {
   return Math.max(0, weight * (1 - remain / 100));
 }
 
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
 export interface SyncDeps {
   spoolRepo: SpoolRepository;
   syncStateRepo: SyncStateRepository;
-  mapping: Map<string, FilamentEntry>;
+  mapping: Map<string, CatalogEntry>;
   spoolmanUrl: string;
   archiveOnEmpty: boolean;
 }
@@ -67,7 +64,7 @@ async function syncOneSpool(
 
 function resolveSpoolmanId(
   row: SpoolRow,
-  mapping: Map<string, FilamentEntry>,
+  mapping: Map<string, CatalogEntry>,
 ): string | null {
   if (!row.variantId) return null;
   const entry = mapping.get(row.variantId);

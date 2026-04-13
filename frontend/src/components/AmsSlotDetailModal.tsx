@@ -119,7 +119,7 @@ export function AmsSlotDetailModal({
   const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
   const autoSync = Boolean(configData?.config.spoolman?.auto_sync);
   const canManualSync =
-    slot.type === "matched" && spoolmanConfigured && !autoSync;
+    slot.type === "mapped" && spoolmanConfigured && !autoSync;
   const syncDotColor = syncStatusColor(slot.sync.status);
   const s = slot.slot;
   const sp = s.spool;
@@ -229,10 +229,10 @@ export function AmsSlotDetailModal({
                 value={<CopyableMono value={slot.entry.spoolman_id} />}
               />
             )}
-            {sp?.uid && (
+            {sp?.tag_id && (
               <Row
                 label={t("slot.fields.spool_uid")}
-                value={<CopyableMono value={sp?.uid} />}
+                value={<CopyableMono value={sp?.tag_id} />}
               />
             )}
 
@@ -264,10 +264,10 @@ export function AmsSlotDetailModal({
               />
             )}
 
-            {slot.type === "matched" && spoolmanConfigured && (
+            {slot.type === "mapped" && spoolmanConfigured && (
               <SectionHeader label={t("slot.sections.sync")} />
             )}
-            {slot.type === "matched" && spoolmanConfigured && (
+            {slot.type === "mapped" && spoolmanConfigured && (
               <Row
                 label={t("slot.fields.sync_status")}
                 value={
@@ -301,8 +301,8 @@ export function AmsSlotDetailModal({
                           color="gray"
                           loading={syncSpoolman.isPending}
                           onClick={() => {
-                            const uid = slot.slot.spool?.uid;
-                            if (uid) syncSpoolman.mutate([uid]);
+                            const tagId = slot.slot.spool?.tag_id;
+                            if (tagId) syncSpoolman.mutate([tagId]);
                           }}
                           aria-label={t("slot.sync_aria_label")}
                         >
@@ -314,7 +314,7 @@ export function AmsSlotDetailModal({
                 }
               />
             )}
-            {slot.type === "matched" &&
+            {slot.type === "mapped" &&
               (slot.sync.status === "synced" ||
                 slot.sync.status === "stale") && (
                 <Row
@@ -352,13 +352,13 @@ export function AmsSlotDetailModal({
                   }
                 />
               )}
-            {slot.type === "matched" && "at" in slot.sync && (
+            {slot.type === "mapped" && "at" in slot.sync && (
               <Row
                 label={t("slot.fields.sync_last")}
                 value={<Plain>{new Date(slot.sync.at).toLocaleString()}</Plain>}
               />
             )}
-            {slot.type === "matched" && slot.sync.status === "error" && (
+            {slot.type === "mapped" && slot.sync.status === "error" && (
               <Row
                 label={t("slot.fields.sync_error")}
                 value={<Plain>{slot.sync.error}</Plain>}

@@ -63,7 +63,7 @@
   "slot": {
     "label": "Slot {{n}}",
     "no_spool_loaded": "Aucune bobine chargée",
-    "unknown_spool": "Bobine non identifiée",
+    "unidentified": "Bobine non identifiée",
     "remaining": "Restant : {{value}}%",
     "details_aria_label": "Détails du slot",
     "sync_aria_label": "Synchroniser ce slot avec Spoolman",
@@ -124,7 +124,7 @@
       "label": "Tierce",
       "description": "Bobine non-Bambu ou sans étiquette RFID."
     },
-    "unknown_spool": {
+    "unidentified": {
       "label": "Non identifiée",
       "description": "Bobine détectée mais l'imprimante n'a pas encore d'information (par exemple une bobine tierce sans matériau renseigné)."
     },

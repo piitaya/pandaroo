@@ -35,7 +35,7 @@
     "all_disabled_body": "You have printers configured but none are enabled. Enable at least one to start watching its AMS.",
     "all_disabled_action": "Manage printers",
     "no_spoolman_title": "Spoolman not connected",
-    "no_spoolman_body": "Connect your Spoolman instance to start syncing matched slots.",
+    "no_spoolman_body": "Connect your Spoolman instance to start syncing mapped slots.",
     "no_spoolman_action": "Connect Spoolman",
     "empty": {
       "title": "Waiting for AMS data",
@@ -63,7 +63,7 @@
   "slot": {
     "label": "Slot {{n}}",
     "no_spool_loaded": "No spool loaded",
-    "unknown_spool": "Unidentified spool",
+    "unidentified": "Unidentified spool",
     "remaining": "Remaining: {{value}}%",
     "details_aria_label": "Slot details",
     "sync_aria_label": "Sync this slot to Spoolman",
@@ -124,7 +124,7 @@
       "label": "Third party",
       "description": "Non-Bambu spool or no RFID tag."
     },
-    "unknown_spool": {
+    "unidentified": {
       "label": "Unidentified",
       "description": "Spool detected but the printer has no info about it yet (e.g. a third-party spool without material set)."
     },
@@ -187,7 +187,7 @@
     "title": "Sync",
     "connection_card": {
       "title": "Spoolman connection",
-      "hint": "Point this at your Spoolman instance to enable syncing matched AMS slots as spools.",
+      "hint": "Point this at your Spoolman instance to enable syncing mapped AMS slots as spools.",
       "url": "Spoolman URL",
       "auto_sync": "Auto-sync on spool updates",
       "auto_sync_hint": "Automatically sync spool changes to Spoolman, including updates and removals.",
@@ -199,7 +199,7 @@
     },
     "actions_card": {
       "title": "Actions",
-      "hint": "Push every matched AMS slot across all printers to Spoolman.",
+      "hint": "Push every mapped AMS slot across all printers to Spoolman.",
       "sync_all": "Sync all now"
     }
   },

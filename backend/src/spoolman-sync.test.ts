@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { syncByTagIds, type SyncDeps } from "./sync.js";
+import { syncByTagIds, type SyncDeps } from "./spoolman-sync.js";
 import {
   createSpoolmanClient,
   encodeExtraString,
@@ -8,7 +8,7 @@ import {
   type SpoolmanFilament,
   type SpoolmanSpool,
 } from "./clients/spoolman.client.js";
-import type { FilamentEntry } from "./mapping.js";
+import type { CatalogEntry } from "./filament-catalog.js";
 import { deriveSyncState } from "./services/spool.service.js";
 import type { SpoolRow, SpoolRepository } from "./db/spool.repository.js";
 import type {
@@ -16,7 +16,7 @@ import type {
   SyncStateRepository,
 } from "./db/sync-state.repository.js";
 
-const mapping = new Map<string, FilamentEntry>([
+const mapping = new Map<string, CatalogEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
   ["A18-B0", { id: "A18-B0", spoolman_id: null }],
 ]);
@@ -28,9 +28,13 @@ function makeSpoolRow(over: Partial<SpoolRow> = {}): SpoolRow {
     material: "PLA",
     product: "PLA Matte",
     colorHex: "042F56FF",
+    colorHexes: null,
     weight: 1000,
     remain: 75,
     lastUsed: null,
+    lastPrinterSerial: null,
+    lastAmsId: null,
+    lastSlotId: null,
     firstSeen: "2024-01-01T00:00:00",
     lastUpdated: "2024-01-01T00:00:00",
     ...over,
@@ -337,8 +341,10 @@ describe("syncByTagIds", () => {
     });
     const deps = buildDeps([makeSpoolRow({ remain: 0 })], { archiveOnEmpty: true });
     await syncByTagIds(deps, ["UID-1"], () => client);
-    const patchArg = (patch.mock.calls[0] as unknown as [number, Record<string, unknown>])[1];
-    expect(patchArg.archived).toBe(true);
+    expect(patch).toHaveBeenCalledWith(
+      expect.any(Number),
+      expect.objectContaining({ archived: true }),
+    );
   });
 });
 

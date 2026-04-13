@@ -7,9 +7,13 @@ export const spools = sqliteTable("spools", {
   material: text(),
   product: text(),
   colorHex: text("color_hex"),
+  colorHexes: text("color_hexes"),
   weight: real(),
   remain: integer(),
   lastUsed: text("last_used"),
+  lastPrinterSerial: text("last_printer_serial"),
+  lastAmsId: integer("last_ams_id"),
+  lastSlotId: integer("last_slot_id"),
   firstSeen: text("first_seen")
     .notNull()
     .default(sql`(datetime('now'))`),
