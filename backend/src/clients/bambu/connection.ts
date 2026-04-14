@@ -1,32 +1,33 @@
 import mqtt, { type MqttClient } from "mqtt";
 import type { FastifyBaseLogger } from "fastify";
-import type { Printer, PrinterStatus } from "@bambu-spoolman-sync/shared";
+import type { PrinterConfig, PrinterStatus } from "@bambu-spoolman-sync/shared";
 import type { AppEventBus } from "../../events.js";
 import { classifyMqttError } from "./errors.js";
-import { parseAmsReport, type AmsUnit } from "./parse.js";
+import { parseAmsReport } from "./parse.js";
+import type { ParsedAmsUnit } from "./types.js";
 
 export interface PrinterRuntime {
-  printer: Printer;
+  printer: PrinterConfig;
   status: PrinterStatus;
-  ams_units: AmsUnit[];
+  ams_units: ParsedAmsUnit[];
   disconnect(): Promise<void>;
 }
 
 export interface InternalClient {
-  printer: Printer;
+  printer: PrinterConfig;
   status: PrinterStatus;
-  ams_units: AmsUnit[];
+  ams_units: ParsedAmsUnit[];
   mqtt: MqttClient;
   disconnect(): Promise<void>;
 }
 
-export function connect(printer: Printer, bus: AppEventBus, log: FastifyBaseLogger): InternalClient {
+export function connect(printer: PrinterConfig, bus: AppEventBus, log: FastifyBaseLogger): InternalClient {
   const ctx = { serial: printer.serial, name: printer.name };
   const status: PrinterStatus = {
     lastError: null,
     errorCode: null,
   };
-  const amsUnits: AmsUnit[] = [];
+  const amsUnits: ParsedAmsUnit[] = [];
   let hasEverReceivedMessage = false;
   let watchdog: NodeJS.Timeout | null = null;
 

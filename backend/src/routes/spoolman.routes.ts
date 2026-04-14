@@ -31,10 +31,10 @@ const SyncResultResponse = Type.Object({
 });
 
 export const spoolmanRoutes: FastifyPluginAsync<SpoolmanRouteDeps> = async (app, { configStore, spoolService, createSyncDeps }) => {
-  app.post("/api/spoolman/test", {
+  app.get("/api/spoolman/status", {
     schema: {
       tags: ["Spoolman"],
-      description: "Test Spoolman connectivity",
+      description: "Check Spoolman connectivity and return version/base URL",
       response: {
         200: Type.Object({
           ok: Type.Boolean(),

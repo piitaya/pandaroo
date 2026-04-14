@@ -26,7 +26,7 @@ function parseColorHexes(raw: string | null): string[] | null {
 
 function serializeColorHexes(hexes: string[] | null): string | null {
   if (!hexes || hexes.length === 0) return null;
-  return isStringArray(hexes) ? JSON.stringify(hexes) : null;
+  return JSON.stringify(hexes);
 }
 
 export function deriveSyncState(
@@ -69,9 +69,6 @@ function enrichSpool(
     temp_min: row.tempMin,
     temp_max: row.tempMax,
     last_used: row.lastUsed,
-    last_printer_serial: row.lastPrinterSerial,
-    last_ams_id: row.lastAmsId,
-    last_slot_id: row.lastSlotId,
     first_seen: row.firstSeen,
     last_updated: row.lastUpdated,
     sync: deriveSyncState(row, syncRow),
@@ -86,21 +83,23 @@ export interface UpsertOptions {
 export interface SpoolService {
   list(): Spool[];
   findByTagId(tagId: string): Spool | undefined;
-  getSyncState(tagId: string): SyncState;
-  listSyncStates(): Map<string, SyncState>;
   delete(tagId: string): boolean;
   listTagIds(): string[];
   patch(tagId: string, data: { remain?: number }): Spool | undefined;
   upsert(data: SpoolReading, options?: UpsertOptions): void;
 }
 
-export function createSpoolService(
-  spoolRepo: SpoolRepository,
-  syncStateRepo: SyncStateRepository,
-  mapping: Mapping,
-  bus: AppEventBus,
-  log: FastifyBaseLogger,
-): SpoolService {
+export interface SpoolServiceDeps {
+  spoolRepo: SpoolRepository;
+  syncStateRepo: SyncStateRepository;
+  mapping: Mapping;
+  bus: AppEventBus;
+  log: FastifyBaseLogger;
+}
+
+export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
+  const { spoolRepo, syncStateRepo, mapping, bus, log } = deps;
+
   return {
     list() {
       const rows = spoolRepo.list();
@@ -117,22 +116,6 @@ export function createSpoolService(
       if (!row) return undefined;
       const syncRow = syncStateRepo.findByTagId(tagId);
       return enrichSpool(row, syncRow, mapping.byId);
-    },
-
-    getSyncState(tagId) {
-      const spoolRow = spoolRepo.findByTagId(tagId);
-      const syncRow = syncStateRepo.findByTagId(tagId);
-      return deriveSyncState(spoolRow, syncRow);
-    },
-
-    listSyncStates() {
-      const spoolRows = new Map(spoolRepo.list().map((r) => [r.tagId, r]));
-      const syncRows = new Map(syncStateRepo.listAll().map((r) => [r.tagId, r]));
-      const result = new Map<string, SyncState>();
-      for (const [tagId, spoolRow] of spoolRows) {
-        result.set(tagId, deriveSyncState(spoolRow, syncRows.get(tagId)));
-      }
-      return result;
     },
 
     patch(tagId, data) {

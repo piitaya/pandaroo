@@ -3,7 +3,7 @@ import { useForm } from "@mantine/form";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useCreatePrinter, useUpdatePrinter } from "../hooks";
-import type { Printer, PrinterInput } from "../api";
+import type { PrinterConfig, PrinterInput } from "../api";
 
 const emptyValues: PrinterInput = {
   name: "",
@@ -16,7 +16,7 @@ const emptyValues: PrinterInput = {
 interface PrinterFormModalProps {
   opened: boolean;
   onClose: () => void;
-  editing: Printer | null;
+  editing: PrinterConfig | null;
 }
 
 export function PrinterFormModal({ opened, onClose, editing }: PrinterFormModalProps) {

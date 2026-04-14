@@ -8,6 +8,22 @@ export interface FilamentCatalogRouteDeps {
 }
 
 export const filamentCatalogRoutes: FastifyPluginAsync<FilamentCatalogRouteDeps> = async (app, { mapping }) => {
+  app.get("/api/filament-catalog/status", {
+    schema: {
+      tags: ["Filament catalog"],
+      description: "Get filament catalog status",
+      response: {
+        200: Type.Object({
+          count: Type.Number(),
+          fetched_at: Type.Union([Type.String(), Type.Null()]),
+        }),
+      },
+    },
+  }, async () => ({
+    count: mapping.byId.size,
+    fetched_at: mapping.fetchedAt?.toISOString() ?? null,
+  }));
+
   app.post("/api/filament-catalog/refresh", {
     schema: {
       tags: ["Filament catalog"],

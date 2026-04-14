@@ -9,7 +9,6 @@ import {
   Tooltip
 } from "@mantine/core";
 import {
-  IconCircleFilled,
   IconExternalLink,
   IconPencil,
   IconRefresh
@@ -18,58 +17,18 @@ import { useState } from "react";
 import { AdjustRemainModal } from "./AdjustRemainModal";
 import { useTranslation } from "react-i18next";
 import { useMatchStatus } from "./matchStatus";
-import { syncStatusColor } from "./syncStatusColor";
 import { CopyableMono } from "./CopyableMono";
+import { Plain, Row, SectionHeader } from "./DetailTable";
 import { spoolFillColor } from "./spoolFillColor";
-import { amsLabel } from "./amsLabel";
+import { SyncDot } from "./SyncDot";
+import { formatAmsLocation } from "./formatAmsLocation";
 import {
   useConfig,
   useSpoolmanBaseUrl,
+  useSpoolLocation,
   useSyncSpoolman
 } from "../hooks";
 import type { Spool } from "../api";
-
-function Row({
-  label,
-  value
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <Table.Tr>
-      <Table.Td style={{ verticalAlign: "top" }}>
-        <Text size="sm" c="dimmed" truncate>
-          {label}
-        </Text>
-      </Table.Td>
-      <Table.Td style={{ minWidth: 0 }}>{value}</Table.Td>
-    </Table.Tr>
-  );
-}
-
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <Table.Tr>
-      <Table.Td
-        colSpan={2}
-        style={{ paddingTop: 12, paddingBottom: 4, borderBottom: "none" }}
-      >
-        <Text size="xs" fw={600} tt="uppercase" c="dimmed">
-          {label}
-        </Text>
-      </Table.Td>
-    </Table.Tr>
-  );
-}
-
-function Plain({ children }: { children: React.ReactNode }) {
-  return (
-    <Text size="sm" truncate>
-      {children}
-    </Text>
-  );
-}
 
 export function SpoolDetailContent({ spool }: { spool: Spool }) {
   const { t } = useTranslation();
@@ -78,14 +37,13 @@ export function SpoolDetailContent({ spool }: { spool: Spool }) {
   const spoolmanUrl = spoolmanBaseUrl?.replace(/\/+$/, "") ?? null;
   const { data: configData } = useConfig();
   const syncSpoolman = useSyncSpoolman();
-  const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
-  const autoSync = Boolean(configData?.config.spoolman?.auto_sync);
+  const spoolmanConfigured = Boolean(configData?.spoolman?.url);
+  const autoSync = Boolean(configData?.spoolman?.auto_sync);
   const canManualSync =
     spool.match_type === "mapped" && spoolmanConfigured && !autoSync;
-  const syncDotColor = syncStatusColor(spool.sync.status);
   const hasTemp = spool.temp_min != null || spool.temp_max != null;
   const status = matchStatus[spool.match_type];
-  const isPersistedSpool = Boolean(spool.first_seen);
+  const location = useSpoolLocation(spool.tag_id);
   const [adjustOpen, setAdjustOpen] = useState(false);
 
   const swatches =
@@ -191,35 +149,31 @@ export function SpoolDetailContent({ spool }: { spool: Spool }) {
               value={<Plain>{totalWeight} g</Plain>}
             />
           )}
-          {(hasRemain || isPersistedSpool) && (
-            <Row
-              label={t("slot.fields.remaining")}
-              value={
-                <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
-                  {hasRemain ? (
-                    <>
-                      <Progress value={spool.remain!} size="sm" style={{ width: 60, flexShrink: 0 }} color={spoolFillColor(spool.remain!)} />
-                      <Text size="sm" style={{ whiteSpace: "nowrap", flex: 1 }}>
-                        {remainWeight != null ? `${remainWeight} g (${spool.remain}%)` : `${spool.remain}%`}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text size="sm" c="dimmed" style={{ flex: 1 }}>—</Text>
-                  )}
-                  {isPersistedSpool && (
-                    <ActionIcon
-                      size="sm"
-                      variant="subtle"
-                      color="gray"
-                      onClick={() => setAdjustOpen(true)}
-                    >
-                      <IconPencil size={14} />
-                    </ActionIcon>
-                  )}
+          <Row
+            label={t("slot.fields.remaining")}
+            value={
+              <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+                {hasRemain ? (
+                  <>
+                    <Progress value={spool.remain!} size="sm" style={{ width: 60, flexShrink: 0 }} color={spoolFillColor(spool.remain!)} />
+                    <Text size="sm" style={{ whiteSpace: "nowrap", flex: 1 }}>
+                      {remainWeight != null ? `${remainWeight} g (${spool.remain}%)` : `${spool.remain}%`}
+                    </Text>
+                  </>
+                ) : (
+                  <Text size="sm" c="dimmed" style={{ flex: 1 }}>—</Text>
+                )}
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="gray"
+                  onClick={() => setAdjustOpen(true)}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
                 </Group>
               }
             />
-          )}
           {hasTemp && (
             <Row
               label={t("slot.fields.nozzle_temp")}
@@ -239,22 +193,13 @@ export function SpoolDetailContent({ spool }: { spool: Spool }) {
               label={t("slot.fields.sync_status")}
               value={
                 <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-                  <IconCircleFilled
-                    size={10}
-                    style={{ color: syncDotColor, flexShrink: 0 }}
-                  />
+                  <SyncDot sync={spool.sync} tooltip={null} />
                   <Text
                     size="sm"
                     truncate
                     style={{ flex: 1, minWidth: 0 }}
                   >
-                    {spool.sync.status === "synced"
-                      ? t("slot.sync_status.synced")
-                      : spool.sync.status === "stale"
-                        ? t("slot.sync_status.stale")
-                        : spool.sync.status === "error"
-                          ? t("slot.sync_status.error")
-                          : t("slot.sync_status.never")}
+                    {t(`slot.sync_status.${spool.sync.status}`)}
                   </Text>
                   {canManualSync && (
                     <Tooltip
@@ -331,50 +276,36 @@ export function SpoolDetailContent({ spool }: { spool: Spool }) {
             />
           )}
 
-          {(spool.last_printer_serial || spool.first_seen) && (
-            <SectionHeader label={spool.first_seen ? t("slot.sections.history") : t("slot.sections.source")} />
-          )}
-          {spool.last_printer_serial && (
+          <SectionHeader label={t("slot.sections.history")} />
+          {location && (
             <Row
-              label={spool.first_seen ? t("slot.fields.last_location") : t("slot.fields.printer_serial")}
-              value={
-                <Plain>
-                  {configData?.config.printers.find((p) => p.serial === spool.last_printer_serial)?.name ?? spool.last_printer_serial}
-                  {spool.last_ams_id != null && ` · ${amsLabel(spool.last_ams_id)}`}
-                  {spool.last_slot_id != null && ` · ${t("slot.label", { n: spool.last_slot_id + 1 })}`}
-                </Plain>
-              }
+              label={t("slot.fields.current_location")}
+              value={<Plain>{formatAmsLocation(location, t)}</Plain>}
             />
           )}
-          {spool.first_seen && (
-            <Row
-              label={t("slot.fields.first_seen")}
-              value={<Plain>{new Date(spool.first_seen).toLocaleString()}</Plain>}
-            />
-          )}
+          <Row
+            label={t("slot.fields.first_seen")}
+            value={<Plain>{new Date(spool.first_seen).toLocaleString()}</Plain>}
+          />
           {spool.last_used && (
             <Row
               label={t("slot.fields.last_used")}
               value={<Plain>{new Date(spool.last_used).toLocaleString()}</Plain>}
             />
           )}
-          {spool.last_updated && spool.first_seen && (
-            <Row
-              label={t("slot.fields.last_updated")}
-              value={<Plain>{new Date(spool.last_updated).toLocaleString()}</Plain>}
-            />
-          )}
+          <Row
+            label={t("slot.fields.last_updated")}
+            value={<Plain>{new Date(spool.last_updated).toLocaleString()}</Plain>}
+          />
         </Table.Tbody>
       </Table>
 
-      {isPersistedSpool && (
-        <AdjustRemainModal
-          key={spool.tag_id}
-          spool={spool}
-          opened={adjustOpen}
-          onClose={() => setAdjustOpen(false)}
-        />
-      )}
+      <AdjustRemainModal
+        key={spool.tag_id}
+        spool={spool}
+        opened={adjustOpen}
+        onClose={() => setAdjustOpen(false)}
+      />
     </Stack>
   );
 }

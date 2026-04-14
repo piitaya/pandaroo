@@ -13,10 +13,10 @@ import { openDatabase } from "./db/database.js";
 
 import { configRoutes } from "./routes/config.routes.js";
 import { printerRoutes } from "./routes/printer.routes.js";
+import { printerStatusRoutes } from "./routes/printer-status.routes.js";
 import { filamentCatalogRoutes } from "./routes/filament-catalog.routes.js";
 import { spoolmanRoutes } from "./routes/spoolman.routes.js";
 import { spoolRoutes } from "./routes/spool.routes.js";
-import { stateRoutes } from "./routes/state.routes.js";
 
 const MAPPING_SOURCE_URL =
   "https://raw.githubusercontent.com/piitaya/bambu-spoolman-db/main/filaments.json";
@@ -76,11 +76,10 @@ export async function buildApp() {
     configStore: services.configStore,
     spoolService: services.spoolService,
   });
-  await app.register(stateRoutes, {
+  await app.register(printerStatusRoutes, {
     configStore: services.configStore,
     mapping: services.mapping,
     printerPool: services.printerPool,
-    spoolService: services.spoolService,
   });
 
   const __dirname = dirname(fileURLToPath(import.meta.url));

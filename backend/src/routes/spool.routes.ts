@@ -39,7 +39,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     return spool;
   });
 
-  app.put("/api/spools", {
+  app.post("/api/spools/scan", {
     schema: {
       tags: ["Spools"],
       description: "Add or update a spool from a scanned NFC tag, persist locally, and return the enriched local spool",

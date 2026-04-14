@@ -14,7 +14,8 @@ import {
 } from "@mantine/core";
 import { IconCircleFilled, IconDots, IconGauge, IconRefresh, IconTrash } from "@tabler/icons-react";
 import { DataTable, type DataTableSortStatus } from "mantine-datatable";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { Spool, SyncStatus } from "../api";
 import { useConfig, useRemoveSpool, useSpools, useSyncAllSpoolman } from "../hooks";
@@ -75,7 +76,19 @@ export default function SpoolsPage() {
   const [toRemove, setToRemove] = useState<Spool | null>(null);
   const [toAdjustId, setToAdjustId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
+  const spoolmanConfigured = Boolean(configData?.spoolman?.url);
+
+  // Auto-open a spool when routed here with state.selectTagId
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const state = location.state as { selectTagId?: string } | null;
+    if (state?.selectTagId) {
+      setSelectedId(state.selectTagId);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const spoolsByTagId = useMemo(
     () => new Map(spools?.map((s) => [s.tag_id, s]) ?? []),

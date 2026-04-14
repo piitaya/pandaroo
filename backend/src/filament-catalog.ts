@@ -2,7 +2,8 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { SpoolReading, AmsSlot, MatchType, CatalogEntry } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading, MatchType, CatalogEntry } from "@bambu-spoolman-sync/shared";
+import type { ParsedSlot } from "./clients/bambu/types.js";
 import { dataDir } from "./config.js";
 
 export type { CatalogEntry };
@@ -37,7 +38,7 @@ export function matchSpool(
 }
 
 export function matchSlot(
-  slot: AmsSlot,
+  slot: ParsedSlot,
   mapping: Map<string, CatalogEntry>,
 ): MatchResult {
   if (!slot.has_spool) return { type: "empty" };

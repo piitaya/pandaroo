@@ -2,9 +2,9 @@ import { Stack, Title } from "@mantine/core";
 import { AmsBlock } from "./AmsBlock";
 import { PrinterEmptyState } from "./PrinterEmptyState";
 import { PrinterError } from "./PrinterError";
-import type { PrinterStateView } from "../api";
+import type { Printer } from "../api";
 
-export function PrinterBlock({ p }: { p: PrinterStateView }) {
+export function PrinterBlock({ p }: { p: Printer }) {
   return (
     <Stack gap="md">
       <Title order={4}>{p.name}</Title>

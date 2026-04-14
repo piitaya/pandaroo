@@ -1,10 +1,5 @@
-import type { SpoolReading, AmsSlot } from "@bambu-spoolman-sync/shared";
-
-export interface AmsUnit {
-  id: number;
-  nozzle_id: number | null;
-  slots: AmsSlot[];
-}
+import type { SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { ParsedSlot, ParsedAmsUnit } from "./types.js";
 
 export function toSpoolReading(tray: unknown): SpoolReading | null {
   const t = tray as Record<string, unknown> | null;
@@ -58,13 +53,13 @@ function parseHexBits(value: unknown): number | null {
 export function parseAmsReport(
   printerSerial: string,
   payload: unknown,
-): AmsUnit[] {
+): ParsedAmsUnit[] {
   const amsPayload = (payload as any)?.print?.ams;
   const trayExistBits = parseHexBits(amsPayload?.tray_exist_bits);
   const amsList = amsPayload?.ams;
   if (!Array.isArray(amsList)) return [];
 
-  const units: AmsUnit[] = [];
+  const units: ParsedAmsUnit[] = [];
   for (const ams of amsList) {
     const amsId = Number(ams?.id ?? 0);
     const nozzleId = decodeNozzleId(ams?.info);

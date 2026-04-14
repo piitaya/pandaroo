@@ -13,8 +13,8 @@ import { useForm } from "@mantine/form";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useAppState,
   useConfig,
+  useFilamentCatalog,
   usePutConfig,
   useRefreshMapping
 } from "../hooks";
@@ -33,7 +33,7 @@ const REPO_LABEL = "piitaya/bambu-spoolman-db";
 
 export default function SettingsPage() {
   const { data } = useConfig();
-  const { data: state } = useAppState();
+  const { data: catalog } = useFilamentCatalog();
   const put = usePutConfig();
   const refresh = useRefreshMapping();
   const { t, i18n } = useTranslation();
@@ -44,30 +44,30 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    if (data?.config.filament_catalog) {
+    if (data?.filament_catalog) {
       form.setValues({
-        refresh_interval_hours: data.config.filament_catalog.refresh_interval_hours
+        refresh_interval_hours: data.filament_catalog.refresh_interval_hours
       });
       form.resetDirty({
-        refresh_interval_hours: data.config.filament_catalog.refresh_interval_hours
+        refresh_interval_hours: data.filament_catalog.refresh_interval_hours
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.config.filament_catalog.refresh_interval_hours]);
+  }, [data?.filament_catalog.refresh_interval_hours]);
 
   const save = async (values: FormValues) => {
     if (!data) return;
     await put.mutateAsync({
-      ...data.config,
+      ...data,
       filament_catalog: {
-        ...data.config.filament_catalog,
+        ...data.filament_catalog,
         refresh_interval_hours: values.refresh_interval_hours
       }
     });
   };
 
-  const fetchedAt = state?.filament_catalog.fetched_at
-    ? new Date(state.filament_catalog.fetched_at).toLocaleString()
+  const fetchedAt = catalog?.fetched_at
+    ? new Date(catalog.fetched_at).toLocaleString()
     : t("settings.mapping_card.never");
 
   const languageOptions = useMemo(
@@ -128,7 +128,7 @@ export default function SettingsPage() {
             <br />
             {t("settings.mapping_card.last_fetched", {
               when: fetchedAt,
-              count: state?.filament_catalog.count ?? 0
+              count: catalog?.count ?? 0
             })}
           </Text>
           <form onSubmit={form.onSubmit(save)}>

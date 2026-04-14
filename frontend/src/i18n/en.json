@@ -73,7 +73,13 @@
       "physical": "Physical",
       "sync": "Sync",
       "source": "Source",
-      "history": "History"
+      "history": "History",
+      "ams_reading": "AMS reading",
+      "linked_spool": "Linked spool"
+    },
+    "linked_spool": {
+      "not_tracked_hint": "This spool has no persisted record — it will be tracked once detected with a known RFID tag.",
+      "view_details": "View"
     },
     "fields": {
       "color_name": "Color",
@@ -87,13 +93,14 @@
       "spool_uid": "Spool UID",
       "total_weight": "Total weight",
       "remaining": "Remaining",
+      "printer_reports": "Printer reports",
       "nozzle_temp": "Nozzle temp",
       "sync_status": "Sync status",
       "spoolman_spool": "Spoolman spool",
       "sync_last": "Last sync",
       "sync_error": "Sync error",
       "printer_serial": "Printer",
-      "last_location": "Last location",
+      "current_location": "Currently loaded",
       "first_seen": "First seen",
       "last_used": "Last used",
       "last_updated": "Last updated"
@@ -103,10 +110,6 @@
       "synced": "Synced",
       "stale": "Out of date",
       "error": "Error",
-      "never_tooltip": "Not yet synced to Spoolman",
-      "synced_tooltip": "Synced to spool #{{spool_id}} · {{at}}",
-      "stale_tooltip": "Spool #{{spool_id}} out of date since {{at}} — slot changed",
-      "error_tooltip": "Last sync failed: {{error}}",
       "open_in_spoolman": "Open in Spoolman"
     }
   },

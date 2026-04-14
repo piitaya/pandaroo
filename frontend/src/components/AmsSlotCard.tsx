@@ -5,91 +5,21 @@ import {
   Group,
   Progress,
   Stack,
-  Text,
-  Tooltip
+  Text
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconCircleFilled, IconInfoCircle } from "@tabler/icons-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { AmsSlotDetailModal } from "./AmsSlotDetailModal";
+import { ColorSwatch } from "./ColorSwatch";
 import { useMatchStatus } from "./matchStatus";
 import { spoolFillColor } from "./spoolFillColor";
-import { syncStatusColor } from "./syncStatusColor";
-import { useConfig } from "../hooks";
-import type { AmsMatchedSlot, SyncState } from "../api";
+import { SyncDot } from "./SyncDot";
+import { useConfig, useSlotSpool } from "../hooks";
+import type { AmsSlot } from "../api";
 
-function SyncIndicator({ sync }: { sync: SyncState }) {
-  const { t } = useTranslation();
-  const tooltip =
-    sync.status === "synced"
-      ? t("slot.sync_status.synced_tooltip", {
-          spool_id: sync.spoolman_spool_id,
-          at: new Date(sync.at).toLocaleString()
-        })
-      : sync.status === "stale"
-        ? t("slot.sync_status.stale_tooltip", {
-            spool_id: sync.spoolman_spool_id,
-            at: new Date(sync.at).toLocaleString()
-          })
-        : sync.status === "error"
-          ? t("slot.sync_status.error_tooltip", { error: sync.error })
-          : t("slot.sync_status.never_tooltip");
-  return (
-    <Tooltip label={tooltip} multiline maw={320}>
-      <IconCircleFilled size={10} style={{ color: syncStatusColor(sync.status) }} />
-    </Tooltip>
-  );
-}
-
-/**
- * Bambu reports `"00000000"` (all zeros, including alpha) when a tray
- * has no known color. Any other value is a real color — including
- * `"000000FF"` (opaque black) and `"FFFFFFFF"` (opaque white), which
- * are valid filament colors we must render as-is.
- */
-function swatchFill(hex: string | null | undefined): string | null {
-  if (!hex || hex === "00000000") return null;
-  return `#${hex.slice(0, 6)}`;
-}
-
-export function amsSlotKey(s: AmsMatchedSlot): string {
-  return `${s.slot.printer_serial}/${s.slot.ams_id}/${s.slot.slot_id}`;
-}
-
-/**
- * Fixed-size color swatch. Shows the slot color when known; otherwise
- * renders a dashed placeholder so empty / unknown-color slots keep the
- * same layout as filled ones.
- */
-function ColorSwatch({ hex }: { hex: string | null | undefined }) {
-  const background = swatchFill(hex);
-  if (background) {
-    return (
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 6,
-          background,
-          border: "1px solid #ddd",
-          flexShrink: 0
-        }}
-      />
-    );
-  }
-  return (
-    <div
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 6,
-        border: "1px dashed #cbd5e1",
-        background:
-          "repeating-linear-gradient(45deg, #f8fafc, #f8fafc 4px, #e2e8f0 4px, #e2e8f0 8px)",
-        flexShrink: 0
-      }}
-    />
-  );
+export function amsSlotKey(s: AmsSlot): string {
+  return `${s.ams_id}/${s.slot_id}`;
 }
 
 function SlotFill({
@@ -126,21 +56,20 @@ function SlotFill({
   );
 }
 
-export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
-  const isEmpty = s.type === "empty";
-  const isUnknownSpool = s.type === "unidentified";
+export function AmsSlotCard({ s }: { s: AmsSlot }) {
+  const isEmpty = s.match_type === "empty";
+  const isUnknownSpool = s.match_type === "unidentified";
   const [opened, { open, close }] = useDisclosure(false);
   const { t } = useTranslation();
   const matchStatus = useMatchStatus();
-  const status = matchStatus[s.type];
+  const status = matchStatus[s.match_type];
   const { data: configData } = useConfig();
-  const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
+  const spoolmanConfigured = Boolean(configData?.spoolman?.url);
+  const persistedSpool = useSlotSpool(s.reading?.tag_id);
+  const sync = persistedSpool?.sync;
 
-  // When we have a mapped color name, promote it to the headline and
-  // push the material to the secondary line. Otherwise fall back to
-  // the raw MQTT fields (material headline, RFID id as secondary).
-  const sp = s.slot.spool;
-  const colorName = s.entry?.color_name;
+  const sp = s.reading;
+  const colorName = s.color_name;
   const material =
     sp?.product?.trim() || sp?.material?.trim() || null;
   const headline = isEmpty
@@ -165,13 +94,13 @@ export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
     <>
       <Card withBorder shadow="sm" radius="md" padding="md">
         <Group justify="space-between" mb="xs" wrap="nowrap">
-          <Text fw={500}>{t("slot.label", { n: s.slot.slot_id + 1 })}</Text>
+          <Text fw={500}>{t("slot.label", { n: s.slot_id + 1 })}</Text>
           <Group gap={4} wrap="nowrap">
             <Badge color={status.color} variant="light">
               {status.label}
             </Badge>
-            {s.type === "mapped" && spoolmanConfigured && (
-              <SyncIndicator sync={s.sync} />
+            {s.match_type === "mapped" && spoolmanConfigured && sync && (
+              <SyncDot sync={sync} />
             )}
             <ActionIcon
               variant="subtle"
@@ -187,7 +116,7 @@ export function AmsSlotCard({ s }: { s: AmsMatchedSlot }) {
         </Group>
         <Stack gap="sm">
           <Group gap="sm" align="flex-start" wrap="nowrap">
-            <ColorSwatch hex={isEmpty || isUnknownSpool ? null : sp?.color_hex} />
+            <ColorSwatch hex={isEmpty || isUnknownSpool ? null : sp?.color_hex} size={36} />
             <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
               <Text
                 size="sm"

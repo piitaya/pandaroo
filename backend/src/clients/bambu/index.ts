@@ -1,4 +1,4 @@
-export { parseAmsReport, decodeNozzleId, toSpoolReading, type AmsUnit } from "./parse.js";
+export { parseAmsReport, decodeNozzleId, toSpoolReading } from "./parse.js";
 export { classifyMqttError } from "./errors.js";
 export { type PrinterRuntime, type InternalClient } from "./connection.js";
 export {
@@ -8,3 +8,4 @@ export {
   listRuntimes,
   disconnectAll,
 } from "./pool.js";
+export { type ParsedSlot, type ParsedAmsUnit } from "./types.js";

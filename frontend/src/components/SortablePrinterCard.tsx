@@ -2,13 +2,13 @@ import { ActionIcon, Card, Group, Stack, Switch, Text } from "@mantine/core";
 import { IconEdit, IconGripVertical, IconTrash } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { useSortableItem } from "./useSortableItem";
-import type { Printer } from "../api";
+import type { PrinterConfig } from "../api";
 
 export interface PrinterRowProps {
-  printer: Printer;
-  onEdit: (p: Printer) => void;
+  printer: PrinterConfig;
+  onEdit: (p: PrinterConfig) => void;
   onDelete: (serial: string) => void;
-  onToggleEnabled: (p: Printer, enabled: boolean) => void;
+  onToggleEnabled: (p: PrinterConfig, enabled: boolean) => void;
 }
 
 export function SortablePrinterCard({

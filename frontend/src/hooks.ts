@@ -11,30 +11,94 @@ import {
   ApiError,
   type Config,
   type PrinterInput,
-  type PrinterPatch
+  type PrinterPatch,
+  type Printer,
+  type Spool,
+  type AmsLocation,
 } from "./api";
 
 const CONFIG_KEY = ["config"] as const;
-const STATE_KEY = ["state"] as const;
+const PRINTERS_KEY = ["printers"] as const;
 const SPOOLS_KEY = ["spools"] as const;
+const FILAMENT_CATALOG_KEY = ["filament-catalog"] as const;
 
 export const useConfig = () =>
   useQuery({ queryKey: CONFIG_KEY, queryFn: api.getConfig });
 
-export const useAppState = () =>
+// TODO: Replace polling with WebSocket or SSE for real-time updates
+export const usePrinters = () =>
   useQuery({
-    queryKey: STATE_KEY,
-    queryFn: api.getState,
-    refetchInterval: 3000
+    queryKey: PRINTERS_KEY,
+    queryFn: api.getPrinters,
+    refetchInterval: 3000,
   });
 
-// TODO: Replace polling with WebSocket or SSE for real-time updates
 export const useSpools = () =>
   useQuery({
     queryKey: SPOOLS_KEY,
     queryFn: api.listSpools,
     refetchInterval: 5000,
   });
+
+export const useFilamentCatalog = () =>
+  useQuery({
+    queryKey: FILAMENT_CATALOG_KEY,
+    queryFn: api.getFilamentCatalog,
+  });
+
+// Share derived Maps across callers — keyed by array identity, which React
+// Query keeps stable across refetches via structural sharing.
+const EMPTY_SPOOLS: readonly Spool[] = [];
+const EMPTY_PRINTERS: readonly Printer[] = [];
+const spoolMapCache = new WeakMap<readonly Spool[], Map<string, Spool>>();
+const locationMapCache = new WeakMap<readonly Printer[], Map<string, AmsLocation>>();
+
+function buildSpoolMap(spools: readonly Spool[]): Map<string, Spool> {
+  let map = spoolMapCache.get(spools);
+  if (!map) {
+    map = new Map(spools.map((s) => [s.tag_id, s]));
+    spoolMapCache.set(spools, map);
+  }
+  return map;
+}
+
+function buildLocationMap(printers: readonly Printer[]): Map<string, AmsLocation> {
+  let map = locationMapCache.get(printers);
+  if (map) return map;
+  map = new Map();
+  for (const printer of printers) {
+    for (const unit of printer.ams_units) {
+      for (const slot of unit.slots) {
+        const tagId = slot.reading?.tag_id;
+        if (tagId) {
+          map.set(tagId, {
+            printer_serial: printer.serial,
+            printer_name: printer.name,
+            ams_id: unit.id,
+            slot_id: slot.slot_id,
+          });
+        }
+      }
+    }
+  }
+  locationMapCache.set(printers, map);
+  return map;
+}
+
+export function useSpoolMap(): Map<string, Spool> {
+  const { data: spools } = useSpools();
+  return buildSpoolMap(spools ?? EMPTY_SPOOLS);
+}
+
+export function useSpoolLocation(tagId: string): AmsLocation | null {
+  const { data: printers } = usePrinters();
+  return buildLocationMap(printers ?? EMPTY_PRINTERS).get(tagId) ?? null;
+}
+
+export function useSlotSpool(tagId: string | null | undefined): Spool | undefined {
+  const spoolMap = useSpoolMap();
+  return tagId ? spoolMap.get(tagId) : undefined;
+}
 
 // ---------------------------------------------------------------------------
 // Toast helpers
@@ -99,7 +163,7 @@ export const useCreatePrinter = () => {
   return useMutationWithToast({
     mutationFn: (input: PrinterInput) => api.createPrinter(input),
     successMessage: t("printers.notifications.added"),
-    invalidate: [CONFIG_KEY, STATE_KEY],
+    invalidate: [CONFIG_KEY, PRINTERS_KEY],
     onError: usePrinterConflictHandler(),
   });
 };
@@ -110,7 +174,7 @@ export const useUpdatePrinter = () => {
     mutationFn: ({ serial, patch }: { serial: string; patch: PrinterPatch }) =>
       api.updatePrinter(serial, patch),
     successMessage: t("printers.notifications.updated"),
-    invalidate: [CONFIG_KEY, STATE_KEY],
+    invalidate: [CONFIG_KEY, PRINTERS_KEY],
     onError: usePrinterConflictHandler(),
   });
 };
@@ -120,7 +184,7 @@ export const useRemovePrinter = () => {
   return useMutationWithToast({
     mutationFn: (serial: string) => api.removePrinter(serial),
     successMessage: t("printers.notifications.removed"),
-    invalidate: [CONFIG_KEY, STATE_KEY],
+    invalidate: [CONFIG_KEY, PRINTERS_KEY],
   });
 };
 
@@ -129,7 +193,7 @@ export const usePutConfig = () => {
   return useMutationWithToast({
     mutationFn: (config: Config) => api.putConfig(config),
     successMessage: t("settings.saved"),
-    invalidate: [CONFIG_KEY, STATE_KEY],
+    invalidate: [CONFIG_KEY, PRINTERS_KEY],
   });
 };
 
@@ -162,7 +226,7 @@ export const useReorderPrinters = () => {
   return useMutation({
     mutationFn: (config: Config) => api.putConfig(config),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: STATE_KEY });
+      qc.invalidateQueries({ queryKey: PRINTERS_KEY });
     },
     onError: (err) => {
       qc.invalidateQueries({ queryKey: CONFIG_KEY });
@@ -182,7 +246,8 @@ export const useRefreshMapping = () => {
   return useMutation({
     mutationFn: () => api.refreshFilamentCatalog(),
     onSuccess: ({ count }) => {
-      qc.invalidateQueries({ queryKey: STATE_KEY });
+      qc.invalidateQueries({ queryKey: PRINTERS_KEY });
+      qc.invalidateQueries({ queryKey: FILAMENT_CATALOG_KEY });
       toast.success(t("settings.mapping_card.refreshed", { count }));
     },
     onError: toast.error
@@ -195,30 +260,16 @@ export const useRefreshMapping = () => {
 
 export const useSpoolmanBaseUrl = () => {
   const { data: configData } = useConfig();
-  const url = configData?.config.spoolman?.url;
+  const url = configData?.spoolman?.url;
   return useQuery({
     queryKey: ["spoolman-base-url", url ?? ""],
     queryFn: async () => {
-      const { base_url } = await api.testSpoolman();
+      const { base_url } = await api.getSpoolmanStatus();
       return base_url;
     },
     enabled: Boolean(url),
     staleTime: Infinity,
     retry: false
-  });
-};
-
-export const useTestSpoolman = () => {
-  const { t } = useTranslation();
-  const toast = useToasts();
-  return useMutation({
-    mutationFn: () => api.testSpoolman(),
-    onSuccess: ({ info }) => {
-      toast.success(
-        t("sync.connection_card.test_ok", { version: info.version ?? "?" })
-      );
-    },
-    onError: toast.error
   });
 };
 
@@ -228,7 +279,7 @@ function useSyncResultHandlers() {
   const toast = useToasts();
   return {
     onSuccess: (result: Awaited<ReturnType<typeof api.syncSpoolman>>) => {
-      qc.invalidateQueries({ queryKey: STATE_KEY });
+      qc.invalidateQueries({ queryKey: PRINTERS_KEY });
       qc.invalidateQueries({ queryKey: SPOOLS_KEY });
       if (result.errors.length > 0) {
         toast.error(

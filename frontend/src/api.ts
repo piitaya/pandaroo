@@ -1,5 +1,6 @@
 export type {
   Printer,
+  PrinterConfig,
   PrinterInput,
   PrinterPatch,
   Config,
@@ -7,20 +8,20 @@ export type {
   Spool,
   SyncState,
   SyncStatus,
-  AmsMatchedSlot,
-  AmsUnitView,
+  AmsSlot,
+  AmsUnit,
+  AmsLocation,
   PrinterErrorCode,
-  PrinterStateView,
 } from "@bambu-spoolman-sync/shared";
 
 
 import type {
   Config,
   Printer,
+  PrinterConfig,
   PrinterInput,
   PrinterPatch,
   Spool,
-  AppState,
   SyncResult,
 } from "@bambu-spoolman-sync/shared";
 
@@ -63,28 +64,28 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function collectActiveTagIds(state: AppState): string[] {
-  return state.printers.flatMap((p) =>
+export function collectActiveTagIds(printers: Printer[]): string[] {
+  return printers.flatMap((p) =>
     p.ams_units.flatMap((u) =>
-      u.slots.map((s) => s.slot.spool?.tag_id).filter((tag_id): tag_id is string => !!tag_id)
+      u.slots.map((s) => s.reading?.tag_id).filter((tag_id): tag_id is string => !!tag_id)
     )
   );
 }
 
 export const api = {
-  getConfig: () => req<{ config: Config }>("/api/config"),
+  getConfig: () => req<Config>("/api/config"),
   putConfig: (config: Config) =>
-    req<{ config: Config }>("/api/config", {
+    req<Config>("/api/config", {
       method: "PUT",
       body: JSON.stringify(config)
     }),
   createPrinter: (input: PrinterInput) =>
-    req<Printer>("/api/printers", {
+    req<PrinterConfig>("/api/printers", {
       method: "POST",
       body: JSON.stringify(input)
     }),
   updatePrinter: (serial: string, patch: PrinterPatch) =>
-    req<Printer>(`/api/printers/${encodeURIComponent(serial)}`, {
+    req<PrinterConfig>(`/api/printers/${encodeURIComponent(serial)}`, {
       method: "PATCH",
       body: JSON.stringify(patch)
     }),
@@ -92,17 +93,16 @@ export const api = {
     req<{ ok: true }>(`/api/printers/${encodeURIComponent(serial)}`, {
       method: "DELETE"
     }),
-  getState: () => req<AppState>("/api/state"),
+  getPrinters: () => req<Printer[]>("/api/printers/status"),
+  getFilamentCatalog: () => req<{ count: number; fetched_at: string | null }>("/api/filament-catalog/status"),
   refreshFilamentCatalog: () =>
     req<{ count: number }>("/api/filament-catalog/refresh", { method: "POST" }),
-  testSpoolman: () =>
+  getSpoolmanStatus: () =>
     req<{
       ok: true;
       info: { version?: string };
       base_url: string | null;
-    }>("/api/spoolman/test", {
-      method: "POST"
-    }),
+    }>("/api/spoolman/status"),
   syncSpoolman: (tagIds: string[]) =>
     req<SyncResult>("/api/spoolman/sync", {
       method: "POST",

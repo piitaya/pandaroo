@@ -1,5 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
+import type { PrinterConfig } from "@bambu-spoolman-sync/shared";
 import { PrinterSchema } from "../config.js";
 import type { ConfigStore } from "../config-store.js";
 import { ErrorResponse, OkResponse } from "./schemas.js";
@@ -24,7 +25,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
       response: { 409: ErrorResponse },
     },
   }, async (req, reply) => {
-    const printer = req.body as typeof configStore.current.printers[number];
+    const printer = req.body as PrinterConfig;
     const config = configStore.current;
     if (config.printers.some((p) => p.serial === printer.serial)) {
       reply.code(409);
@@ -46,7 +47,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
       response: { 404: ErrorResponse, 409: ErrorResponse },
     },
   }, async (req, reply) => {
-    const body = req.body as Partial<typeof configStore.current.printers[number]>;
+    const body = req.body as Partial<PrinterConfig>;
     const config = configStore.current;
     const idx = config.printers.findIndex(
       (p) => p.serial === req.params.serial,

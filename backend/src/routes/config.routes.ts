@@ -22,7 +22,7 @@ export const configRoutes: FastifyPluginAsync<ConfigRouteDeps> = async (app, { c
       tags: ["Config"],
       description: "Get the current configuration",
     },
-  }, async () => ({ config: configStore.current }));
+  }, async () => configStore.current);
 
   app.put("/api/config", {
     schema: {
@@ -33,6 +33,6 @@ export const configRoutes: FastifyPluginAsync<ConfigRouteDeps> = async (app, { c
     },
   }, async (req) => {
     await configStore.apply(req.body as Record<string, unknown>);
-    return { config: configStore.current };
+    return configStore.current;
   });
 };

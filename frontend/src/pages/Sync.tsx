@@ -40,7 +40,7 @@ export default function SyncPage() {
     const seq = ++testSeq.current;
     setTestState({ status: "pending" });
     try {
-      const { info } = await api.testSpoolman();
+      const { info } = await api.getSpoolmanStatus();
       if (seq !== testSeq.current) return;
       setTestState({ status: "ok", version: info.version });
     } catch {
@@ -52,7 +52,7 @@ export default function SyncPage() {
     }
   };
 
-  const savedUrl = data?.config.spoolman?.url ?? "";
+  const savedUrl = data?.spoolman?.url ?? "";
   const [urlDraft, setUrlDraft] = useState(savedUrl);
 
   // Keep the draft in sync when the persisted config changes (e.g.
@@ -73,9 +73,9 @@ export default function SyncPage() {
     const trimmed = urlDraft.trim();
     if (trimmed === savedUrl) return; // nothing to save
     await put.mutateAsync({
-      ...data.config,
+      ...data,
       spoolman: {
-        ...data.config.spoolman,
+        ...data.spoolman,
         url: trimmed === "" ? undefined : trimmed
       }
     });
@@ -98,9 +98,9 @@ export default function SyncPage() {
   const toggleAutoSync = async (value: boolean) => {
     if (!data) return;
     await put.mutateAsync({
-      ...data.config,
+      ...data,
       spoolman: {
-        ...data.config.spoolman,
+        ...data.spoolman,
         auto_sync: value
       }
     });
@@ -112,9 +112,9 @@ export default function SyncPage() {
   const toggleArchiveOnEmpty = async (value: boolean) => {
     if (!data) return;
     await put.mutateAsync({
-      ...data.config,
+      ...data,
       spoolman: {
-        ...data.config.spoolman,
+        ...data.spoolman,
         archive_on_empty: value
       }
     });
@@ -122,7 +122,7 @@ export default function SyncPage() {
 
   const spoolmanConfigured = Boolean(savedUrl);
   const showSyncActions =
-    spoolmanConfigured && !data?.config.spoolman?.auto_sync;
+    spoolmanConfigured && !data?.spoolman?.auto_sync;
 
   return (
     <Stack gap="lg" maw={640}>
@@ -187,14 +187,14 @@ export default function SyncPage() {
             <Switch
               label={t("sync.connection_card.auto_sync")}
               description={t("sync.connection_card.auto_sync_hint")}
-              checked={data?.config.spoolman?.auto_sync ?? false}
+              checked={data?.spoolman?.auto_sync ?? false}
               onChange={(e) => void toggleAutoSync(e.currentTarget.checked)}
               disabled={!spoolmanConfigured || put.isPending}
             />
             <Switch
               label={t("sync.connection_card.archive_on_empty")}
               description={t("sync.connection_card.archive_on_empty_hint")}
-              checked={data?.config.spoolman?.archive_on_empty ?? false}
+              checked={data?.spoolman?.archive_on_empty ?? false}
               onChange={(e) =>
                 void toggleArchiveOnEmpty(e.currentTarget.checked)
               }

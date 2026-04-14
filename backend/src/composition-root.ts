@@ -14,7 +14,6 @@ import {
   createPrinterConnectionPool,
   disconnectAll,
   syncPrinters,
-  listRuntimes,
   type PrinterConnectionPool,
 } from "./clients/bambu/index.js";
 import type { SyncDeps } from "./spoolman-sync.js";
@@ -56,7 +55,13 @@ export function createServices(
   const spoolRepo = createSpoolRepository(db);
   const syncStateRepo = createSyncStateRepository(db);
 
-  const spoolService = createSpoolService(spoolRepo, syncStateRepo, mapping, bus, spoolLog);
+  const spoolService = createSpoolService({
+    spoolRepo,
+    syncStateRepo,
+    mapping,
+    bus,
+    log: spoolLog,
+  });
   const printerPool = createPrinterConnectionPool();
   const amsDetector = createAmsChangeDetector(bus, amsLog);
 
@@ -135,6 +140,3 @@ export function createServices(
     },
   };
 }
-
-// Re-export for route use
-export { listRuntimes } from "./clients/bambu/index.js";

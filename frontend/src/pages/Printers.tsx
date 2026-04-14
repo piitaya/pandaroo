@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useConfig, useRemovePrinter, useReorderPrinters, useUpdatePrinter } from "../hooks";
-import type { Printer } from "../api";
+import type { PrinterConfig } from "../api";
 import { SortablePrinterCard } from "../components/SortablePrinterCard";
 import { SortablePrinterRow } from "../components/SortablePrinterRow";
 import { PrinterFormModal } from "../components/PrinterFormModal";
@@ -32,8 +32,8 @@ export default function PrintersPage() {
   const remove = useRemovePrinter();
   const reorder = useReorderPrinters();
   const [opened, { open, close }] = useDisclosure(false);
-  const [editing, setEditing] = useState<Printer | null>(null);
-  const [toRemove, setToRemove] = useState<Printer | null>(null);
+  const [editing, setEditing] = useState<PrinterConfig | null>(null);
+  const [toRemove, setToRemove] = useState<PrinterConfig | null>(null);
   const isMobile = useMediaQuery("(max-width: 48em)") ?? false;
 
   // Auto-open the add-printer modal when routed here with state.openAdd
@@ -55,8 +55,8 @@ export default function PrintersPage() {
   );
 
   // Local mirror of printer order for smooth DnD animation
-  const remotePrinters = data?.config.printers ?? [];
-  const [orderedPrinters, setOrderedPrinters] = useState<Printer[]>(remotePrinters);
+  const remotePrinters = data?.printers ?? [];
+  const [orderedPrinters, setOrderedPrinters] = useState<PrinterConfig[]>(remotePrinters);
   const remoteKey = useMemo(
     () => remotePrinters.map((p) => p.serial).join("|"),
     [remotePrinters],
@@ -75,8 +75,8 @@ export default function PrintersPage() {
 
   
   const openNew = () => { setEditing(null); open(); };
-  const openEdit = (p: Printer) => { setEditing(p); open(); };
-  const toggleEnabled = (p: Printer, enabled: boolean) => {
+  const openEdit = (p: PrinterConfig) => { setEditing(p); open(); };
+  const toggleEnabled = (p: PrinterConfig, enabled: boolean) => {
     update.mutate({ serial: p.serial, patch: { enabled } });
   };
 
@@ -88,10 +88,10 @@ export default function PrintersPage() {
     if (oldIndex === -1 || newIndex === -1) return;
     const next = arrayMove(orderedPrinters, oldIndex, newIndex);
     setOrderedPrinters(next);
-    reorder.mutate({ ...data.config, printers: next });
+    reorder.mutate({ ...data, printers: next });
   };
 
-  const rowProps = (p: Printer) => ({
+  const rowProps = (p: PrinterConfig) => ({
     printer: p,
     onEdit: openEdit,
     onDelete: (serial: string) => {

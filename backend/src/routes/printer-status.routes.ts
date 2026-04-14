@@ -1,39 +1,44 @@
 import type { FastifyPluginAsync } from "fastify";
+import type { AmsSlot } from "@bambu-spoolman-sync/shared";
 import { matchSlot, type Mapping } from "../filament-catalog.js";
 import type { ConfigStore } from "../config-store.js";
-import type { SpoolService } from "../services/spool.service.js";
 import { listRuntimes, type PrinterConnectionPool } from "../clients/bambu/index.js";
 
-export interface StateRouteDeps {
+export interface PrinterStatusRouteDeps {
   configStore: ConfigStore;
   mapping: Mapping;
   printerPool: PrinterConnectionPool;
-  spoolService: SpoolService;
 }
 
-export const stateRoutes: FastifyPluginAsync<StateRouteDeps> = async (app, { configStore, mapping, printerPool, spoolService }) => {
-  app.get("/api/state", {
+export const printerStatusRoutes: FastifyPluginAsync<PrinterStatusRouteDeps> = async (
+  app,
+  { configStore, mapping, printerPool },
+) => {
+  app.get("/api/printers/status", {
     schema: {
-      tags: ["State"],
-      description: "Get live printer status, AMS contents, and sync state",
+      tags: ["Printers"],
+      description: "Get live printer status and AMS contents",
     },
   }, async () => {
     const config = configStore.current;
     const runtimes = listRuntimes(printerPool);
     const bySerial = new Map(runtimes.map((r) => [r.printer.serial, r]));
-    const syncStates = spoolService.listSyncStates();
 
-    const printers = config.printers.map((p) => {
+    return config.printers.map((p) => {
       const runtime = bySerial.get(p.serial);
       const ams_units = (runtime?.ams_units ?? []).map((unit) => ({
         id: unit.id,
         nozzle_id: unit.nozzle_id,
-        slots: unit.slots.map((slot) => {
-          const tagId = slot.spool?.tag_id ?? null;
+        slots: unit.slots.map((slot): AmsSlot => {
+          const match = matchSlot(slot, mapping.byId);
           return {
-            slot,
-            ...matchSlot(slot, mapping.byId),
-            sync: (tagId && syncStates.get(tagId)) ?? { status: "never" as const },
+            ams_id: slot.ams_id,
+            slot_id: slot.slot_id,
+            nozzle_id: slot.nozzle_id,
+            has_spool: slot.has_spool,
+            reading: slot.spool,
+            match_type: match.type,
+            color_name: match.entry?.color_name ?? null,
           };
         }),
       }));
@@ -46,13 +51,5 @@ export const stateRoutes: FastifyPluginAsync<StateRouteDeps> = async (app, { con
         ams_units,
       };
     });
-
-    return {
-      printers,
-      filament_catalog: {
-        count: mapping.byId.size,
-        fetched_at: mapping.fetchedAt,
-      },
-    };
   });
 };

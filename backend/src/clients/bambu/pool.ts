@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
-import type { Printer } from "@bambu-spoolman-sync/shared";
+import type { PrinterConfig } from "@bambu-spoolman-sync/shared";
 import type { AppEventBus } from "../../events.js";
 import { connect, type InternalClient, type PrinterRuntime } from "./connection.js";
 
@@ -10,7 +10,7 @@ export function createPrinterConnectionPool(): PrinterConnectionPool {
 }
 
 export function syncPrinters(
-  target: Printer[],
+  target: PrinterConfig[],
   state: PrinterConnectionPool,
   bus: AppEventBus,
   log: FastifyBaseLogger,

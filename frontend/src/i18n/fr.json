@@ -73,7 +73,13 @@
       "physical": "Caractéristiques",
       "sync": "Synchronisation",
       "source": "Source",
-      "history": "Historique"
+      "history": "Historique",
+      "ams_reading": "Lecture AMS",
+      "linked_spool": "Bobine liée"
+    },
+    "linked_spool": {
+      "not_tracked_hint": "Cette bobine n'a pas de fiche persistée — elle sera suivie dès qu'un tag RFID connu sera détecté.",
+      "view_details": "Voir"
     },
     "fields": {
       "color_name": "Couleur",
@@ -87,13 +93,14 @@
       "spool_uid": "UID de la bobine",
       "total_weight": "Poids total",
       "remaining": "Restant",
+      "printer_reports": "Estimation imprimante",
       "nozzle_temp": "Température buse",
       "sync_status": "État de synchronisation",
       "spoolman_spool": "Bobine Spoolman",
       "sync_last": "Dernière synchronisation",
       "sync_error": "Erreur de synchronisation",
       "printer_serial": "Imprimante",
-      "last_location": "Dernier emplacement",
+      "current_location": "Chargé dans",
       "first_seen": "Première détection",
       "last_used": "Dernière utilisation",
       "last_updated": "Dernière mise à jour"
@@ -103,10 +110,6 @@
       "synced": "Synchronisé",
       "stale": "À synchroniser",
       "error": "Erreur",
-      "never_tooltip": "Pas encore synchronisé avec Spoolman",
-      "synced_tooltip": "Synchronisé avec la bobine #{{spool_id}} · {{at}}",
-      "stale_tooltip": "Bobine #{{spool_id}} modifiée depuis {{at}} — à synchroniser",
-      "error_tooltip": "Dernière synchronisation échouée : {{error}}",
       "open_in_spoolman": "Ouvrir dans Spoolman"
     }
   },

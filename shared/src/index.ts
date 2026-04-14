@@ -15,15 +15,6 @@ export interface SpoolReading {
   remain: number | null;
 }
 
-export interface AmsSlot {
-  printer_serial: string;
-  ams_id: number;
-  slot_id: number;
-  nozzle_id: number | null;
-  has_spool: boolean;
-  spool: SpoolReading | null;
-}
-
 // ---------------------------------------------------------------------------
 // Filament matching
 // ---------------------------------------------------------------------------
@@ -59,6 +50,17 @@ export type SyncState =
 export type SyncStatus = SyncState["status"];
 
 // ---------------------------------------------------------------------------
+// AMS location — where a spool is physically loaded
+// ---------------------------------------------------------------------------
+
+export interface AmsLocation {
+  printer_serial: string;
+  printer_name: string;
+  ams_id: number;
+  slot_id: number;
+}
+
+// ---------------------------------------------------------------------------
 // Spool — the real business object (persisted + enriched)
 // ---------------------------------------------------------------------------
 
@@ -76,9 +78,6 @@ export interface Spool {
   temp_min: number | null;
   temp_max: number | null;
   last_used: string | null;
-  last_printer_serial: string | null;
-  last_ams_id: number | null;
-  last_slot_id: number | null;
   first_seen: string;
   last_updated: string;
   sync: SyncState;
@@ -105,7 +104,7 @@ export interface SyncResult {
 // Config
 // ---------------------------------------------------------------------------
 
-export interface Printer {
+export interface PrinterConfig {
   name: string;
   host: string;
   serial: string;
@@ -113,11 +112,11 @@ export interface Printer {
   enabled: boolean;
 }
 
-export type PrinterInput = Printer;
-export type PrinterPatch = Partial<Printer>;
+export type PrinterInput = PrinterConfig;
+export type PrinterPatch = Partial<PrinterConfig>;
 
 export interface Config {
-  printers: Printer[];
+  printers: PrinterConfig[];
   filament_catalog: {
     refresh_interval_hours: number;
   };
@@ -129,7 +128,7 @@ export interface Config {
 }
 
 // ---------------------------------------------------------------------------
-// Printer status
+// Printer connection status
 // ---------------------------------------------------------------------------
 
 export type PrinterErrorCode =
@@ -144,34 +143,37 @@ export interface PrinterStatus {
 }
 
 // ---------------------------------------------------------------------------
-// State views (API response shapes)
+// AMS slot — a physical slot in the AMS (API response shape)
 // ---------------------------------------------------------------------------
 
-export interface AmsMatchedSlot {
-  slot: AmsSlot;
-  type: MatchType;
-  entry?: CatalogEntry;
-  sync: SyncState;
+export interface AmsSlot {
+  ams_id: number;
+  slot_id: number;
+  nozzle_id: number | null;
+  has_spool: boolean;
+  reading: SpoolReading | null;
+  match_type: MatchType;
+  color_name: string | null;
 }
 
-export interface AmsUnitView {
+// ---------------------------------------------------------------------------
+// AMS unit — a physical AMS module
+// ---------------------------------------------------------------------------
+
+export interface AmsUnit {
   id: number;
   nozzle_id: number | null;
-  slots: AmsMatchedSlot[];
+  slots: AmsSlot[];
 }
 
-export interface PrinterStateView {
+// ---------------------------------------------------------------------------
+// Printer — live printer with AMS data (API response shape)
+// ---------------------------------------------------------------------------
+
+export interface Printer {
   serial: string;
   name: string;
   enabled: boolean;
   status: PrinterStatus;
-  ams_units: AmsUnitView[];
-}
-
-export interface AppState {
-  printers: PrinterStateView[];
-  filament_catalog: {
-    count: number;
-    fetched_at: string | null;
-  };
+  ams_units: AmsUnit[];
 }

@@ -1,12 +1,13 @@
 import type { FastifyBaseLogger } from "fastify";
-import type { SpoolReading, AmsSlot } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { ParsedSlot, ParsedAmsUnit } from "../clients/bambu/types.js";
 import type { AppEventBus } from "../events.js";
 
-function slotKey(slot: AmsSlot): string {
+function slotKey(slot: ParsedSlot): string {
   return `${slot.printer_serial}|${slot.ams_id}|${slot.slot_id}`;
 }
 
-function slotSignature(slot: AmsSlot): string {
+function slotSignature(slot: ParsedSlot): string {
   const s = slot.spool;
   return `${s?.tag_id}|${s?.remain}|${s?.weight}`;
 }
@@ -19,7 +20,7 @@ export interface AmsChangeDetector {
 export function createAmsChangeDetector(bus: AppEventBus, log: FastifyBaseLogger): AmsChangeDetector {
   const lastSignature = new Map<string, string>();
 
-  const onAmsReported = (_printer: unknown, ams_units: { slots: AmsSlot[] }[]) => {
+  const onAmsReported = (_printer: unknown, ams_units: ParsedAmsUnit[]) => {
     for (const unit of ams_units) {
       for (const slot of unit.slots) {
         const key = slotKey(slot);

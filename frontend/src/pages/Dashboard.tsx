@@ -27,14 +27,14 @@ import { EmptyStateCard } from "../components/EmptyStateCard";
 import { StatusLegend } from "../components/StatusLegend";
 import { collectActiveTagIds } from "../api";
 import {
-  useAppState,
+  usePrinters,
   useConfig,
   useSyncAllSpoolman,
   useSyncSpoolman
 } from "../hooks";
 
 export default function DashboardPage() {
-  const { data, isLoading, isError, error } = useAppState();
+  const { data, isLoading, isError, error } = usePrinters();
   const { data: configData } = useConfig();
   const syncSpoolman = useSyncSpoolman();
   const syncAllSpoolman = useSyncAllSpoolman();
@@ -51,12 +51,12 @@ export default function DashboardPage() {
     );
   }
 
-  const allPrinters = data?.printers ?? [];
+  const allPrinters = data ?? [];
   const printers = allPrinters.filter((p) => p.enabled);
   const hasAnyPrinter = allPrinters.length > 0;
 
-  const spoolmanConfigured = Boolean(configData?.config.spoolman?.url);
-  const autoSync = Boolean(configData?.config.spoolman?.auto_sync);
+  const spoolmanConfigured = Boolean(configData?.spoolman?.url);
+  const autoSync = Boolean(configData?.spoolman?.auto_sync);
   const showSyncAll = spoolmanConfigured && !autoSync;
 
   return (
