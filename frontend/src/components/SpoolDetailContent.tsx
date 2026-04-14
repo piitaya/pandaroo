@@ -88,6 +88,18 @@ export function SpoolDetailContent({ spool }: { spool: Spool }) {
   const isPersistedSpool = Boolean(spool.first_seen);
   const [adjustOpen, setAdjustOpen] = useState(false);
 
+  const swatches =
+    spool.color_hexes && spool.color_hexes.length > 0
+      ? spool.color_hexes
+      : spool.color_hex
+        ? [spool.color_hex]
+        : [];
+        
+  const multiColor = swatches.length > 1;
+  const totalWeight = spool.weight != null && Number.isFinite(spool.weight) && spool.weight > 0 ? spool.weight : null;
+  const hasRemain = spool.remain != null && spool.remain >= 0;
+  const remainWeight = hasRemain && totalWeight ? Math.round(totalWeight * spool.remain! / 100) : null;
+
   return (
     <Stack gap="md">
       <Group gap="xs">
@@ -109,54 +121,44 @@ export function SpoolDetailContent({ spool }: { spool: Spool }) {
               value={<Plain>{spool.color_name}</Plain>}
             />
           )}
-          {(() => {
-            const swatches =
-              spool.color_hexes && spool.color_hexes.length > 0
-                ? spool.color_hexes
-                : spool.color_hex
-                  ? [spool.color_hex]
-                  : [];
-            if (swatches.length === 0) return null;
-            const multi = swatches.length > 1;
-            return (
-              <>
-                <Row
-                  label={t(multi ? "slot.fields.colors" : "slot.fields.color")}
-                  value={
-                    <Group gap={6} wrap="wrap">
-                      {swatches.map((hex, i) => {
-                        const valid = hex && hex !== "00000000";
-                        return (
-                          <Tooltip
-                            key={`${hex}-${i}`}
-                            label={`#${hex.slice(0, 6)}`}
-                            withArrow
-                          >
-                            <div
-                              style={{
-                                width: 20,
-                                height: 20,
-                                borderRadius: 4,
-                                border: "1px solid #ddd",
-                                background: valid
-                                  ? `#${hex.slice(0, 6)}`
-                                  : "transparent",
-                                flexShrink: 0
-                              }}
-                            />
-                          </Tooltip>
-                        );
-                      })}
-                    </Group>
-                  }
-                />
-                <Row
-                  label={t(multi ? "slot.fields.colors_hex" : "slot.fields.color_hex")}
-                  value={<CopyableMono value={swatches.join(", ")} />}
-                />
-              </>
-            );
-          })()}
+          {swatches.length > 0 && (
+            <>
+              <Row
+                label={t(multiColor ? "slot.fields.colors" : "slot.fields.color")}
+                value={
+                  <Group gap={6} wrap="wrap">
+                    {swatches.map((hex, i) => {
+                      const valid = hex && hex !== "00000000";
+                      return (
+                        <Tooltip
+                          key={`${hex}-${i}`}
+                          label={`#${hex.slice(0, 6)}`}
+                          withArrow
+                        >
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: 4,
+                              border: "1px solid #ddd",
+                              background: valid
+                                ? `#${hex.slice(0, 6)}`
+                                : "transparent",
+                              flexShrink: 0
+                            }}
+                          />
+                        </Tooltip>
+                      );
+                    })}
+                  </Group>
+                }
+              />
+              <Row
+                label={t(multiColor ? "slot.fields.colors_hex" : "slot.fields.color_hex")}
+                value={<CopyableMono value={swatches.join(", ")} />}
+              />
+            </>
+          )}
           <Row
             label={t("slot.fields.material")}
             value={
@@ -183,42 +185,41 @@ export function SpoolDetailContent({ spool }: { spool: Spool }) {
           )}
 
           <SectionHeader label={t("slot.sections.physical")} />
-          {(() => {
-            const w = spool.weight ? Number(spool.weight) : NaN;
-            if (!Number.isFinite(w) || w <= 0) return null;
-            return (
-              <Row
-                label={t("slot.fields.total_weight")}
-                value={<Plain>{w} g</Plain>}
-              />
-            );
-          })()}
-          {spool.remain != null && spool.remain >= 0 && (() => {
-            const w = spool.weight ? Math.round(spool.weight * spool.remain / 100) : null;
-            return (
-              <Row
-                label={t("slot.fields.remaining")}
-                value={
-                  <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
-                    <Progress value={spool.remain} size="sm" style={{ width: 60, flexShrink: 0 }} color={spoolFillColor(spool.remain)} />
-                    <Text size="sm" style={{ whiteSpace: "nowrap", flex: 1 }}>
-                      {w != null ? `${w} g (${spool.remain}%)` : `${spool.remain}%`}
-                    </Text>
-                    {isPersistedSpool && (
-                      <ActionIcon
-                        size="sm"
-                        variant="subtle"
-                        color="gray"
-                        onClick={() => setAdjustOpen(true)}
-                      >
-                        <IconPencil size={14} />
-                      </ActionIcon>
-                    )}
-                  </Group>
-                }
-              />
-            );
-          })()}
+          {totalWeight != null && (
+            <Row
+              label={t("slot.fields.total_weight")}
+              value={<Plain>{totalWeight} g</Plain>}
+            />
+          )}
+          {(hasRemain || isPersistedSpool) && (
+            <Row
+              label={t("slot.fields.remaining")}
+              value={
+                <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+                  {hasRemain ? (
+                    <>
+                      <Progress value={spool.remain!} size="sm" style={{ width: 60, flexShrink: 0 }} color={spoolFillColor(spool.remain!)} />
+                      <Text size="sm" style={{ whiteSpace: "nowrap", flex: 1 }}>
+                        {remainWeight != null ? `${remainWeight} g (${spool.remain}%)` : `${spool.remain}%`}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text size="sm" c="dimmed" style={{ flex: 1 }}>—</Text>
+                  )}
+                  {isPersistedSpool && (
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setAdjustOpen(true)}
+                    >
+                      <IconPencil size={14} />
+                    </ActionIcon>
+                  )}
+                </Group>
+              }
+            />
+          )}
           {hasTemp && (
             <Row
               label={t("slot.fields.nozzle_temp")}
