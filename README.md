@@ -1,24 +1,24 @@
 # Bambu Spoolman Sync
 
-Keep your [Spoolman](https://github.com/Donkie/Spoolman) inventory in
-sync with the spools loaded in your Bambu Lab AMS. Uses the RFID chip
-on each spool, so matches are exact.
+Track the spools loaded in your Bambu Lab AMS, and optionally sync
+them to [Spoolman](https://github.com/Donkie/Spoolman). Uses the RFID
+chip on each spool, so matches are exact.
 
 > ⚠️ **Preview.** Under active development, no stable release yet.
 > Expect breaking changes and bugs. Use at your own risk.
 
 ## What it does
 
-* Watches your AMS over the local network and shows every slot in a
-  simple dashboard: color, material, remaining weight, and which
-  Spoolman spool it maps to.
-* Pushes the current state to Spoolman on demand, or automatically
-  every time something changes in the AMS.
-* Creates missing filaments and vendors in Spoolman the first time it
-  sees a new Bambu variant, so you don't have to set them up by hand.
-* Tracks each physical spool by its RFID chip (not its name or color),
-  so the same roll is always recognized even if you move it between
-  printers.
+* Shows every AMS slot in a simple dashboard: color, material,
+  remaining weight, and which of your spools is loaded.
+* Recognizes spools by their RFID chip, so the same roll is always
+  identified even if you move it between printers or slots.
+* Keeps a history of every spool it has seen, so you always know
+  what's in your drawer. Click a spool to tweak its remaining weight
+  or remove it.
+* Optionally syncs everything to Spoolman, either on demand or
+  automatically whenever the AMS changes. Spoolman is nice to have,
+  not required.
 
 ## Why it's different
 
@@ -33,6 +33,9 @@ A spool either has an exact match (sync it) or it doesn't (the app
 tells you why).
 
 ## Slot status at a glance
+
+The dashboard shows what the printer is reporting right now
+alongside what you already know about that spool.
 
 | Badge        | Meaning                                                     |
 | ------------ | ----------------------------------------------------------- |
@@ -132,32 +135,24 @@ For production: `npm run build && npm start`.
 
 For the curious:
 
-* **Backend**: Fastify + TypeScript. Talks MQTT directly to each
-  printer on `mqtts://{host}:8883`, subscribes to
-  `device/{serial}/report`, and parses slot state from
-  `payload.print.ams.ams[].tray[]`. Keeps `tray_id_name` (RFID variant
-  SKU), `tray_uuid` (per-roll UID), `cols` (colors), `tray_weight`,
-  and `remain %`.
-* **Matching** is deterministic. Each slot's `tray_id_name` is looked
-  up in the cached
+* **Backend**: Fastify + TypeScript. It connects to each printer over
+  MQTT on the local network and reads the AMS slot state as it
+  changes.
+* **Matching** is deterministic: the RFID variant id on each spool is
+  looked up in the cached
   [`bambu-spoolman-db`](https://github.com/piitaya/bambu-spoolman-db)
-  mapping, which carries the corresponding Spoolman filament id when
-  one is known. No fuzzy matching, no hex comparisons.
-* **Syncing** is a chain of Spoolman REST calls:
-  `GET /filament?external_id=…`, falling back to `POST /filament`
-  (and creating the vendor) when missing, then
-  `GET /spool?allow_archived=true` filtered locally on
-  `extra.tag === tray_uuid`, then `POST /spool` when missing, then
-  `PATCH /spool/{id}` with `used_weight`, `first_used`, and
-  `last_used`. The `tag` extra field is registered on first use.
-* **Sync state** is tracked in memory per slot as a signature of
-  `tray_uuid|remain`. If the signature changes after a successful
-  sync, the dot turns yellow (stale) until the next push.
+  catalog, which knows the matching Spoolman filament. No fuzzy name
+  matching, no hex comparisons.
+* **Storage**: a local SQLite database holds your spool history and
+  the Spoolman sync status, so everything survives restarts. Config
+  and the cached catalog live next to it in `DATA_DIR`.
+* **Syncing**: the app talks to Spoolman over its REST API. When a
+  spool is new to Spoolman, the filament (and its vendor) is created
+  on the fly. Existing spools are matched by a `tag` extra field set
+  to the RFID UID, so the same roll is updated instead of duplicated.
 * **Frontend**: React + Vite + [Mantine](https://mantine.dev),
-  TanStack Query for server state, dnd-kit for printer reordering,
-  react-i18next for translations (English and French).
-* **No database.** Only `config.json` (printers, Spoolman settings)
-  and a cached `filaments.json` live on disk, both in `DATA_DIR`.
+  TanStack Query for server state, react-i18next for translations
+  (English and French).
 
 ### Environment variables
 
@@ -165,7 +160,7 @@ For the curious:
 | ------------ | --------- | ---------------------------------------------------------- |
 | `PORT`       | `4000`    | HTTP port                                                  |
 | `HOST`       | `0.0.0.0` | Bind address                                               |
-| `DATA_DIR`   | `./data`  | Where `config.json` and `filaments.json` live              |
+| `DATA_DIR`   | `./data`  | Where the SQLite DB, `config.json`, and `filaments.json` live |
 | `LOG_LEVEL`  | `info`    | Log verbosity: `fatal`, `error`, `warn`, `info`, `debug`  |
 | `LOG_FORMAT` | `pretty`  | Set to `json` for machine-readable JSON output             |
 
