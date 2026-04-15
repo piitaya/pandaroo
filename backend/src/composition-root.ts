@@ -5,7 +5,9 @@ import type { Mapping } from "./filament-catalog.js";
 import type { AppDatabase } from "./db/database.js";
 import { createSpoolRepository, type SpoolRepository } from "./db/spool.repository.js";
 import { createSyncStateRepository, type SyncStateRepository } from "./db/sync-state.repository.js";
+import { createSpoolHistoryRepository, type SpoolHistoryRepository } from "./db/spool-history.repository.js";
 import { createSpoolService, type SpoolService } from "./services/spool.service.js";
+import { createSpoolHistoryService, type SpoolHistoryService } from "./services/spool-history.service.js";
 import { createAmsChangeDetector, type AmsChangeDetector } from "./services/ams-change-detector.js";
 import { createSpoolmanSyncListener, type SpoolmanSyncListener } from "./services/spoolman-sync-listener.js";
 import { createEventBus, type AppEventBus } from "./events.js";
@@ -23,8 +25,10 @@ export interface AppServices {
   readonly bus: AppEventBus;
   readonly mapping: Mapping;
   readonly spoolService: SpoolService;
+  readonly spoolHistoryService: SpoolHistoryService;
   readonly spoolRepo: SpoolRepository;
   readonly syncStateRepo: SyncStateRepository;
+  readonly historyRepo: SpoolHistoryRepository;
   readonly printerPool: PrinterConnectionPool;
   readonly amsDetector: AmsChangeDetector;
   readonly syncListener: SpoolmanSyncListener;
@@ -54,6 +58,7 @@ export function createServices(
 
   const spoolRepo = createSpoolRepository(db);
   const syncStateRepo = createSyncStateRepository(db);
+  const historyRepo = createSpoolHistoryRepository(db);
 
   const spoolService = createSpoolService({
     spoolRepo,
@@ -61,6 +66,12 @@ export function createServices(
     mapping,
     bus,
     log: spoolLog,
+  });
+  const spoolHistoryService = createSpoolHistoryService({
+    historyRepo,
+    spoolRepo,
+    bus,
+    log: spoolLog.child({ module: "history" }),
   });
   const printerPool = createPrinterConnectionPool();
   const amsDetector = createAmsChangeDetector(bus, amsLog);
@@ -87,7 +98,7 @@ export function createServices(
   // Cross-service event wiring
   bus.on("spool:detected", (spool, location) => {
     const now = new Date().toISOString();
-    spoolService.upsert(spool, { lastUsed: now, location });
+    spoolService.upsert(spool, { lastUsed: now, location, source: "ams" });
   });
 
   bus.on("printer:status-changed", (printer, status) => {
@@ -113,8 +124,10 @@ export function createServices(
     bus,
     mapping,
     spoolService,
+    spoolHistoryService,
     spoolRepo,
     syncStateRepo,
+    historyRepo,
     printerPool,
     amsDetector,
     syncListener,
@@ -122,6 +135,7 @@ export function createServices(
     createSyncDeps,
 
     startAll() {
+      spoolHistoryService.start();
       amsDetector.start();
       syncListener.start();
       const config = configStore.current;
@@ -133,6 +147,7 @@ export function createServices(
       log.info("Services stopping");
       syncListener.stop();
       amsDetector.stop();
+      spoolHistoryService.stop();
       await disconnectAll(printerPool);
       mapping.stop();
       sqlite.close();

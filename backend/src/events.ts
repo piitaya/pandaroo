@@ -2,9 +2,18 @@ import { EventEmitter } from "node:events";
 import type { SpoolReading, PrinterConfig, PrinterStatus, Config } from "@bambu-spoolman-sync/shared";
 import type { ParsedAmsUnit } from "./clients/bambu/types.js";
 
+export interface SlotLocation {
+  printer_serial: string;
+  ams_id: number;
+  slot_id: number;
+}
+
 export interface AppEvents {
   "spool:updated": [tagId: string];
-  "spool:detected": [spool: SpoolReading & { tag_id: string }, location: { printer_serial: string; ams_id: number; slot_id: number }];
+  "spool:scanned": [tagId: string];
+  "spool:adjusted": [tagId: string];
+  "spool:detected": [spool: SpoolReading & { tag_id: string }, location: SlotLocation];
+  "spool:slot-exited": [tagId: string, location: SlotLocation];
   "ams:reported": [printer: PrinterConfig, amsUnits: ParsedAmsUnit[]];
   "printer:status-changed": [printer: PrinterConfig, status: PrinterStatus];
   "config:changed": [config: Config];

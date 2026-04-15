@@ -21,6 +21,8 @@ const CONFIG_KEY = ["config"] as const;
 const PRINTERS_KEY = ["printers"] as const;
 const SPOOLS_KEY = ["spools"] as const;
 const FILAMENT_CATALOG_KEY = ["filament-catalog"] as const;
+const SPOOL_HISTORY_KEY = (tagId: string, from: string, to: string) =>
+  ["spool-history", tagId, from, to] as const;
 
 export const useConfig = () =>
   useQuery({ queryKey: CONFIG_KEY, queryFn: api.getConfig });
@@ -38,6 +40,19 @@ export const useSpools = () =>
     queryKey: SPOOLS_KEY,
     queryFn: api.listSpools,
     refetchInterval: 5000,
+  });
+
+export const useSpoolHistory = (
+  tagId: string | undefined,
+  range: { from: string; to: string },
+) =>
+  useQuery({
+    queryKey: SPOOL_HISTORY_KEY(tagId ?? "", range.from, range.to),
+    queryFn: () =>
+      api.getSpoolHistory(tagId!, { from: range.from, to: range.to }),
+    enabled: Boolean(tagId),
+    refetchInterval: 15000,
+    placeholderData: (prev) => prev,
   });
 
 export const useFilamentCatalog = () =>

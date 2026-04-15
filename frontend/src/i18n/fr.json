@@ -213,6 +213,55 @@
       "sync_all": "Tout synchroniser"
     }
   },
+  "spool_detail": {
+    "back": "Retour à l'inventaire",
+    "location": {
+      "not_loaded": "Pas dans un AMS"
+    },
+    "range": {
+      "7d": "7j",
+      "30d": "30j",
+      "90d": "90j",
+      "all": "Tout",
+      "custom": "Personnalisé",
+      "custom_placeholder": "Choisir une période"
+    },
+    "chart": {
+      "title": "Restant au fil du temps",
+      "remain_label": "Restant",
+      "empty_title": "Aucune donnée sur cette période",
+      "empty_hint": "Élargissez la période ou attendez que la bobine soit utilisée."
+    },
+    "timeline": {
+      "title": "Activité",
+      "empty_title": "Aucune activité",
+      "empty_hint": "Insérez la bobine dans un AMS, scannez-la ou ajustez son pourcentage restant pour voir des événements ici.",
+      "has_more": "Des événements plus anciens existent en dehors de cette période. Élargissez la pour les afficher.",
+      "titles": {
+        "slot_enter": "Insérée dans l'AMS",
+        "slot_exit": "Retirée de l'AMS",
+        "scanned": "Scannée",
+        "adjusted": "Ajustée manuellement",
+        "update": "Mise à jour"
+      },
+      "source": {
+        "ams": "AMS",
+        "scan": "Scan",
+        "manual": "Manuel"
+      },
+      "body": {
+        "remain": "{{value}}%",
+        "remain_delta": "{{from}}% \u2192 {{to}}%"
+      }
+    },
+    "details": {
+      "title": "Détails"
+    },
+    "tabs": {
+      "info": "Infos",
+      "activity": "Activité"
+    }
+  },
   "spools": {
     "title": "Bobines",
     "empty": "Aucune bobine scannée. Les bobines sont automatiquement suivies lorsqu'elles sont détectées dans l'AMS.",

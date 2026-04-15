@@ -6,6 +6,10 @@ export type {
   Config,
   MatchType,
   Spool,
+  SpoolHistoryEvent,
+  SpoolHistoryKind,
+  SpoolHistoryResponse,
+  SpoolHistorySource,
   SyncState,
   SyncStatus,
   AmsSlot,
@@ -22,6 +26,7 @@ import type {
   PrinterInput,
   PrinterPatch,
   Spool,
+  SpoolHistoryResponse,
   SyncResult,
 } from "@bambu-spoolman-sync/shared";
 
@@ -111,6 +116,22 @@ export const api = {
   syncAllSpoolman: () =>
     req<SyncResult>("/api/spoolman/sync-all", { method: "POST" }),
   listSpools: () => req<Spool[]>("/api/spools"),
+  getSpool: (tagId: string) =>
+    req<Spool>(`/api/spools/${encodeURIComponent(tagId)}`),
+  getSpoolHistory: (
+    tagId: string,
+    params: { from?: string; to?: string; before?: string; limit?: number } = {},
+  ) => {
+    const search = new URLSearchParams();
+    if (params.from) search.set("from", params.from);
+    if (params.to) search.set("to", params.to);
+    if (params.before) search.set("before", params.before);
+    if (params.limit) search.set("limit", String(params.limit));
+    const qs = search.toString();
+    return req<SpoolHistoryResponse>(
+      `/api/spools/${encodeURIComponent(tagId)}/history${qs ? `?${qs}` : ""}`,
+    );
+  },
   patchSpool: (tagId: string, data: { remain?: number }) =>
     req<Spool>(`/api/spools/${encodeURIComponent(tagId)}`, {
       method: "PATCH",

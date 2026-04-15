@@ -4,7 +4,7 @@ import type { SyncStateRepository, SpoolSyncStateRow } from "../db/sync-state.re
 import type { Mapping } from "../filament-catalog.js";
 import { matchSpool } from "../filament-catalog.js";
 import type { FastifyBaseLogger } from "fastify";
-import type { AppEventBus } from "../events.js";
+import type { AppEventBus, SlotLocation } from "../events.js";
 
 function hasTagId(data: SpoolReading): data is SpoolReading & { tag_id: string } {
   return !!data.tag_id;
@@ -77,7 +77,8 @@ function enrichSpool(
 
 export interface UpsertOptions {
   lastUsed?: string;
-  location?: { printer_serial: string; ams_id: number; slot_id: number };
+  location?: SlotLocation;
+  source?: "ams" | "scan";
 }
 
 export interface SpoolService {
@@ -123,6 +124,7 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
       const now = new Date().toISOString();
       spoolRepo.update(tagId, { ...data, lastUpdated: now });
       log.info({ tagId, ...data }, "Spool updated manually");
+      bus.emit("spool:adjusted", tagId);
       bus.emit("spool:updated", tagId);
       const row = spoolRepo.findByTagId(tagId)!;
       const syncRow = syncStateRepo.findByTagId(tagId);
@@ -189,6 +191,9 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
         });
       }
 
+      if (options?.source === "scan") {
+        bus.emit("spool:scanned", data.tag_id);
+      }
       bus.emit("spool:updated", data.tag_id);
     },
   };

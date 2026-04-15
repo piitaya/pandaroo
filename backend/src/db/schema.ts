@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const spools = sqliteTable("spools", {
   tagId: text("tag_id").primaryKey(),
@@ -32,3 +32,24 @@ export const spoolSyncState = sqliteTable("spool_sync_state", {
   lastSynced: text("last_synced"),
   lastSyncError: text("last_sync_error"),
 });
+
+export const spoolHistory = sqliteTable(
+  "spool_history",
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    tagId: text("tag_id").notNull(),
+    source: text({ enum: ["ams", "scan", "manual"] }).notNull(),
+    kind: text({ enum: ["slot_enter", "slot_exit", "update"] }).notNull(),
+    printerSerial: text("printer_serial"),
+    amsId: integer("ams_id"),
+    slotId: integer("slot_id"),
+    remain: integer(),
+    weight: real(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => ({
+    tagCreatedIdx: index("spool_history_tag_created_idx").on(t.tagId, t.createdAt),
+  }),
+);

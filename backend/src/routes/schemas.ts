@@ -72,6 +72,40 @@ export function parseSpoolScan(data: unknown): { success: true; data: SpoolScan 
   return { success: false, error: message };
 }
 
+export const SpoolHistoryEventSchema = Type.Object({
+  id: Type.Integer(),
+  tag_id: Type.String(),
+  source: Type.Union([Type.Literal("ams"), Type.Literal("scan"), Type.Literal("manual")]),
+  kind: Type.Union([
+    Type.Literal("slot_enter"),
+    Type.Literal("slot_exit"),
+    Type.Literal("update"),
+  ]),
+  printer_serial: NullableString,
+  ams_id: Type.Union([Type.Integer(), Type.Null()]),
+  slot_id: Type.Union([Type.Integer(), Type.Null()]),
+  remain: Type.Union([Type.Integer(), Type.Null()]),
+  weight: NullableNumber,
+  created_at: Type.String(),
+});
+
+export const SpoolHistoryResponseSchema = Type.Object({
+  events: Type.Array(SpoolHistoryEventSchema),
+  has_more: Type.Boolean(),
+  range: Type.Object({ from: Type.String(), to: Type.String() }),
+});
+
+const ISO_DATE_TIME_PATTERN =
+  "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:?\\d{2})$";
+
+export const SpoolHistoryQuerySchema = Type.Object({
+  from: Type.Optional(Type.String({ pattern: ISO_DATE_TIME_PATTERN })),
+  to: Type.Optional(Type.String({ pattern: ISO_DATE_TIME_PATTERN })),
+  before: Type.Optional(Type.String({ pattern: ISO_DATE_TIME_PATTERN })),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 5000 })),
+});
+export type SpoolHistoryQuery = Static<typeof SpoolHistoryQuerySchema>;
+
 export const LocalSpoolResponse = Type.Object({
   tag_id: Type.String(),
   variant_id: NullableString,

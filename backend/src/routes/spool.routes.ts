@@ -1,18 +1,31 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
 import type { SpoolReading } from "@bambu-spoolman-sync/shared";
-import { SpoolScanSchema, SpoolPatchSchema, type SpoolScan, type SpoolPatch } from "./schemas.js";
+import {
+  SpoolScanSchema,
+  SpoolPatchSchema,
+  SpoolHistoryQuerySchema,
+  SpoolHistoryResponseSchema,
+  type SpoolScan,
+  type SpoolPatch,
+  type SpoolHistoryQuery,
+} from "./schemas.js";
 import type { ConfigStore } from "../config-store.js";
 import type { SpoolService } from "../services/spool.service.js";
+import type { SpoolHistoryService } from "../services/spool-history.service.js";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
 import { ErrorResponse, LocalSpoolResponse, OkResponse } from "./schemas.js";
 
 export interface SpoolRouteDeps {
   configStore: ConfigStore;
   spoolService: SpoolService;
+  spoolHistoryService: SpoolHistoryService;
 }
 
-export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { configStore, spoolService }) => {
+const DEFAULT_HISTORY_LIMIT = 1000;
+const DEFAULT_HISTORY_WINDOW_DAYS = 30;
+
+export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { configStore, spoolService, spoolHistoryService }) => {
   app.get("/api/spools", {
     schema: {
       tags: ["Spools"],
@@ -60,7 +73,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       temp_max: body.temp_max,
       remain: body.remain ?? null,
     };
-    spoolService.upsert(scan);
+    spoolService.upsert(scan, { source: "scan" });
     return spoolService.findByTagId(body.uid)!;
   });
 
@@ -81,6 +94,50 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     }
     return spool;
   });
+
+  app.get<{ Params: { tagId: string }; Querystring: SpoolHistoryQuery }>(
+    "/api/spools/:tagId/history",
+    {
+      schema: {
+        tags: ["Spools"],
+        description:
+          "Fetch the append-only event history for a spool. Returns events newest-first within an optional date range, paginated via `before` cursor.",
+        params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
+        querystring: SpoolHistoryQuerySchema,
+        response: { 200: SpoolHistoryResponseSchema, 404: ErrorResponse },
+      },
+    },
+    async (req, reply) => {
+      const spool = spoolService.findByTagId(req.params.tagId);
+      if (!spool) {
+        reply.code(404);
+        return { error: "No spool found with this tag id." };
+      }
+
+      const now = new Date();
+      const fromDate =
+        req.query.from ??
+        new Date(now.getTime() - DEFAULT_HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const toDate = req.query.to ?? now.toISOString();
+      const limit = req.query.limit ?? DEFAULT_HISTORY_LIMIT;
+
+      const events = spoolHistoryService.list(req.params.tagId, {
+        from: fromDate,
+        to: toDate,
+        before: req.query.before,
+        limit: limit + 1,
+      });
+
+      const hasMore = events.length > limit;
+      const trimmed = hasMore ? events.slice(0, limit) : events;
+
+      return {
+        events: trimmed,
+        has_more: hasMore,
+        range: { from: fromDate, to: toDate },
+      };
+    },
+  );
 
   app.delete<{ Params: { tagId: string } }>("/api/spools/:tagId", {
     schema: {
