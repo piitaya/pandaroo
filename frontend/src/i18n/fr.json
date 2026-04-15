@@ -1,11 +1,8 @@
 {
   "nav": {
-    "dashboard": "Tableau de bord",
-    "printers": "Imprimantes",
-    "sync": "Synchronisation",
-    "spools": "Bobines",
-    "settings": "Paramètres",
-    "toggle_navigation": "Afficher le menu"
+    "live": "En direct",
+    "inventory": "Inventaire",
+    "settings": "Paramètres"
   },
   "common": {
     "cancel": "Annuler",
@@ -173,6 +170,11 @@
   "settings": {
     "title": "Paramètres",
     "saved": "Paramètres enregistrés",
+    "tabs": {
+      "general": "Général",
+      "printers": "Imprimantes",
+      "sync": "Synchronisation"
+    },
     "mapping_card": {
       "title": "Mappage des filaments",
       "source_hint": "Le mappage est téléchargé depuis {{repo}}.",

@@ -117,7 +117,7 @@ export default function DashboardPage() {
           description={t("dashboard.no_printers_body")}
           action={{
             label: t("dashboard.no_printers_action"),
-            to: "/printers",
+            to: "/settings/printers",
             state: { openAdd: true },
             icon: <IconPlus size={16} />,
           }}
@@ -130,7 +130,7 @@ export default function DashboardPage() {
           description={t("dashboard.all_disabled_body")}
           action={{
             label: t("dashboard.all_disabled_action"),
-            to: "/printers",
+            to: "/settings/printers",
             variant: "default",
           }}
         />
@@ -147,7 +147,7 @@ export default function DashboardPage() {
             </Stack>
             <Button
               component={Link}
-              to="/sync"
+              to="/settings/sync"
               variant="default"
               leftSection={<IconPlugConnected size={16} />}
             >

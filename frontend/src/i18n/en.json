@@ -1,11 +1,8 @@
 {
   "nav": {
-    "dashboard": "Dashboard",
-    "printers": "Printers",
-    "sync": "Sync",
-    "spools": "Spools",
-    "settings": "Settings",
-    "toggle_navigation": "Toggle navigation"
+    "live": "Live",
+    "inventory": "Inventory",
+    "settings": "Settings"
   },
   "common": {
     "cancel": "Cancel",
@@ -173,6 +170,11 @@
   "settings": {
     "title": "Settings",
     "saved": "Settings saved",
+    "tabs": {
+      "general": "General",
+      "printers": "Printers",
+      "sync": "Sync"
+    },
     "mapping_card": {
       "title": "Filament mapping",
       "source_hint": "The mapping is downloaded from {{repo}}.",

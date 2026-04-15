@@ -177,7 +177,7 @@ function LinkedSpoolCard({ spool, onClose }: { spool: Spool; onClose: () => void
             rightSection={<IconExternalLink size={14} />}
             onClick={() => {
               onClose();
-              navigate("/spools", { state: { selectTagId: spool.tag_id } });
+              navigate("/inventory", { state: { selectTagId: spool.tag_id } });
             }}
             style={{ flexShrink: 0 }}
           >
