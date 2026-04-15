@@ -97,6 +97,58 @@ describe("AmsChangeDetector", () => {
     detector.stop();
   });
 
+  it("emits spool:slot-exited when a previously occupied slot becomes empty", () => {
+    const bus = createEventBus();
+    const detector = createAmsChangeDetector(bus, createTestLogger());
+    detector.start();
+
+    const exited = vi.fn();
+    bus.on("spool:slot-exited", exited);
+
+    bus.emit("ams:reported", printer, [{ id: 0, nozzle_id: 0, slots: [makeSlot()] }]);
+
+    const emptySlot: AmsSlot = {
+      ...makeSlot(),
+      has_spool: false,
+      spool: null,
+    };
+    bus.emit("ams:reported", printer, [{ id: 0, nozzle_id: 0, slots: [emptySlot] }]);
+
+    expect(exited).toHaveBeenCalledOnce();
+    expect(exited.mock.calls[0][0]).toBe("UUID-A");
+    expect(exited.mock.calls[0][1]).toEqual({
+      printer_serial: "AC12",
+      ams_id: 0,
+      slot_id: 0,
+    });
+
+    detector.stop();
+  });
+
+  it("emits spool:slot-exited for the previous spool when a different spool replaces it", () => {
+    const bus = createEventBus();
+    const detector = createAmsChangeDetector(bus, createTestLogger());
+    detector.start();
+
+    const exited = vi.fn();
+    bus.on("spool:slot-exited", exited);
+
+    bus.emit("ams:reported", printer, [{ id: 0, nozzle_id: 0, slots: [makeSlot()] }]);
+
+    const swappedSpool: SpoolReading = {
+      ...makeSlot().spool!,
+      tag_id: "UUID-B",
+    };
+    bus.emit("ams:reported", printer, [{
+      id: 0, nozzle_id: 0, slots: [makeSlot({ spool: swappedSpool })],
+    }]);
+
+    expect(exited).toHaveBeenCalledOnce();
+    expect(exited.mock.calls[0][0]).toBe("UUID-A");
+
+    detector.stop();
+  });
+
   it("does not emit for slots without tag_id", () => {
     const bus = createEventBus();
     const detector = createAmsChangeDetector(bus, createTestLogger());

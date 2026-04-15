@@ -75,6 +75,7 @@ export async function buildApp() {
   await app.register(spoolRoutes, {
     configStore: services.configStore,
     spoolService: services.spoolService,
+    spoolHistoryService: services.spoolHistoryService,
   });
   await app.register(printerStatusRoutes, {
     configStore: services.configStore,

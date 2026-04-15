@@ -84,6 +84,32 @@ export interface Spool {
 }
 
 // ---------------------------------------------------------------------------
+// Spool history — append-only event log
+// ---------------------------------------------------------------------------
+
+export type SpoolHistorySource = "ams" | "scan" | "manual";
+export type SpoolHistoryKind = "slot_enter" | "slot_exit" | "update";
+
+export interface SpoolHistoryEvent {
+  id: number;
+  tag_id: string;
+  source: SpoolHistorySource;
+  kind: SpoolHistoryKind;
+  printer_serial: string | null;
+  ams_id: number | null;
+  slot_id: number | null;
+  remain: number | null;
+  weight: number | null;
+  created_at: string;
+}
+
+export interface SpoolHistoryResponse {
+  events: SpoolHistoryEvent[];
+  has_more: boolean;
+  range: { from: string; to: string };
+}
+
+// ---------------------------------------------------------------------------
 // Sync results
 // ---------------------------------------------------------------------------
 

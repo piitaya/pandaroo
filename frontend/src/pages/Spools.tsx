@@ -24,7 +24,6 @@ import { spoolFillColor } from "../components/spoolFillColor";
 import { syncStatusColor } from "../components/syncStatusColor";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { EmptyStateCard } from "../components/EmptyStateCard";
-import { SpoolDetailModal } from "../components/SpoolDetailModal";
 import { AdjustRemainModal } from "../components/AdjustRemainModal";
 
 function formatDate(value: string): string {
@@ -75,17 +74,17 @@ export default function SpoolsPage() {
   });
   const [toRemove, setToRemove] = useState<Spool | null>(null);
   const [toAdjustId, setToAdjustId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const spoolmanConfigured = Boolean(configData?.spoolman?.url);
 
-  // Auto-open a spool when routed here with state.selectTagId
+  // Allow other pages to deep-link a spool by its tag id via navigation state.
   const location = useLocation();
   const navigate = useNavigate();
   useEffect(() => {
     const state = location.state as { selectTagId?: string } | null;
     if (state?.selectTagId) {
-      setSelectedId(state.selectTagId);
-      navigate(location.pathname, { replace: true, state: null });
+      navigate(`/inventory/${encodeURIComponent(state.selectTagId)}`, {
+        replace: true,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -94,7 +93,6 @@ export default function SpoolsPage() {
     () => new Map(spools?.map((s) => [s.tag_id, s]) ?? []),
     [spools],
   );
-  const selected = selectedId ? spoolsByTagId.get(selectedId) ?? null : null;
   const toAdjust = toAdjustId ? spoolsByTagId.get(toAdjustId) ?? null : null;
 
   const sorted = useMemo(
@@ -137,7 +135,7 @@ export default function SpoolsPage() {
           idAccessor="tag_id"
           sortStatus={sortStatus}
           onSortStatusChange={setSortStatus}
-          onRowClick={({ record }) => setSelectedId(record.tag_id)}
+          onRowClick={({ record }) => navigate(`/inventory/${encodeURIComponent(record.tag_id)}`)}
           columns={[
             {
               accessor: "color_hex",
@@ -293,14 +291,6 @@ export default function SpoolsPage() {
           spool={toAdjust}
           opened
           onClose={() => setToAdjustId(null)}
-        />
-      )}
-
-      {selected && (
-        <SpoolDetailModal
-          spool={selected}
-          opened
-          onClose={() => setSelectedId(null)}
         />
       )}
 
