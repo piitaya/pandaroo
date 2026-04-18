@@ -218,48 +218,37 @@
     "location": {
       "not_loaded": "Pas dans un AMS"
     },
-    "range": {
-      "7d": "7j",
-      "30d": "30j",
-      "90d": "90j",
-      "all": "Tout",
-      "custom": "Personnalisé",
-      "custom_placeholder": "Choisir une période"
+    "remain": {
+      "no_data": "Pas encore mesurée"
     },
-    "chart": {
-      "title": "Restant au fil du temps",
-      "remain_label": "Restant",
-      "empty_title": "Aucune donnée sur cette période",
-      "empty_hint": "Élargissez la période ou attendez que la bobine soit utilisée."
-    },
-    "timeline": {
-      "title": "Activité",
+    "usage": {
+      "title": "Historique d'utilisation",
+      "has_more": "Des événements plus anciens existent hors de cette fenêtre.",
       "empty_title": "Aucune activité",
       "empty_hint": "Insérez la bobine dans un AMS, scannez-la ou ajustez son pourcentage restant pour voir des événements ici.",
-      "has_more": "Des événements plus anciens existent en dehors de cette période. Élargissez la pour les afficher.",
-      "titles": {
-        "slot_enter": "Insérée dans l'AMS",
-        "slot_exit": "Retirée de l'AMS",
-        "scanned": "Scannée",
-        "adjusted": "Ajustée manuellement",
-        "update": "Mise à jour"
+      "event": {
+        "enter": "Chargée",
+        "exit": "Retirée",
+        "manual": "Manuel",
+        "scan": "Scannée",
+        "ams_last": "Dernière mise à jour"
       },
-      "source": {
-        "ams": "AMS",
-        "scan": "Scan",
-        "manual": "Manuel"
+      "pin": {
+        "remain": "{{value}}%"
       },
-      "body": {
-        "remain": "{{value}}%",
-        "remain_delta": "{{from}}% \u2192 {{to}}%"
+      "manual": {
+        "menu_aria": "Options de la pesée manuelle",
+        "edit": "Modifier la valeur",
+        "delete": "Supprimer",
+        "edit_title": "Modifier la pesée manuelle",
+        "delete_title": "Supprimer cette pesée ?",
+        "delete_body": "Cette action est définitive.",
+        "updated": "Pesée mise à jour",
+        "deleted": "Pesée supprimée"
       }
     },
     "details": {
       "title": "Détails"
-    },
-    "tabs": {
-      "info": "Infos",
-      "activity": "Activité"
     }
   },
   "spools": {

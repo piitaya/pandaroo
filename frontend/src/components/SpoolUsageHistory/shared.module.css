@@ -1,0 +1,25 @@
+/* Shared visuals across the rail + legend so they can't drift. */
+
+/* Stripes mix against the page body (not transparent) so they fully occlude
+   the rail spine behind the band. */
+.sessionStripe {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--mantine-color-blue-filled) 55%, var(--mantine-color-body)) 0 5px,
+    color-mix(in oklch, var(--mantine-color-blue-filled) 22%, var(--mantine-color-body)) 5px 10px
+  );
+}
+
+/* Opaque tinted background for pin icons. Mantine's variant="light" uses a
+   semi-transparent rgba background, which lets the rail band bleed through
+   the icon when it sits on top of a session. Mixing the accent against the
+   body colour keeps the same light-tint look but paints solid. */
+.icon {
+  background: color-mix(
+    in oklch,
+    var(--icon-color) 14%,
+    var(--mantine-color-body)
+  );
+  border: 1px solid
+    color-mix(in oklch, var(--icon-color) 38%, var(--mantine-color-body));
+}

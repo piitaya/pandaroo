@@ -6,7 +6,7 @@ interface ConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  body: string;
+  body?: string;
   loading?: boolean;
 }
 
@@ -22,7 +22,7 @@ export function ConfirmModal({
   return (
     <Modal opened={opened} onClose={onClose} title={title} centered size="sm">
       <Stack>
-        <Text size="sm">{body}</Text>
+        {body && <Text size="sm">{body}</Text>}
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>
             {t("common.cancel")}

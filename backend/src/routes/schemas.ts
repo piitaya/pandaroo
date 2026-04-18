@@ -72,6 +72,11 @@ export function parseSpoolScan(data: unknown): { success: true; data: SpoolScan 
   return { success: false, error: message };
 }
 
+export const SpoolHistoryEventPatchSchema = Type.Object({
+  remain: Type.Union([Type.Integer({ minimum: 0, maximum: 100 }), Type.Null()]),
+});
+export type SpoolHistoryEventPatch = Static<typeof SpoolHistoryEventPatchSchema>;
+
 export const SpoolHistoryEventSchema = Type.Object({
   id: Type.Integer(),
   tag_id: Type.String(),

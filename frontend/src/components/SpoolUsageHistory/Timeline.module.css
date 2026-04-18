@@ -1,0 +1,78 @@
+.root {
+  position: relative;
+  padding: 4px 0;
+}
+
+.railLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  pointer-events: none;
+}
+
+.spine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 2px;
+  background: var(--mantine-color-default-border);
+  border-radius: 2px;
+}
+
+.band {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  min-height: 6px;
+  border-radius: 6px;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  height: 68px;
+  padding: 6px 0;
+}
+
+.iconCell {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.line1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.line2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.empty {
+  padding: 32px 16px;
+  text-align: center;
+}

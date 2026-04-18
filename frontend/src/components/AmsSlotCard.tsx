@@ -1,5 +1,4 @@
 import {
-  ActionIcon,
   Badge,
   Card,
   Group,
@@ -8,7 +7,6 @@ import {
   Text
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconInfoCircle } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { AmsSlotDetailModal } from "./AmsSlotDetailModal";
 import { ColorSwatch } from "./ColorSwatch";
@@ -90,9 +88,31 @@ export function AmsSlotCard({ s }: { s: AmsSlot }) {
       ? totalGrams
       : null;
 
+  const isActionable = !isEmpty && !isUnknownSpool;
+
   return (
     <>
-      <Card withBorder shadow="sm" radius="md" padding="md">
+      <Card
+        withBorder
+        shadow="sm"
+        radius="md"
+        padding="md"
+        onClick={isActionable ? open : undefined}
+        onKeyDown={
+          isActionable
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  open();
+                }
+              }
+            : undefined
+        }
+        role={isActionable ? "button" : undefined}
+        tabIndex={isActionable ? 0 : undefined}
+        aria-label={isActionable ? t("slot.details_aria_label") : undefined}
+        style={{ cursor: isActionable ? "pointer" : undefined }}
+      >
         <Group justify="space-between" mb="xs" wrap="nowrap">
           <Text fw={500}>{t("slot.label", { n: s.slot_id + 1 })}</Text>
           <Group gap={4} wrap="nowrap">
@@ -102,16 +122,6 @@ export function AmsSlotCard({ s }: { s: AmsSlot }) {
             {s.match_type === "mapped" && spoolmanConfigured && sync && (
               <SyncDot sync={sync} />
             )}
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              size="sm"
-              onClick={open}
-              disabled={isEmpty || isUnknownSpool}
-              aria-label={t("slot.details_aria_label")}
-            >
-              <IconInfoCircle size={16} />
-            </ActionIcon>
           </Group>
         </Group>
         <Stack gap="sm">

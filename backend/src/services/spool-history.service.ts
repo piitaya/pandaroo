@@ -15,10 +15,24 @@ import type { SpoolRepository } from "../db/spool.repository.js";
 
 const REMAIN_DELTA_THRESHOLD = 1;
 
+export type UpdateHistoryEventResult =
+  | { ok: true; event: SpoolHistoryEvent }
+  | { ok: false; reason: "not_found" | "not_manual" | "tag_mismatch" };
+
+export type DeleteHistoryEventResult =
+  | { ok: true }
+  | { ok: false; reason: "not_found" | "not_manual" | "tag_mismatch" };
+
 export interface SpoolHistoryService {
   start(): void;
   stop(): void;
   list(tagId: string, options: ListHistoryOptions): SpoolHistoryEvent[];
+  updateManual(
+    tagId: string,
+    eventId: number,
+    patch: { remain: number | null },
+  ): UpdateHistoryEventResult;
+  deleteManual(tagId: string, eventId: number): DeleteHistoryEventResult;
 }
 
 export interface SpoolHistoryServiceDeps {
@@ -195,5 +209,44 @@ export function createSpoolHistoryService(
     list(tagId, options) {
       return historyRepo.list(tagId, options).map(rowToEvent);
     },
+
+    updateManual(tagId, eventId, patch) {
+      const row = historyRepo.findById(eventId);
+      if (!row) return { ok: false, reason: "not_found" };
+      if (row.tagId !== tagId) return { ok: false, reason: "tag_mismatch" };
+      if (row.source !== "manual") return { ok: false, reason: "not_manual" };
+      const updated = historyRepo.updateRemain(eventId, patch.remain);
+      if (!updated) return { ok: false, reason: "not_found" };
+      syncCurrentRemain(tagId);
+      const next = historyRepo.findById(eventId);
+      if (!next) return { ok: false, reason: "not_found" };
+      return { ok: true, event: rowToEvent(next) };
+    },
+
+    deleteManual(tagId, eventId) {
+      const row = historyRepo.findById(eventId);
+      if (!row) return { ok: false, reason: "not_found" };
+      if (row.tagId !== tagId) return { ok: false, reason: "tag_mismatch" };
+      if (row.source !== "manual") return { ok: false, reason: "not_manual" };
+      const deleted = historyRepo.deleteById(eventId);
+      if (!deleted) return { ok: false, reason: "not_found" };
+      syncCurrentRemain(tagId);
+      return { ok: true };
+    },
   };
+
+  // Keep Spool.remain aligned with the latest history event that carries a
+  // remain value. Runs after history edits/deletes so corrections to the most
+  // recent remain-bearing event also correct the spool's current state.
+  function syncCurrentRemain(tagId: string) {
+    const latest = historyRepo.findLatestWithRemain(tagId);
+    const nextRemain = latest?.remain ?? null;
+    const spool = spoolRepo.findByTagId(tagId);
+    if (!spool) return;
+    if (spool.remain === nextRemain) return;
+    spoolRepo.update(tagId, {
+      remain: nextRemain,
+      lastUpdated: new Date().toISOString(),
+    });
+  }
 }

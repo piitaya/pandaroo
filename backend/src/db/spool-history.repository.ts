@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt, lte } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, lt, lte } from "drizzle-orm";
 import { spoolHistory } from "./schema.js";
 import type { AppDatabase } from "./database.js";
 
@@ -14,8 +14,12 @@ export interface ListHistoryOptions {
 
 export interface SpoolHistoryRepository {
   insert(data: SpoolHistoryInsert): void;
+  findById(id: number): SpoolHistoryRow | undefined;
   findLatest(tagId: string): SpoolHistoryRow | undefined;
+  findLatestWithRemain(tagId: string): SpoolHistoryRow | undefined;
   list(tagId: string, options: ListHistoryOptions): SpoolHistoryRow[];
+  updateRemain(id: number, remain: number | null): boolean;
+  deleteById(id: number): boolean;
   deleteByTagId(tagId: string): number;
 }
 
@@ -23,6 +27,10 @@ export function createSpoolHistoryRepository(db: AppDatabase): SpoolHistoryRepos
   return {
     insert(data) {
       db.insert(spoolHistory).values(data).run();
+    },
+
+    findById(id) {
+      return db.select().from(spoolHistory).where(eq(spoolHistory.id, id)).get();
     },
 
     findLatest(tagId) {
@@ -33,6 +41,38 @@ export function createSpoolHistoryRepository(db: AppDatabase): SpoolHistoryRepos
         .orderBy(desc(spoolHistory.createdAt), desc(spoolHistory.id))
         .limit(1)
         .get();
+    },
+
+    findLatestWithRemain(tagId) {
+      return db
+        .select()
+        .from(spoolHistory)
+        .where(
+          and(
+            eq(spoolHistory.tagId, tagId),
+            isNotNull(spoolHistory.remain),
+          ),
+        )
+        .orderBy(desc(spoolHistory.createdAt), desc(spoolHistory.id))
+        .limit(1)
+        .get();
+    },
+
+    updateRemain(id, remain) {
+      const result = db
+        .update(spoolHistory)
+        .set({ remain })
+        .where(eq(spoolHistory.id, id))
+        .run();
+      return result.changes > 0;
+    },
+
+    deleteById(id) {
+      const result = db
+        .delete(spoolHistory)
+        .where(eq(spoolHistory.id, id))
+        .run();
+      return result.changes > 0;
     },
 
     list(tagId, { from, to, before, limit }) {

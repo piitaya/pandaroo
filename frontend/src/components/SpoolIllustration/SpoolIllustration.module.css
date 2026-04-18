@@ -1,0 +1,52 @@
+.spool {
+  display: block;
+  color-scheme: light dark;
+}
+
+.flange {
+  fill: light-dark(#f1f3f5, #1a1b1e);
+}
+
+.rim {
+  fill: none;
+  stroke: light-dark(#ced4da, #2c2e33);
+  stroke-width: 1;
+}
+
+.rimHighlight {
+  fill: none;
+  stroke: light-dark(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.06));
+  stroke-width: 0.6;
+}
+
+.perforation {
+  fill: light-dark(#ced4da, #494c52);
+}
+
+.hubFill {
+  fill: light-dark(#e9ecef, #202226);
+}
+
+.hubStroke {
+  fill: none;
+  stroke: light-dark(#ced4da, #373a40);
+  stroke-width: 0.8;
+}
+
+.bore {
+  fill: light-dark(#ffffff, #0a0b0d);
+}
+
+.boreEdge {
+  fill: none;
+  stroke: light-dark(#adb5bd, #373a40);
+  stroke-width: 0.8;
+}
+
+.notch {
+  fill: light-dark(#adb5bd, #3a3c42);
+}
+
+.shadow {
+  fill: light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.42));
+}

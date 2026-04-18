@@ -4,10 +4,13 @@ import type { SpoolReading } from "@bambu-spoolman-sync/shared";
 import {
   SpoolScanSchema,
   SpoolPatchSchema,
+  SpoolHistoryEventPatchSchema,
+  SpoolHistoryEventSchema,
   SpoolHistoryQuerySchema,
   SpoolHistoryResponseSchema,
   type SpoolScan,
   type SpoolPatch,
+  type SpoolHistoryEventPatch,
   type SpoolHistoryQuery,
 } from "./schemas.js";
 import type { ConfigStore } from "../config-store.js";
@@ -136,6 +139,79 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
         has_more: hasMore,
         range: { from: fromDate, to: toDate },
       };
+    },
+  );
+
+  app.patch<{
+    Params: { tagId: string; eventId: string };
+    Body: SpoolHistoryEventPatch;
+  }>(
+    "/api/spools/:tagId/history/:eventId",
+    {
+      schema: {
+        tags: ["Spools"],
+        description:
+          "Edit a manual history event (only `source=manual` events are editable). Updates the recorded `remain` value in place; does not change the spool's current remain.",
+        params: Type.Object({
+          tagId: Type.String({ minLength: 1 }),
+          eventId: Type.String({ pattern: "^[0-9]+$" }),
+        }),
+        body: SpoolHistoryEventPatchSchema,
+        response: {
+          200: SpoolHistoryEventSchema,
+          400: ErrorResponse,
+          404: ErrorResponse,
+        },
+      },
+    },
+    async (req, reply) => {
+      const eventId = Number(req.params.eventId);
+      const result = spoolHistoryService.updateManual(
+        req.params.tagId,
+        eventId,
+        req.body,
+      );
+      if (!result.ok) {
+        if (result.reason === "not_manual") {
+          reply.code(400);
+          return { error: "Only manual history events can be edited." };
+        }
+        reply.code(404);
+        return { error: "No history event found for this tag and id." };
+      }
+      return result.event;
+    },
+  );
+
+  app.delete<{ Params: { tagId: string; eventId: string } }>(
+    "/api/spools/:tagId/history/:eventId",
+    {
+      schema: {
+        tags: ["Spools"],
+        description:
+          "Delete a manual history event (only `source=manual` events can be removed).",
+        params: Type.Object({
+          tagId: Type.String({ minLength: 1 }),
+          eventId: Type.String({ pattern: "^[0-9]+$" }),
+        }),
+        response: { 200: OkResponse, 400: ErrorResponse, 404: ErrorResponse },
+      },
+    },
+    async (req, reply) => {
+      const eventId = Number(req.params.eventId);
+      const result = spoolHistoryService.deleteManual(
+        req.params.tagId,
+        eventId,
+      );
+      if (!result.ok) {
+        if (result.reason === "not_manual") {
+          reply.code(400);
+          return { error: "Only manual history events can be removed." };
+        }
+        reply.code(404);
+        return { error: "No history event found for this tag and id." };
+      }
+      return { ok: true };
     },
   );
 

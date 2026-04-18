@@ -21,8 +21,14 @@ const CONFIG_KEY = ["config"] as const;
 const PRINTERS_KEY = ["printers"] as const;
 const SPOOLS_KEY = ["spools"] as const;
 const FILAMENT_CATALOG_KEY = ["filament-catalog"] as const;
-const SPOOL_HISTORY_KEY = (tagId: string, from: string, to: string) =>
-  ["spool-history", tagId, from, to] as const;
+const SPOOL_HISTORY_PREFIX = ["spool-history"] as const;
+const SPOOL_HISTORY_KEY = (tagId: string) =>
+  [...SPOOL_HISTORY_PREFIX, tagId] as const;
+
+// Fixed anchor: ask the backend for every event ever recorded for this tag.
+// Keeps the query key stable and avoids first_seen/millisecond-precision
+// mismatches where the first event could slip under `gte`.
+const HISTORY_FROM_ANCHOR = "1970-01-01T00:00:00.000Z";
 
 export const useConfig = () =>
   useQuery({ queryKey: CONFIG_KEY, queryFn: api.getConfig });
@@ -42,14 +48,10 @@ export const useSpools = () =>
     refetchInterval: 5000,
   });
 
-export const useSpoolHistory = (
-  tagId: string | undefined,
-  range: { from: string; to: string },
-) =>
+export const useSpoolHistory = (tagId: string | undefined) =>
   useQuery({
-    queryKey: SPOOL_HISTORY_KEY(tagId ?? "", range.from, range.to),
-    queryFn: () =>
-      api.getSpoolHistory(tagId!, { from: range.from, to: range.to }),
+    queryKey: SPOOL_HISTORY_KEY(tagId ?? ""),
+    queryFn: () => api.getSpoolHistory(tagId!, { from: HISTORY_FROM_ANCHOR }),
     enabled: Boolean(tagId),
     refetchInterval: 15000,
     placeholderData: (prev) => prev,
@@ -218,7 +220,7 @@ export const usePatchSpool = () => {
     mutationFn: ({ tagId, data }: { tagId: string; data: { remain?: number } }) =>
       api.patchSpool(tagId, data),
     successMessage: t("spools.notifications.updated"),
-    invalidate: [SPOOLS_KEY],
+    invalidate: [SPOOLS_KEY, SPOOL_HISTORY_PREFIX],
   });
 };
 
@@ -228,6 +230,33 @@ export const useRemoveSpool = () => {
     mutationFn: (tagId: string) => api.removeSpool(tagId),
     successMessage: t("spools.notifications.removed"),
     invalidate: [SPOOLS_KEY],
+  });
+};
+
+export const usePatchHistoryEvent = () => {
+  const { t } = useTranslation();
+  return useMutationWithToast({
+    mutationFn: ({
+      tagId,
+      eventId,
+      data,
+    }: {
+      tagId: string;
+      eventId: number;
+      data: { remain: number | null };
+    }) => api.patchHistoryEvent(tagId, eventId, data),
+    successMessage: t("spool_detail.usage.manual.updated"),
+    invalidate: [SPOOL_HISTORY_PREFIX],
+  });
+};
+
+export const useDeleteHistoryEvent = () => {
+  const { t } = useTranslation();
+  return useMutationWithToast({
+    mutationFn: ({ tagId, eventId }: { tagId: string; eventId: number }) =>
+      api.deleteHistoryEvent(tagId, eventId),
+    successMessage: t("spool_detail.usage.manual.deleted"),
+    invalidate: [SPOOL_HISTORY_PREFIX],
   });
 };
 

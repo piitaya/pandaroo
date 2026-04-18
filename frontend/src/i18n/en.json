@@ -218,48 +218,37 @@
     "location": {
       "not_loaded": "Not currently loaded"
     },
-    "range": {
-      "7d": "7d",
-      "30d": "30d",
-      "90d": "90d",
-      "all": "All",
-      "custom": "Custom",
-      "custom_placeholder": "Pick a date range"
+    "remain": {
+      "no_data": "No measurement yet"
     },
-    "chart": {
-      "title": "Remaining over time",
-      "remain_label": "Remaining",
-      "empty_title": "No data in this range",
-      "empty_hint": "Pick a wider date range, or wait until the spool is used."
-    },
-    "timeline": {
-      "title": "Activity",
+    "usage": {
+      "title": "Usage history",
+      "has_more": "Older events exist outside this window.",
       "empty_title": "No activity yet",
       "empty_hint": "Insert this spool into an AMS, scan it, or adjust its remaining percentage to see events here.",
-      "has_more": "There are older events outside this range. Pick a wider range to see them.",
-      "titles": {
-        "slot_enter": "Inserted into AMS",
-        "slot_exit": "Removed from AMS",
-        "scanned": "Scanned",
-        "adjusted": "Manually adjusted",
-        "update": "Updated"
+      "event": {
+        "enter": "Loaded",
+        "exit": "Removed",
+        "manual": "Manual",
+        "scan": "Scanned",
+        "ams_last": "Last update"
       },
-      "source": {
-        "ams": "AMS",
-        "scan": "Scan",
-        "manual": "Manual"
+      "pin": {
+        "remain": "{{value}}%"
       },
-      "body": {
-        "remain": "{{value}}%",
-        "remain_delta": "{{from}}% \u2192 {{to}}%"
+      "manual": {
+        "menu_aria": "Manual weighing options",
+        "edit": "Edit value",
+        "delete": "Remove",
+        "edit_title": "Edit manual weighing",
+        "delete_title": "Remove this weighing?",
+        "delete_body": "This cannot be undone.",
+        "updated": "Weighing updated",
+        "deleted": "Weighing removed"
       }
     },
     "details": {
       "title": "Details"
-    },
-    "tabs": {
-      "info": "Info",
-      "activity": "Activity"
     }
   },
   "spools": {

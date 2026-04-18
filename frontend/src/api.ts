@@ -141,4 +141,14 @@ export const api = {
     req<{ ok: true }>(`/api/spools/${encodeURIComponent(tagId)}`, {
       method: "DELETE",
     }),
+  patchHistoryEvent: (tagId: string, eventId: number, data: { remain: number | null }) =>
+    req<import("@bambu-spoolman-sync/shared").SpoolHistoryEvent>(
+      `/api/spools/${encodeURIComponent(tagId)}/history/${eventId}`,
+      { method: "PATCH", body: JSON.stringify(data) },
+    ),
+  deleteHistoryEvent: (tagId: string, eventId: number) =>
+    req<{ ok: true }>(
+      `/api/spools/${encodeURIComponent(tagId)}/history/${eventId}`,
+      { method: "DELETE" },
+    ),
 };
