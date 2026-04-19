@@ -1,5 +1,4 @@
 import { readFile, stat } from "node:fs/promises";
-import { resolve } from "node:path";
 import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import type {
@@ -9,12 +8,11 @@ import type {
   CatalogEntry,
 } from "@bambu-spoolman-sync/shared";
 import type { ParsedSlot } from "./clients/bambu/types.js";
-import { dataDir } from "./config.js";
 import { atomicWriteFile } from "./utils/atomic-write.js";
 
 export type { CatalogEntry };
 
-export const CatalogEntrySchema = Type.Object({
+const CatalogEntrySchema = Type.Object({
   id: Type.String(),
   code: Type.Optional(Type.String()),
   material: Type.Optional(Type.String()),
@@ -23,14 +21,14 @@ export const CatalogEntrySchema = Type.Object({
   spoolman_id: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
-export const FilamentsFileSchema = Type.Array(CatalogEntrySchema);
+const FilamentsFileSchema = Type.Array(CatalogEntrySchema);
 
-export interface SpoolMatchResult {
+interface SpoolMatchResult {
   type: SpoolMatchType;
   entry?: CatalogEntry;
 }
 
-export interface SlotMatchResult {
+interface SlotMatchResult {
   type: SlotMatchType;
   entry?: CatalogEntry;
 }

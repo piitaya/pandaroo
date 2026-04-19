@@ -3,14 +3,14 @@ import type Database from "better-sqlite3";
 import type { Config } from "@bambu-spoolman-sync/shared";
 import type { Mapping } from "./filament-catalog.js";
 import type { AppDatabase } from "./db/database.js";
-import { createSpoolRepository, type SpoolRepository } from "./db/spool.repository.js";
-import { createSyncStateRepository, type SyncStateRepository } from "./db/sync-state.repository.js";
-import { createSpoolHistoryRepository, type SpoolHistoryRepository } from "./db/spool-history.repository.js";
+import { createSpoolRepository } from "./db/spool.repository.js";
+import { createSyncStateRepository } from "./db/sync-state.repository.js";
+import { createSpoolHistoryRepository } from "./db/spool-history.repository.js";
 import { createSpoolService, type SpoolService } from "./services/spool.service.js";
 import { createSpoolHistoryService, type SpoolHistoryService } from "./services/spool-history.service.js";
-import { createAmsChangeDetector, type AmsChangeDetector } from "./services/ams-change-detector.js";
-import { createSpoolmanSyncListener, type SpoolmanSyncListener } from "./services/spoolman-sync-listener.js";
-import { createEventBus, type AppEventBus } from "./events.js";
+import { createAmsChangeDetector } from "./services/ams-change-detector.js";
+import { createSpoolmanSyncListener } from "./services/spoolman-sync-listener.js";
+import { createEventBus } from "./events.js";
 import { createConfigStore, type ConfigStore } from "./config-store.js";
 import {
   createPrinterConnectionPool,
@@ -22,16 +22,10 @@ import type { SyncDeps } from "./spoolman-sync.js";
 
 export interface AppServices {
   readonly configStore: ConfigStore;
-  readonly bus: AppEventBus;
   readonly mapping: Mapping;
   readonly spoolService: SpoolService;
   readonly spoolHistoryService: SpoolHistoryService;
-  readonly spoolRepo: SpoolRepository;
-  readonly syncStateRepo: SyncStateRepository;
-  readonly historyRepo: SpoolHistoryRepository;
   readonly printerPool: PrinterConnectionPool;
-  readonly amsDetector: AmsChangeDetector;
-  readonly syncListener: SpoolmanSyncListener;
 
   createSyncDeps(): SyncDeps;
   startAll(): void;
@@ -120,16 +114,10 @@ export function createServices(
 
   return {
     configStore,
-    bus,
     mapping,
     spoolService,
     spoolHistoryService,
-    spoolRepo,
-    syncStateRepo,
-    historyRepo,
     printerPool,
-    amsDetector,
-    syncListener,
 
     createSyncDeps,
 
