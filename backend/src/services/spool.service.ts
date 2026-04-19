@@ -4,7 +4,7 @@ import type { SyncStateRepository, SpoolSyncStateRow } from "../db/sync-state.re
 import type { Mapping } from "../filament-catalog.js";
 import { matchSpool } from "../filament-catalog.js";
 import type { FastifyBaseLogger } from "fastify";
-import type { AppEventBus, SlotLocation, SpoolChangeSet } from "../events.js";
+import type { AppEventBus, SpoolChangeSet } from "../events.js";
 
 function hasTagId(data: SpoolReading): data is SpoolReading & { tag_id: string } {
   return !!data.tag_id;
@@ -77,7 +77,6 @@ function enrichSpool(
 
 export interface UpsertOptions {
   lastUsed?: string;
-  location?: SlotLocation;
   source?: "ams" | "scan";
 }
 
@@ -131,10 +130,8 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
       log.info({ tagId, ...data }, "Spool updated manually");
       const changes: SpoolChangeSet = {
         created: false,
-        identity: false,
         remain: data.remain != null && data.remain !== before.remain,
         lastUsed: false,
-        location: false,
       };
       bus.emit("spool:adjusted", tagId);
       bus.emit("spool:updated", tagId, changes);
@@ -158,15 +155,12 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
       const existing = spoolRepo.findByTagId(data.tag_id);
 
       const colorHexes = serializeColorHexes(data.color_hexes);
-      const loc = options?.location;
       const source = options?.source;
 
       const changes: SpoolChangeSet = {
         created: false,
-        identity: false,
         remain: false,
         lastUsed: false,
-        location: false,
       };
 
       if (existing) {
@@ -187,12 +181,12 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
           tempMin: data.temp_min ?? existing.tempMin,
           tempMax: data.temp_max ?? existing.tempMax,
           lastUsed: options?.lastUsed ?? existing.lastUsed,
-          lastSeenPrinterSerial: loc?.printer_serial ?? existing.lastSeenPrinterSerial,
-          lastSeenAmsId: loc?.ams_id ?? existing.lastSeenAmsId,
-          lastSeenSlotId: loc?.slot_id ?? existing.lastSeenSlotId,
         };
 
-        changes.identity =
+        changes.remain = next.remain !== existing.remain;
+        changes.lastUsed = next.lastUsed !== existing.lastUsed;
+
+        const identityChanged =
           next.variantId !== existing.variantId ||
           next.material !== existing.material ||
           next.product !== existing.product ||
@@ -201,17 +195,8 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
           next.weight !== existing.weight ||
           next.tempMin !== existing.tempMin ||
           next.tempMax !== existing.tempMax;
-        changes.remain = next.remain !== existing.remain;
-        changes.lastUsed = next.lastUsed !== existing.lastUsed;
-        changes.location =
-          next.lastSeenPrinterSerial !== existing.lastSeenPrinterSerial ||
-          next.lastSeenAmsId !== existing.lastSeenAmsId ||
-          next.lastSeenSlotId !== existing.lastSeenSlotId;
 
-        const anyChange =
-          changes.identity || changes.remain || changes.lastUsed || changes.location;
-
-        if (!anyChange) {
+        if (!identityChanged && !changes.remain && !changes.lastUsed) {
           if (source === "scan") bus.emit("spool:scanned", data.tag_id);
           const syncRow = syncStateRepo.findByTagId(data.tag_id);
           return { spool: enrichSpool(existing, syncRow, mapping.byId), created: false };
@@ -236,20 +221,12 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
           tempMin: data.temp_min,
           tempMax: data.temp_max,
           lastUsed: options?.lastUsed,
-          lastSeenPrinterSerial: loc?.printer_serial ?? null,
-          lastSeenAmsId: loc?.ams_id ?? null,
-          lastSeenSlotId: loc?.slot_id ?? null,
           firstSeen: nowIso,
           lastUpdated: nowIso,
         });
         changes.created = true;
-        changes.identity = !!(
-          data.variant_id || data.material || data.product || data.color_hex ||
-          colorHexes || data.weight != null || data.temp_min != null || data.temp_max != null
-        );
         changes.remain = data.remain != null;
         changes.lastUsed = options?.lastUsed != null;
-        changes.location = loc != null;
       }
 
       if (source === "scan") bus.emit("spool:scanned", data.tag_id);

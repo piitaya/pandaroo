@@ -107,18 +107,10 @@ export function createSpoolHistoryService(
     );
   }
 
-  function snapshotFromSpool(tagId: string): { remain: number | null; weight: number | null; location: SlotLocation | null } {
+  function snapshotFromSpool(tagId: string): { remain: number | null; weight: number | null } {
     const row = spoolRepo.findByTagId(tagId);
-    if (!row) return { remain: null, weight: null, location: null };
-    const location =
-      row.lastSeenPrinterSerial != null && row.lastSeenAmsId != null && row.lastSeenSlotId != null
-        ? {
-            printer_serial: row.lastSeenPrinterSerial,
-            ams_id: row.lastSeenAmsId,
-            slot_id: row.lastSeenSlotId,
-          }
-        : null;
-    return { remain: row.remain, weight: row.weight, location };
+    if (!row) return { remain: null, weight: null };
+    return { remain: row.remain, weight: row.weight };
   }
 
   // Keep Spool.remain aligned with the latest history event that carries a
@@ -174,9 +166,9 @@ export function createSpoolHistoryService(
     historyRepo.insert({
       tagId,
       eventType: "scan",
-      printerSerial: snap.location?.printer_serial ?? null,
-      amsId: snap.location?.ams_id ?? null,
-      slotId: snap.location?.slot_id ?? null,
+      printerSerial: null,
+      amsId: null,
+      slotId: null,
       remain: snap.remain,
       weight: snap.weight,
     });
@@ -187,9 +179,9 @@ export function createSpoolHistoryService(
     historyRepo.insert({
       tagId,
       eventType: "adjust",
-      printerSerial: snap.location?.printer_serial ?? null,
-      amsId: snap.location?.ams_id ?? null,
-      slotId: snap.location?.slot_id ?? null,
+      printerSerial: null,
+      amsId: null,
+      slotId: null,
       remain: snap.remain,
       weight: snap.weight,
     });

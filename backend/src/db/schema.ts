@@ -14,12 +14,7 @@ export const spools = sqliteTable(
     remain: integer(),
     tempMin: integer("temp_min"),
     tempMax: integer("temp_max"),
-    // `last_seen_*` reflects the most recent observation, not where the spool
-    // is right now. For current location, consult the live printer pool.
     lastUsed: text("last_used"),
-    lastSeenPrinterSerial: text("last_seen_printer_serial"),
-    lastSeenAmsId: integer("last_seen_ams_id"),
-    lastSeenSlotId: integer("last_seen_slot_id"),
     firstSeen: text("first_seen")
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -28,9 +23,7 @@ export const spools = sqliteTable(
       .default(sql`(datetime('now'))`)
       .$onUpdate(() => new Date().toISOString()),
   },
-  (t) => ({
-    lastUpdatedIdx: index("spool_last_updated_idx").on(t.lastUpdated),
-  }),
+  (t) => [index("spool_last_updated_idx").on(t.lastUpdated)],
 );
 
 export const spoolSyncState = sqliteTable(
@@ -43,9 +36,7 @@ export const spoolSyncState = sqliteTable(
     lastSynced: text("last_synced"),
     lastSyncError: text("last_sync_error"),
   },
-  (t) => ({
-    errorIdx: index("spool_sync_state_error_idx").on(t.lastSyncError),
-  }),
+  (t) => [index("spool_sync_state_error_idx").on(t.lastSyncError)],
 );
 
 export const spoolHistory = sqliteTable(
@@ -67,7 +58,5 @@ export const spoolHistory = sqliteTable(
       .notNull()
       .default(sql`(datetime('now'))`),
   },
-  (t) => ({
-    tagCreatedIdx: index("spool_history_tag_created_idx").on(t.tagId, t.createdAt),
-  }),
+  (t) => [index("spool_history_tag_created_idx").on(t.tagId, t.createdAt)],
 );

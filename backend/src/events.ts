@@ -10,22 +10,12 @@ export interface SlotLocation {
 
 export interface SpoolChangeSet {
   created: boolean;
-  identity: boolean;
   remain: boolean;
   lastUsed: boolean;
-  location: boolean;
 }
 
-// Subset of SpoolChangeSet fields that Spoolman itself stores. `identity` and
-// `location` are AMS-only metadata, so they don't warrant a sync round-trip.
-export const SYNC_RELEVANT_CHANGES: ReadonlyArray<keyof SpoolChangeSet> = [
-  "created",
-  "remain",
-  "lastUsed",
-];
-
 export function shouldTriggerSync(changes: SpoolChangeSet): boolean {
-  return SYNC_RELEVANT_CHANGES.some((k) => changes[k]);
+  return changes.created || changes.remain || changes.lastUsed;
 }
 
 export interface AppEvents {

@@ -70,7 +70,6 @@ describe("SpoolService.upsert", () => {
     expect(tagId).toBe("TAG-1");
     expect(changes.created).toBe(true);
     expect(changes.remain).toBe(true);
-    expect(changes.identity).toBe(true);
   });
 
   it("AMS source overwrites remain with incoming null — state fields are authoritative", () => {
@@ -101,20 +100,6 @@ describe("SpoolService.upsert", () => {
     expect(updates).toHaveLength(0);
   });
 
-  it("flags only `location` in changes when only location changed", () => {
-    service.upsert(baseReading(), { source: "ams" });
-    updates.length = 0;
-    service.upsert(baseReading(), {
-      source: "ams",
-      location: { printer_serial: "P1", ams_id: 0, slot_id: 1 },
-    });
-    expect(updates).toHaveLength(1);
-    const changes = updates[0]![1];
-    expect(changes.location).toBe(true);
-    expect(changes.remain).toBe(false);
-    expect(changes.identity).toBe(false);
-  });
-
   it("flags only `remain` in changes when only remain changed", () => {
     service.upsert(baseReading({ remain: 80 }), { source: "ams" });
     updates.length = 0;
@@ -122,8 +107,20 @@ describe("SpoolService.upsert", () => {
     expect(updates).toHaveLength(1);
     const changes = updates[0]![1];
     expect(changes.remain).toBe(true);
-    expect(changes.identity).toBe(false);
-    expect(changes.location).toBe(false);
+  });
+
+  it("persists identity-only changes but doesn't flag them for sync", () => {
+    service.upsert(baseReading({ material: "PLA" }), { source: "ams" });
+    updates.length = 0;
+    service.upsert(baseReading({ material: "PETG" }), { source: "ams" });
+    expect(updates).toHaveLength(1);
+    const changes = updates[0]![1];
+    // Material change alone produces no sync-relevant flags.
+    expect(changes.created).toBe(false);
+    expect(changes.remain).toBe(false);
+    expect(changes.lastUsed).toBe(false);
+    // But the row is still persisted.
+    expect(service.findByTagId("TAG-1")!.material).toBe("PETG");
   });
 
   it("emits spool:scanned on scan source", () => {

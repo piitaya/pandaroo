@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { createSpoolmanSyncListener } from "./spoolman-sync-listener.js";
 import { createEventBus, type AppEventBus, type SpoolChangeSet } from "../events.js";
+import type { SpoolSyncStateRow } from "../db/sync-state.repository.js";
 import type { Config } from "@bambu-spoolman-sync/shared";
 import { createTestLogger } from "../test-helpers/logger.js";
 
@@ -20,17 +21,15 @@ const stubSyncStateRepo = {
   markSynced: vi.fn(),
   markError: vi.fn(),
   findByTagId: vi.fn(),
-  listAll: vi.fn(() => []),
-  listErrored: vi.fn(() => []),
+  listAll: vi.fn<() => SpoolSyncStateRow[]>(() => []),
+  listErrored: vi.fn<() => SpoolSyncStateRow[]>(() => []),
 };
 
 function changes(partial: Partial<SpoolChangeSet> = {}): SpoolChangeSet {
   return {
     created: false,
-    identity: false,
     remain: true, // default: a sync-relevant change
     lastUsed: false,
-    location: false,
     ...partial,
   };
 }
@@ -96,7 +95,7 @@ describe("SpoolmanSyncListener", () => {
     listener.stop();
   });
 
-  it("skips sync when only identity or location changed", () => {
+  it("skips sync when no sync-relevant field changed", () => {
     const listener = createSpoolmanSyncListener({
       createSyncDeps: () => ({}) as any,
       syncStateRepo: stubSyncStateRepo as any,
@@ -106,13 +105,13 @@ describe("SpoolmanSyncListener", () => {
     });
     listener.start();
 
-    bus.emit("spool:updated", "TAG-1", changes({ remain: false, location: true }));
-    bus.emit("spool:updated", "TAG-2", changes({ remain: false, identity: true }));
+    bus.emit("spool:updated", "TAG-1", changes({ created: false, remain: false, lastUsed: false }));
+    bus.emit("spool:updated", "TAG-2", changes({ created: false, remain: false, lastUsed: false }));
     vi.advanceTimersByTime(2000);
 
     expect(syncByTagIds).not.toHaveBeenCalled();
 
-    // But a remain change does trigger sync.
+    // A remain change does trigger sync.
     bus.emit("spool:updated", "TAG-3", changes({ remain: true }));
     vi.advanceTimersByTime(2000);
     expect(syncByTagIds).toHaveBeenCalledOnce();

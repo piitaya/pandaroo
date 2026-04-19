@@ -97,9 +97,9 @@ export function createServices(
   });
 
   // Cross-service event wiring
-  bus.on("spool:detected", (spool, location) => {
+  bus.on("spool:detected", (spool) => {
     const now = new Date().toISOString();
-    spoolService.upsert(spool, { lastUsed: now, location, source: "ams" });
+    spoolService.upsert(spool, { lastUsed: now, source: "ams" });
   });
 
   bus.on("printer:status-changed", (printer, status) => {
