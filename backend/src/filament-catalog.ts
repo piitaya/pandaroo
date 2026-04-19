@@ -1,10 +1,16 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile, stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { SpoolReading, MatchType, CatalogEntry } from "@bambu-spoolman-sync/shared";
+import type {
+  SpoolReading,
+  SlotMatchType,
+  SpoolMatchType,
+  CatalogEntry,
+} from "@bambu-spoolman-sync/shared";
 import type { ParsedSlot } from "./clients/bambu/types.js";
 import { dataDir } from "./config.js";
+import { atomicWriteFile } from "./utils/atomic-write.js";
 
 export type { CatalogEntry };
 
@@ -19,15 +25,20 @@ export const CatalogEntrySchema = Type.Object({
 
 export const FilamentsFileSchema = Type.Array(CatalogEntrySchema);
 
-export interface MatchResult {
-  type: MatchType;
+export interface SpoolMatchResult {
+  type: SpoolMatchType;
+  entry?: CatalogEntry;
+}
+
+export interface SlotMatchResult {
+  type: SlotMatchType;
   entry?: CatalogEntry;
 }
 
 export function matchSpool(
   spool: Pick<SpoolReading, "variant_id" | "material" | "product">,
   mapping: Map<string, CatalogEntry>,
-): MatchResult {
+): SpoolMatchResult {
   const hasInfo = !!spool.material || !!spool.variant_id || !!spool.product;
   if (!hasInfo) return { type: "unidentified" };
   if (!spool.variant_id) return { type: "third_party" };
@@ -40,7 +51,7 @@ export function matchSpool(
 export function matchSlot(
   slot: ParsedSlot,
   mapping: Map<string, CatalogEntry>,
-): MatchResult {
+): SlotMatchResult {
   if (!slot.has_spool) return { type: "empty" };
   if (!slot.spool) return { type: "unidentified" };
   return matchSpool(slot.spool, mapping);
@@ -90,23 +101,30 @@ export async function createMapping(opts: MappingOptions): Promise<Mapping> {
     }
   };
 
+  let refreshInFlight: Promise<number> | null = null;
   const refresh = async (): Promise<number> => {
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 15000);
-    try {
-      const res = await fetch(opts.url, { signal: ctrl.signal });
-      if (!res.ok) {
-        throw new Error(`mapping fetch ${res.status} ${res.statusText}`);
+    if (refreshInFlight) return refreshInFlight;
+    const run = async (): Promise<number> => {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const res = await fetch(opts.url, { signal: ctrl.signal });
+        if (!res.ok) {
+          throw new Error(`mapping fetch ${res.status} ${res.statusText}`);
+        }
+        const json = await res.json();
+        const count = parseAndSet(json);
+        fetchedAt = new Date();
+        await atomicWriteFile(opts.cachePath, JSON.stringify(json, null, 2));
+        return count;
+      } finally {
+        clearTimeout(timeout);
       }
-      const json = await res.json();
-      const count = parseAndSet(json);
-      fetchedAt = new Date();
-      await mkdir(dirname(opts.cachePath), { recursive: true });
-      await writeFile(opts.cachePath, JSON.stringify(json, null, 2), "utf-8");
-      return count;
-    } finally {
-      clearTimeout(timeout);
-    }
+    };
+    refreshInFlight = run().finally(() => {
+      refreshInFlight = null;
+    });
+    return refreshInFlight;
   };
 
   const scheduleNext = () => {

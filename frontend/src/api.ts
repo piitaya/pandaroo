@@ -4,12 +4,12 @@ export type {
   PrinterInput,
   PrinterPatch,
   Config,
-  MatchType,
+  SlotMatchType,
+  SpoolMatchType,
   Spool,
   SpoolHistoryEvent,
-  SpoolHistoryKind,
+  SpoolHistoryEventType,
   SpoolHistoryResponse,
-  SpoolHistorySource,
   SyncState,
   SyncStatus,
   AmsSlot,
@@ -37,9 +37,11 @@ import type {
  */
 export class ApiError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
+  readonly code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
     this.name = "ApiError";
   }
 }
@@ -52,20 +54,22 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(path, { ...init, headers });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    // Backend routes return `{ error: "..." }` on failure; extract
-    // the error string if the body is JSON, otherwise fall back to
-    // the raw text or the HTTP status line.
+    // Backend errors are `{ error: "…", code?: "…" }`. Preserve both so callers
+    // can key UI off `code` without parsing the message.
     let message = res.statusText || `HTTP ${res.status}`;
+    let code: string | undefined;
     if (text) {
       try {
-        const body = JSON.parse(text) as { error?: unknown };
+        const body = JSON.parse(text) as { error?: unknown; code?: unknown };
         if (typeof body.error === "string") message = body.error;
+        if (typeof body.code === "string") code = body.code;
       } catch {
         message = text;
       }
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, code);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -98,7 +102,7 @@ export const api = {
     req<{ ok: true }>(`/api/printers/${encodeURIComponent(serial)}`, {
       method: "DELETE"
     }),
-  getPrinters: () => req<Printer[]>("/api/printers/status"),
+  getPrinters: () => req<Printer[]>("/api/printer-statuses"),
   getFilamentCatalog: () => req<{ count: number; fetched_at: string | null }>("/api/filament-catalog/status"),
   refreshFilamentCatalog: () =>
     req<{ count: number }>("/api/filament-catalog/refresh", { method: "POST" }),
@@ -138,7 +142,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
   removeSpool: (tagId: string) =>
-    req<{ ok: true }>(`/api/spools/${encodeURIComponent(tagId)}`, {
+    req<void>(`/api/spools/${encodeURIComponent(tagId)}`, {
       method: "DELETE",
     }),
   patchHistoryEvent: (tagId: string, eventId: number, data: { remain: number | null }) =>
@@ -147,7 +151,7 @@ export const api = {
       { method: "PATCH", body: JSON.stringify(data) },
     ),
   deleteHistoryEvent: (tagId: string, eventId: number) =>
-    req<{ ok: true }>(
+    req<void>(
       `/api/spools/${encodeURIComponent(tagId)}/history/${eventId}`,
       { method: "DELETE" },
     ),

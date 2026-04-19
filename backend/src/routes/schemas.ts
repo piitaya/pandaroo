@@ -5,9 +5,32 @@ export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/**
+ * Stable machine-readable error codes. Clients can switch on `code` to render
+ * localized messages, trigger UI flows (e.g. "open Spoolman settings"), or
+ * decide to retry. `error` remains a human-readable English string.
+ */
+export const ErrorCode = {
+  NotFound: "not_found",
+  Conflict: "conflict",
+  ValidationFailed: "validation_failed",
+  NotManual: "not_manual",
+  SpoolmanNotConfigured: "spoolman_not_configured",
+  SpoolmanUnreachable: "spoolman_unreachable",
+  SpoolmanRequestFailed: "spoolman_request_failed",
+  CatalogRefreshFailed: "catalog_refresh_failed",
+  Internal: "internal_error",
+} as const;
+export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
+
 export const ErrorResponse = Type.Object({
   error: Type.String(),
+  code: Type.Optional(Type.String()),
 });
+
+export function errorBody(error: string, code?: ErrorCodeValue) {
+  return code ? { error, code } : { error };
+}
 
 export const OkResponse = Type.Object({
   ok: Type.Boolean(),
@@ -77,15 +100,18 @@ export const SpoolHistoryEventPatchSchema = Type.Object({
 });
 export type SpoolHistoryEventPatch = Static<typeof SpoolHistoryEventPatchSchema>;
 
+export const SpoolHistoryEventTypeEnum = Type.Union([
+  Type.Literal("ams_load"),
+  Type.Literal("ams_unload"),
+  Type.Literal("ams_update"),
+  Type.Literal("scan"),
+  Type.Literal("adjust"),
+]);
+
 export const SpoolHistoryEventSchema = Type.Object({
   id: Type.Integer(),
   tag_id: Type.String(),
-  source: Type.Union([Type.Literal("ams"), Type.Literal("scan"), Type.Literal("manual")]),
-  kind: Type.Union([
-    Type.Literal("slot_enter"),
-    Type.Literal("slot_exit"),
-    Type.Literal("update"),
-  ]),
+  event_type: SpoolHistoryEventTypeEnum,
   printer_serial: NullableString,
   ams_id: Type.Union([Type.Integer(), Type.Null()]),
   slot_id: Type.Union([Type.Integer(), Type.Null()]),

@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
 import type { Mapping } from "../filament-catalog.js";
-import { ErrorResponse, errorMessage } from "./schemas.js";
+import { ErrorCode, ErrorResponse, errorBody, errorMessage } from "./schemas.js";
 
 export interface FilamentCatalogRouteDeps {
   mapping: Mapping;
@@ -10,6 +10,7 @@ export interface FilamentCatalogRouteDeps {
 export const filamentCatalogRoutes: FastifyPluginAsync<FilamentCatalogRouteDeps> = async (app, { mapping }) => {
   app.get("/api/filament-catalog/status", {
     schema: {
+      operationId: "getFilamentCatalogStatus",
       tags: ["Filament catalog"],
       description: "Get filament catalog status",
       response: {
@@ -26,6 +27,7 @@ export const filamentCatalogRoutes: FastifyPluginAsync<FilamentCatalogRouteDeps>
 
   app.post("/api/filament-catalog/refresh", {
     schema: {
+      operationId: "refreshFilamentCatalog",
       tags: ["Filament catalog"],
       description: "Manually refresh the community filament catalog",
       response: {
@@ -39,7 +41,7 @@ export const filamentCatalogRoutes: FastifyPluginAsync<FilamentCatalogRouteDeps>
       return { count };
     } catch (err) {
       reply.code(502);
-      return { error: errorMessage(err) };
+      return errorBody(errorMessage(err), ErrorCode.CatalogRefreshFailed);
     }
   });
 };

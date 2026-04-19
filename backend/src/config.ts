@@ -1,7 +1,8 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { Type, type Static } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
+import { atomicWriteFile } from "./utils/atomic-write.js";
 
 export const PrinterSchema = Type.Object({
   name: Type.String({ minLength: 1 }),
@@ -66,7 +67,6 @@ export async function saveConfig(
   config: Record<string, unknown>,
 ): Promise<Config> {
   const validated = parseConfig(config);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, JSON.stringify(validated, null, 2), "utf-8");
+  await atomicWriteFile(path, JSON.stringify(validated, null, 2));
   return validated;
 }

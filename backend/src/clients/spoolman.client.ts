@@ -73,6 +73,7 @@ export interface SpoolmanClient {
   ): Promise<SpoolmanFilament | null>;
   createFilamentFromExternal(externalId: string): Promise<SpoolmanFilament>;
   listSpools(): Promise<SpoolmanSpool[]>;
+  getSpool(spoolId: number): Promise<SpoolmanSpool | null>;
   ensureSpoolTagField(): Promise<void>;
   createSpool(filamentId: number, trayUuid: string): Promise<SpoolmanSpool>;
   updateSpool(
@@ -213,6 +214,20 @@ export function createSpoolmanClient(
         "GET",
         "/api/v1/spool?allow_archived=true",
       );
+    },
+
+    async getSpool(spoolId) {
+      try {
+        return await request<SpoolmanSpool>(
+          "GET",
+          `/api/v1/spool/${spoolId}`,
+        );
+      } catch (err) {
+        // Spool was deleted or never existed on Spoolman — caller falls back to tag lookup.
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("404")) return null;
+        throw err;
+      }
     },
 
     async ensureSpoolTagField() {

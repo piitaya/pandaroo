@@ -1,8 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import type {
   SpoolHistoryEvent,
-  SpoolHistoryKind,
-  SpoolHistorySource,
+  SpoolHistoryEventType,
   SpoolReading,
 } from "@bambu-spoolman-sync/shared";
 import type { AppEventBus, SlotLocation } from "../events.js";
@@ -53,8 +52,7 @@ function rowToEvent(row: SpoolHistoryRow): SpoolHistoryEvent {
   return {
     id: row.id,
     tag_id: row.tagId,
-    source: row.source,
-    kind: row.kind,
+    event_type: row.eventType,
     printer_serial: row.printerSerial,
     ams_id: row.amsId,
     slot_id: row.slotId,
@@ -71,17 +69,26 @@ export function createSpoolHistoryService(
 
   function writeIfMeaningful(args: {
     tagId: string;
-    source: SpoolHistorySource;
-    kind: SpoolHistoryKind;
+    eventType: SpoolHistoryEventType;
     location: SlotLocation | null;
     remain: number | null;
     weight: number | null;
   }) {
-    const { tagId, source, kind, location, remain, weight } = args;
+    const { tagId, eventType, location, remain, weight } = args;
 
-    if (kind === "update") {
-      const last = historyRepo.findLatest(tagId);
-      if (last) {
+    historyRepo.insertIfChanged(
+      {
+        tagId,
+        eventType,
+        printerSerial: location?.printer_serial ?? null,
+        amsId: location?.ams_id ?? null,
+        slotId: location?.slot_id ?? null,
+        remain,
+        weight,
+      },
+      (last) => {
+        if (eventType !== "ams_update") return true;
+        if (!last) return true;
         const sameSlot =
           last.printerSerial === (location?.printer_serial ?? null) &&
           last.amsId === (location?.ams_id ?? null) &&
@@ -95,37 +102,36 @@ export function createSpoolHistoryService(
             ? last.remain !== remain
             : remainDelta >= REMAIN_DELTA_THRESHOLD;
         const weightChanged = (last.weight ?? null) !== (weight ?? null);
-
-        if (sameSlot && !remainChanged && !weightChanged) {
-          return;
-        }
-      }
-    }
-
-    historyRepo.insert({
-      tagId,
-      source,
-      kind,
-      printerSerial: location?.printer_serial ?? null,
-      amsId: location?.ams_id ?? null,
-      slotId: location?.slot_id ?? null,
-      remain,
-      weight,
-    });
+        return !sameSlot || remainChanged || weightChanged;
+      },
+    );
   }
 
   function snapshotFromSpool(tagId: string): { remain: number | null; weight: number | null; location: SlotLocation | null } {
     const row = spoolRepo.findByTagId(tagId);
     if (!row) return { remain: null, weight: null, location: null };
     const location =
-      row.lastPrinterSerial != null && row.lastAmsId != null && row.lastSlotId != null
+      row.lastSeenPrinterSerial != null && row.lastSeenAmsId != null && row.lastSeenSlotId != null
         ? {
-            printer_serial: row.lastPrinterSerial,
-            ams_id: row.lastAmsId,
-            slot_id: row.lastSlotId,
+            printer_serial: row.lastSeenPrinterSerial,
+            ams_id: row.lastSeenAmsId,
+            slot_id: row.lastSeenSlotId,
           }
         : null;
     return { remain: row.remain, weight: row.weight, location };
+  }
+
+  // Keep Spool.remain aligned with the latest history event that carries a
+  // remain value. Runs after history edits/deletes so corrections to the most
+  // recent remain-bearing event also correct the spool's current state.
+  // `lastUpdated` is auto-bumped by the Drizzle $onUpdate hook.
+  function syncCurrentRemain(tagId: string) {
+    const latest = historyRepo.findLatestWithRemain(tagId);
+    const nextRemain = latest?.remain ?? null;
+    const spool = spoolRepo.findByTagId(tagId);
+    if (!spool) return;
+    if (spool.remain === nextRemain) return;
+    spoolRepo.update(tagId, { remain: nextRemain });
   }
 
   const onSpoolDetected = (
@@ -138,13 +144,12 @@ export function createSpoolHistoryService(
       last.printerSerial === location.printer_serial &&
       last.amsId === location.ams_id &&
       last.slotId === location.slot_id;
-    const stillInPlace = last?.kind !== "slot_exit" && sameSlot;
-    const kind: SpoolHistoryKind = stillInPlace ? "update" : "slot_enter";
+    const stillInPlace = last?.eventType !== "ams_unload" && sameSlot;
+    const eventType: SpoolHistoryEventType = stillInPlace ? "ams_update" : "ams_load";
 
     writeIfMeaningful({
       tagId: spool.tag_id,
-      source: "ams",
-      kind,
+      eventType,
       location,
       remain: spool.remain ?? null,
       weight: spool.weight ?? null,
@@ -155,8 +160,7 @@ export function createSpoolHistoryService(
     const snap = snapshotFromSpool(tagId);
     historyRepo.insert({
       tagId,
-      source: "ams",
-      kind: "slot_exit",
+      eventType: "ams_unload",
       printerSerial: location.printer_serial,
       amsId: location.ams_id,
       slotId: location.slot_id,
@@ -167,11 +171,12 @@ export function createSpoolHistoryService(
 
   const onScanned = (tagId: string) => {
     const snap = snapshotFromSpool(tagId);
-    writeIfMeaningful({
+    historyRepo.insert({
       tagId,
-      source: "scan",
-      kind: "update",
-      location: snap.location,
+      eventType: "scan",
+      printerSerial: snap.location?.printer_serial ?? null,
+      amsId: snap.location?.ams_id ?? null,
+      slotId: snap.location?.slot_id ?? null,
       remain: snap.remain,
       weight: snap.weight,
     });
@@ -179,11 +184,9 @@ export function createSpoolHistoryService(
 
   const onAdjusted = (tagId: string) => {
     const snap = snapshotFromSpool(tagId);
-    // Manual adjustments are always recorded — the user explicitly changed something.
     historyRepo.insert({
       tagId,
-      source: "manual",
-      kind: "update",
+      eventType: "adjust",
       printerSerial: snap.location?.printer_serial ?? null,
       amsId: snap.location?.ams_id ?? null,
       slotId: snap.location?.slot_id ?? null,
@@ -214,39 +217,22 @@ export function createSpoolHistoryService(
       const row = historyRepo.findById(eventId);
       if (!row) return { ok: false, reason: "not_found" };
       if (row.tagId !== tagId) return { ok: false, reason: "tag_mismatch" };
-      if (row.source !== "manual") return { ok: false, reason: "not_manual" };
+      if (row.eventType !== "adjust") return { ok: false, reason: "not_manual" };
       const updated = historyRepo.updateRemain(eventId, patch.remain);
       if (!updated) return { ok: false, reason: "not_found" };
       syncCurrentRemain(tagId);
-      const next = historyRepo.findById(eventId);
-      if (!next) return { ok: false, reason: "not_found" };
-      return { ok: true, event: rowToEvent(next) };
+      return { ok: true, event: rowToEvent({ ...row, remain: patch.remain }) };
     },
 
     deleteManual(tagId, eventId) {
       const row = historyRepo.findById(eventId);
       if (!row) return { ok: false, reason: "not_found" };
       if (row.tagId !== tagId) return { ok: false, reason: "tag_mismatch" };
-      if (row.source !== "manual") return { ok: false, reason: "not_manual" };
+      if (row.eventType !== "adjust") return { ok: false, reason: "not_manual" };
       const deleted = historyRepo.deleteById(eventId);
       if (!deleted) return { ok: false, reason: "not_found" };
       syncCurrentRemain(tagId);
       return { ok: true };
     },
   };
-
-  // Keep Spool.remain aligned with the latest history event that carries a
-  // remain value. Runs after history edits/deletes so corrections to the most
-  // recent remain-bearing event also correct the spool's current state.
-  function syncCurrentRemain(tagId: string) {
-    const latest = historyRepo.findLatestWithRemain(tagId);
-    const nextRemain = latest?.remain ?? null;
-    const spool = spoolRepo.findByTagId(tagId);
-    if (!spool) return;
-    if (spool.remain === nextRemain) return;
-    spoolRepo.update(tagId, {
-      remain: nextRemain,
-      lastUpdated: new Date().toISOString(),
-    });
-  }
 }

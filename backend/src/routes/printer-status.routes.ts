@@ -14,10 +14,11 @@ export const printerStatusRoutes: FastifyPluginAsync<PrinterStatusRouteDeps> = a
   app,
   { configStore, mapping, printerPool },
 ) => {
-  app.get("/api/printers/status", {
+  app.get("/api/printer-statuses", {
     schema: {
+      operationId: "listPrinterStatuses",
       tags: ["Printers"],
-      description: "Get live printer status and AMS contents",
+      description: "Get live printer status and AMS contents for all configured printers",
     },
   }, async () => {
     const config = configStore.current;

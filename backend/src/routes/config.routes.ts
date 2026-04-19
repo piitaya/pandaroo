@@ -11,6 +11,7 @@ export interface ConfigRouteDeps {
 export const configRoutes: FastifyPluginAsync<ConfigRouteDeps> = async (app, { configStore }) => {
   app.get("/api/health", {
     schema: {
+      operationId: "getHealth",
       tags: ["System"],
       description: "Health check",
       response: { 200: Type.Object({ status: Type.String() }) },
@@ -19,17 +20,20 @@ export const configRoutes: FastifyPluginAsync<ConfigRouteDeps> = async (app, { c
 
   app.get("/api/config", {
     schema: {
+      operationId: "getConfig",
       tags: ["Config"],
       description: "Get the current configuration",
+      response: { 200: ConfigSchema },
     },
   }, async () => configStore.current);
 
   app.put("/api/config", {
     schema: {
+      operationId: "putConfig",
       tags: ["Config"],
       description: "Replace the full configuration",
       body: ConfigSchema,
-      response: { 400: ErrorResponse },
+      response: { 200: ConfigSchema, 400: ErrorResponse },
     },
   }, async (req) => {
     await configStore.apply(req.body as Record<string, unknown>);

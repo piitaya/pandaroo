@@ -44,7 +44,12 @@ export async function buildApp() {
     openapi: {
       info: {
         title: "Bambu Spoolman Sync",
-        description: "Sync Bambu Lab AMS spool data with Spoolman",
+        description:
+          "Sync Bambu Lab AMS spool data with Spoolman.\n\n" +
+          "**Security posture.** This API has no authentication and no rate limiting. " +
+          "It is intended to run on a trusted local network (e.g. the same LAN as your printer " +
+          "and Spoolman instance). Do not expose it to the public internet. If you need remote " +
+          "access, put it behind a reverse proxy with auth (tailscale, nginx+basic auth, etc.).",
         version: "0.1.0",
       },
     },

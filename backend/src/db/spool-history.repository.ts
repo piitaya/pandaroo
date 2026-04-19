@@ -14,6 +14,15 @@ export interface ListHistoryOptions {
 
 export interface SpoolHistoryRepository {
   insert(data: SpoolHistoryInsert): void;
+  /**
+   * Atomic findLatest + conditional insert in one transaction. Prevents two
+   * concurrent callers from both observing the same "latest" row and writing
+   * duplicate history entries.
+   */
+  insertIfChanged(
+    data: SpoolHistoryInsert,
+    shouldInsert: (latest: SpoolHistoryRow | undefined) => boolean,
+  ): boolean;
   findById(id: number): SpoolHistoryRow | undefined;
   findLatest(tagId: string): SpoolHistoryRow | undefined;
   findLatestWithRemain(tagId: string): SpoolHistoryRow | undefined;
@@ -24,9 +33,33 @@ export interface SpoolHistoryRepository {
 }
 
 export function createSpoolHistoryRepository(db: AppDatabase): SpoolHistoryRepository {
+  const findLatestSync = (tagId: string): SpoolHistoryRow | undefined =>
+    db
+      .select()
+      .from(spoolHistory)
+      .where(eq(spoolHistory.tagId, tagId))
+      .orderBy(desc(spoolHistory.createdAt), desc(spoolHistory.id))
+      .limit(1)
+      .get();
+
   return {
     insert(data) {
       db.insert(spoolHistory).values(data).run();
+    },
+
+    insertIfChanged(data, shouldInsert) {
+      return db.transaction((tx) => {
+        const latest = tx
+          .select()
+          .from(spoolHistory)
+          .where(eq(spoolHistory.tagId, data.tagId))
+          .orderBy(desc(spoolHistory.createdAt), desc(spoolHistory.id))
+          .limit(1)
+          .get();
+        if (!shouldInsert(latest)) return false;
+        tx.insert(spoolHistory).values(data).run();
+        return true;
+      });
     },
 
     findById(id) {
@@ -34,13 +67,7 @@ export function createSpoolHistoryRepository(db: AppDatabase): SpoolHistoryRepos
     },
 
     findLatest(tagId) {
-      return db
-        .select()
-        .from(spoolHistory)
-        .where(eq(spoolHistory.tagId, tagId))
-        .orderBy(desc(spoolHistory.createdAt), desc(spoolHistory.id))
-        .limit(1)
-        .get();
+      return findLatestSync(tagId);
     },
 
     findLatestWithRemain(tagId) {

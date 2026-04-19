@@ -17,7 +17,7 @@ import type { ConfigStore } from "../config-store.js";
 import type { SpoolService } from "../services/spool.service.js";
 import type { SpoolHistoryService } from "../services/spool-history.service.js";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
-import { ErrorResponse, LocalSpoolResponse, OkResponse } from "./schemas.js";
+import { ErrorCode, ErrorResponse, LocalSpoolResponse, errorBody } from "./schemas.js";
 
 export interface SpoolRouteDeps {
   configStore: ConfigStore;
@@ -31,6 +31,7 @@ const DEFAULT_HISTORY_WINDOW_DAYS = 30;
 export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { configStore, spoolService, spoolHistoryService }) => {
   app.get("/api/spools", {
     schema: {
+      operationId: "listSpools",
       tags: ["Spools"],
       description: "List all locally tracked spools, enriched with filament name from community DB",
       response: { 200: Type.Array(LocalSpoolResponse) },
@@ -41,6 +42,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
 
   app.get<{ Params: { tagId: string } }>("/api/spools/:tagId", {
     schema: {
+      operationId: "getSpool",
       tags: ["Spools"],
       description: "Fetch a single locally tracked spool by tag id",
       params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
@@ -50,19 +52,26 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     const spool = spoolService.findByTagId(req.params.tagId);
     if (!spool) {
       reply.code(404);
-      return { error: "No spool found with this tag id." };
+      return errorBody("No spool found with this tag id.", ErrorCode.NotFound);
     }
     return spool;
   });
 
+  const ScanResponse = Type.Object({
+    spool: LocalSpoolResponse,
+    created: Type.Boolean(),
+  });
+
   app.post("/api/spools/scan", {
     schema: {
+      operationId: "scanSpool",
       tags: ["Spools"],
-      description: "Add or update a spool from a scanned NFC tag, persist locally, and return the enriched local spool",
+      description:
+        "Add or update a spool from a scanned NFC tag, persist locally, and return the enriched local spool. `created` indicates whether this tag was new; response is 201 on create, 200 on update.",
       body: SpoolScanSchema,
-      response: { 200: LocalSpoolResponse },
+      response: { 200: ScanResponse, 201: ScanResponse },
     },
-  }, async (req) => {
+  }, async (req, reply) => {
     const body = req.body as SpoolScan;
     const scan: SpoolReading = {
       tag_id: body.uid,
@@ -76,12 +85,14 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       temp_max: body.temp_max,
       remain: body.remain ?? null,
     };
-    spoolService.upsert(scan, { source: "scan" });
-    return spoolService.findByTagId(body.uid)!;
+    const result = spoolService.upsert(scan, { source: "scan" })!;
+    if (result.created) reply.code(201);
+    return result;
   });
 
   app.patch<{ Params: { tagId: string } }>("/api/spools/:tagId", {
     schema: {
+      operationId: "patchSpool",
       tags: ["Spools"],
       description: "Update spool fields (e.g. adjust remaining %)",
       params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
@@ -93,7 +104,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     const spool = spoolService.patch(req.params.tagId, body);
     if (!spool) {
       reply.code(404);
-      return { error: "No spool found with this tag id." };
+      return errorBody("No spool found with this tag id.", ErrorCode.NotFound);
     }
     return spool;
   });
@@ -102,6 +113,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     "/api/spools/:tagId/history",
     {
       schema: {
+        operationId: "getSpoolHistory",
         tags: ["Spools"],
         description:
           "Fetch the append-only event history for a spool. Returns events newest-first within an optional date range, paginated via `before` cursor.",
@@ -114,7 +126,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       const spool = spoolService.findByTagId(req.params.tagId);
       if (!spool) {
         reply.code(404);
-        return { error: "No spool found with this tag id." };
+        return errorBody("No spool found with this tag id.", ErrorCode.NotFound);
       }
 
       const now = new Date();
@@ -151,7 +163,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       schema: {
         tags: ["Spools"],
         description:
-          "Edit a manual history event (only `source=manual` events are editable). Updates the recorded `remain` value in place; does not change the spool's current remain.",
+          "Edit a manual history event (only `event_type=adjust` events are editable). Updates the recorded `remain` value in place; the spool's current remain is recomputed from the latest remain-bearing event.",
         params: Type.Object({
           tagId: Type.String({ minLength: 1 }),
           eventId: Type.String({ pattern: "^[0-9]+$" }),
@@ -174,10 +186,16 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       if (!result.ok) {
         if (result.reason === "not_manual") {
           reply.code(400);
-          return { error: "Only manual history events can be edited." };
+          return errorBody(
+            "Only manual history events can be edited.",
+            ErrorCode.NotManual,
+          );
         }
         reply.code(404);
-        return { error: "No history event found for this tag and id." };
+        return errorBody(
+          "No history event found for this tag and id.",
+          ErrorCode.NotFound,
+        );
       }
       return result.event;
     },
@@ -189,12 +207,12 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       schema: {
         tags: ["Spools"],
         description:
-          "Delete a manual history event (only `source=manual` events can be removed).",
+          "Delete a manual history event (only `event_type=adjust` events can be removed).",
         params: Type.Object({
           tagId: Type.String({ minLength: 1 }),
           eventId: Type.String({ pattern: "^[0-9]+$" }),
         }),
-        response: { 200: OkResponse, 400: ErrorResponse, 404: ErrorResponse },
+        response: { 204: Type.Null(), 400: ErrorResponse, 404: ErrorResponse },
       },
     },
     async (req, reply) => {
@@ -206,21 +224,30 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       if (!result.ok) {
         if (result.reason === "not_manual") {
           reply.code(400);
-          return { error: "Only manual history events can be removed." };
+          return errorBody(
+            "Only manual history events can be removed.",
+            ErrorCode.NotManual,
+          );
         }
         reply.code(404);
-        return { error: "No history event found for this tag and id." };
+        return errorBody(
+          "No history event found for this tag and id.",
+          ErrorCode.NotFound,
+        );
       }
-      return { ok: true };
+      reply.code(204);
+      return;
     },
   );
 
   app.delete<{ Params: { tagId: string } }>("/api/spools/:tagId", {
     schema: {
+      operationId: "deleteSpool",
       tags: ["Spools"],
-      description: "Delete a locally tracked spool by tag id, also from Spoolman if synced",
+      description:
+        "Delete a locally tracked spool by tag id. Cascades to Spoolman if Spoolman is configured and the spool was synced — regardless of auto_sync, since deleting locally should not leave a zombie on Spoolman.",
       params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
-      response: { 200: OkResponse, 404: ErrorResponse },
+      response: { 204: Type.Null(), 404: ErrorResponse },
     },
   }, async (req, reply) => {
     const { tagId } = req.params;
@@ -229,24 +256,27 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     const deleted = spoolService.delete(tagId);
     if (!deleted) {
       reply.code(404);
-      return { error: "No spool found with this tag id." };
+      return errorBody("No spool found with this tag id.", ErrorCode.NotFound);
     }
 
     const { spoolman } = configStore.current;
-    if (
-      spoolman.auto_sync &&
-      spoolman.url &&
-      spool &&
-      (spool.sync.status === "synced" || spool.sync.status === "stale")
-    ) {
+    const spoolmanSpoolId =
+      spool && (spool.sync.status === "synced" || spool.sync.status === "stale")
+        ? spool.sync.spoolman_spool_id
+        : null;
+    if (spoolman.url && spoolmanSpoolId != null) {
       try {
         const client = createSpoolmanClient(spoolman.url);
-        await client.deleteSpool(spool.sync.spoolman_spool_id);
-      } catch {
-        // Best-effort: local spool is already deleted
+        await client.deleteSpool(spoolmanSpoolId);
+      } catch (err) {
+        app.log.warn(
+          { tagId, spoolmanSpoolId, err },
+          "Spoolman cascade-delete failed — local spool already deleted",
+        );
       }
     }
 
-    return { ok: true };
+    reply.code(204);
+    return;
   });
 };

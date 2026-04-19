@@ -27,7 +27,8 @@ async function syncOneSpool(
   row: SpoolRow,
   spoolmanId: string,
   options: { archiveOnEmpty: boolean },
-  allSpools?: SpoolmanSpool[],
+  knownSpoolmanSpoolId: number | null,
+  listSpoolsLazy: () => Promise<SpoolmanSpool[]>,
 ): Promise<SpoolSyncResult> {
   let createdFilament = false;
   let filament = await client.findFilamentByExternalId(spoolmanId);
@@ -36,7 +37,13 @@ async function syncOneSpool(
     createdFilament = true;
   }
 
-  let spoolmanSpool = await client.findSpoolByTag(row.tagId, allSpools);
+  let spoolmanSpool: SpoolmanSpool | null = null;
+  if (knownSpoolmanSpoolId != null) {
+    spoolmanSpool = await client.getSpool(knownSpoolmanSpoolId);
+  }
+  if (!spoolmanSpool) {
+    spoolmanSpool = await client.findSpoolByTag(row.tagId, await listSpoolsLazy());
+  }
   let createdSpool = false;
   if (!spoolmanSpool) {
     spoolmanSpool = await client.createSpool(filament.id, row.tagId);
@@ -73,10 +80,24 @@ function resolveSpoolmanId(
   return entry?.spoolman_id ?? null;
 }
 
-export async function syncByTagIds(
+let syncQueue: Promise<unknown> = Promise.resolve();
+
+export function syncByTagIds(
   deps: SyncDeps,
   tagIds: string[],
   clientFactory: (url: string) => SpoolmanClient = createSpoolmanClient,
+): Promise<SyncResult> {
+  const next = syncQueue
+    .catch(() => {})
+    .then(() => runSync(deps, tagIds, clientFactory));
+  syncQueue = next.catch(() => {});
+  return next;
+}
+
+async function runSync(
+  deps: SyncDeps,
+  tagIds: string[],
+  clientFactory: (url: string) => SpoolmanClient,
 ): Promise<SyncResult> {
   const { log } = deps;
   const client = clientFactory(deps.spoolmanUrl);
@@ -84,7 +105,19 @@ export async function syncByTagIds(
 
   log.debug({ tagCount: tagIds.length }, "Starting Spoolman sync");
 
-  const allSpools = await client.listSpools();
+  // Prefetch sync state once for all requested tags instead of N lookups in the loop.
+  const knownIds = new Map<string, number | null>();
+  for (const row of deps.syncStateRepo.listAll()) {
+    knownIds.set(row.tagId, row.spoolmanSpoolId);
+  }
+
+  // Defer the full list-spools fetch until something actually misses the
+  // short-path — sync-all still pays it once, but single-tag syncs of known
+  // spools skip it entirely.
+  let allSpoolsPromise: Promise<SpoolmanSpool[]> | null = null;
+  const listSpoolsLazy = () =>
+    (allSpoolsPromise ??= client.listSpools());
+
   const result: SyncResult = { synced: [], skipped: [], errors: [] };
 
   for (const tagId of tagIds) {
@@ -103,7 +136,14 @@ export async function syncByTagIds(
     }
 
     try {
-      const outcome = await syncOneSpool(client, row, spoolmanId, options, allSpools);
+      const outcome = await syncOneSpool(
+        client,
+        row,
+        spoolmanId,
+        options,
+        knownIds.get(tagId) ?? null,
+        listSpoolsLazy,
+      );
       result.synced.push(outcome);
       deps.syncStateRepo.markSynced(
         tagId,

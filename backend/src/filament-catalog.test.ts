@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { matchSlot, matchSpool, type CatalogEntry } from "./filament-catalog.js";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createMapping, matchSlot, matchSpool, type CatalogEntry } from "./filament-catalog.js";
 import type { AmsSlot, SpoolReading } from "@bambu-spoolman-sync/shared";
 
 const mapping = new Map<string, CatalogEntry>([
@@ -90,5 +93,58 @@ describe("matchSlot", () => {
       mapping,
     );
     expect(r.type).toBe("unknown_variant");
+  });
+});
+
+describe("createMapping.refresh mutex", () => {
+  let tmpDir: string;
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), "bss-catalog-"));
+  });
+
+  afterEach(async () => {
+    globalThis.fetch = originalFetch;
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("coalesces concurrent refresh() calls into one fetch", async () => {
+    // Prime the cache so createMapping's initial load reads from disk and
+    // doesn't trigger a network fetch we'd have to unblock.
+    const cachePath = join(tmpDir, "filaments.json");
+    await writeFile(cachePath, JSON.stringify([{ id: "A01-B6" }]), "utf-8");
+
+    let fetchCount = 0;
+    let resolveFetch!: () => void;
+    const release = new Promise<void>((resolve) => {
+      resolveFetch = resolve;
+    });
+    globalThis.fetch = vi.fn(async () => {
+      fetchCount++;
+      await release;
+      return new Response(JSON.stringify([{ id: "A01-B6" }, { id: "X-9" }]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+
+    const mapping = await createMapping({
+      url: "http://x/filaments.json",
+      cachePath,
+      intervalHours: 24, // fresh cache => no initial refresh
+    });
+
+    // Kick off three concurrent refreshes while the fetch is blocked.
+    const a = mapping.refresh();
+    const b = mapping.refresh();
+    const c = mapping.refresh();
+    resolveFetch();
+    const results = await Promise.all([a, b, c]);
+
+    expect(results).toEqual([2, 2, 2]);
+    // All three callers shared a single in-flight fetch.
+    expect(fetchCount).toBe(1);
+    mapping.stop();
   });
 });

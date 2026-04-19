@@ -90,6 +90,7 @@ export function createServices(
 
   const syncListener = createSpoolmanSyncListener({
     createSyncDeps,
+    syncStateRepo,
     bus,
     log: spoolmanLog,
     getConfig: () => configStore.current,

@@ -35,9 +35,9 @@ function makeSpoolRow(over: Partial<SpoolRow> = {}): SpoolRow {
     tempMin: null,
     tempMax: null,
     lastUsed: null,
-    lastPrinterSerial: null,
-    lastAmsId: null,
-    lastSlotId: null,
+    lastSeenPrinterSerial: null,
+    lastSeenAmsId: null,
+    lastSeenSlotId: null,
     firstSeen: "2024-01-01T00:00:00",
     lastUpdated: "2024-01-01T00:00:00",
     ...over,
@@ -111,6 +111,7 @@ function fakeClient(over: Partial<SpoolmanClient> = {}): SpoolmanClient {
     async findFilamentByExternalId() { return null; },
     async createFilamentFromExternal() { return { id: 42 } as SpoolmanFilament; },
     async listSpools() { return []; },
+    async getSpool() { return null; },
     async ensureSpoolTagField() {},
     async findSpoolByTag(_tag, spools) {
       const list = spools ?? await this.listSpools();
@@ -325,6 +326,138 @@ describe("syncByTagIds", () => {
     expect(row?.lastSyncError).toBe("later failure");
     expect(row?.lastSynced).toBe(firstSynced);
     expect(row?.spoolmanSpoolId).toBe(9);
+  });
+
+  it("writes used_weight on create, computed from remain%", async () => {
+    const patch = vi.fn(
+      async (id: number) => ({ id, filament: { id: 42 } }) as SpoolmanSpool,
+    );
+    const client = fakeClient({
+      async findFilamentByExternalId() { return { id: 42 }; },
+      updateSpool: patch,
+    });
+    const deps = buildDeps([makeSpoolRow({ weight: 1000, remain: 60 })]);
+    await syncByTagIds(deps, ["UID-1"], () => client);
+    expect(patch).toHaveBeenCalledTimes(1);
+    // 1000g capacity * (1 - 0.6) = 400g used.
+    expect(patch.mock.calls[0][1]).toMatchObject({ used_weight: 400 });
+  });
+
+  it("keeps used_weight in sync on subsequent syncs", async () => {
+    const patch = vi.fn(
+      async (id: number) => ({ id, filament: { id: 42 } }) as SpoolmanSpool,
+    );
+    const client = fakeClient({
+      async findFilamentByExternalId() { return { id: 42 }; },
+      async listSpools() {
+        return [{
+          id: 9,
+          filament: { id: 42 },
+          first_used: "2024-01-01",
+          extra: { tag: encodeExtraString("UID-1") },
+        }];
+      },
+      updateSpool: patch,
+    });
+    const deps = buildDeps([makeSpoolRow({ weight: 1000, remain: 30 })]);
+    await syncByTagIds(deps, ["UID-1"], () => client);
+    expect(patch).toHaveBeenCalledTimes(1);
+    expect(patch.mock.calls[0][1]).toMatchObject({ used_weight: 700 });
+  });
+
+  it("skips used_weight when we don't know capacity or remain", async () => {
+    const patch = vi.fn(
+      async (id: number) => ({ id, filament: { id: 42 } }) as SpoolmanSpool,
+    );
+    const client = fakeClient({
+      async findFilamentByExternalId() { return { id: 42 }; },
+      updateSpool: patch,
+    });
+    const deps = buildDeps([makeSpoolRow({ weight: null, remain: 50 })]);
+    await syncByTagIds(deps, ["UID-1"], () => client);
+    expect(patch.mock.calls[0][1]).not.toHaveProperty("used_weight");
+  });
+
+  it("uses stored spoolman_spool_id as a short-path lookup", async () => {
+    const getSpool = vi.fn(async (id: number) => ({
+      id,
+      filament: { id: 42 },
+      first_used: "2024-01-01",
+    } as SpoolmanSpool));
+    const findByTag = vi.fn(async () => null);
+    const client = fakeClient({
+      async findFilamentByExternalId() { return { id: 42 }; },
+      getSpool,
+      findSpoolByTag: findByTag,
+    });
+    const syncStateRepo = fakeSyncStateRepo();
+    // Pretend we've synced this tag before: id is cached.
+    syncStateRepo.markSynced("UID-1", "2024-01-10T00:00:00.000Z", 123);
+    const deps = buildDeps([makeSpoolRow()], { syncStateRepo });
+    await syncByTagIds(deps, ["UID-1"], () => client);
+    expect(getSpool).toHaveBeenCalledWith(123);
+    expect(findByTag).not.toHaveBeenCalled();
+  });
+
+  it("falls back to tag scan when the cached Spoolman id is missing on the server", async () => {
+    const getSpool = vi.fn(async () => null);
+    const findByTag = vi.fn(
+      async () => ({
+        id: 7,
+        filament: { id: 42 },
+        first_used: "2024-01-01",
+      }) as SpoolmanSpool,
+    );
+    const client = fakeClient({
+      async findFilamentByExternalId() { return { id: 42 }; },
+      getSpool,
+      findSpoolByTag: findByTag,
+    });
+    const syncStateRepo = fakeSyncStateRepo();
+    syncStateRepo.markSynced("UID-1", "2024-01-10T00:00:00.000Z", 999);
+    const deps = buildDeps([makeSpoolRow()], { syncStateRepo });
+    const r = await syncByTagIds(deps, ["UID-1"], () => client);
+    expect(getSpool).toHaveBeenCalledWith(999);
+    expect(findByTag).toHaveBeenCalled();
+    expect(r.synced[0].spoolman_spool_id).toBe(7);
+  });
+
+  it("serializes overlapping sync calls through a single queue", async () => {
+    // Two parallel calls must not execute concurrently — otherwise both would
+    // race on find-or-create filament/spool and produce duplicates. The mutex
+    // guarantees the second one's `listSpools` starts after the first finishes.
+    const order: string[] = [];
+    let aResolve!: () => void;
+    const aDone = new Promise<void>((resolve) => {
+      aResolve = resolve;
+    });
+    const client = fakeClient({
+      async findFilamentByExternalId() { return { id: 42 }; },
+      async listSpools() {
+        order.push("list:start");
+        // First caller blocks here until we resolve.
+        if (order.filter((s) => s === "list:start").length === 1) {
+          await aDone;
+        }
+        order.push("list:end");
+        return [];
+      },
+    });
+    const deps = buildDeps([makeSpoolRow()]);
+    const first = syncByTagIds(deps, ["UID-1"], () => client);
+    const second = syncByTagIds(deps, ["UID-1"], () => client);
+    // Give the first call a tick to start.
+    await new Promise((r) => setTimeout(r, 5));
+    expect(order).toEqual(["list:start"]); // second is still queued
+    aResolve();
+    await Promise.all([first, second]);
+    // listSpools ran twice (once per call), never interleaved.
+    expect(order).toEqual([
+      "list:start",
+      "list:end",
+      "list:start",
+      "list:end",
+    ]);
   });
 
   it("archives spool when remain is 0 and archive_on_empty is true", async () => {

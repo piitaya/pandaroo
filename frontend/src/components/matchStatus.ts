@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { MatchType } from "../api";
+import type { SlotMatchType } from "../api";
 
 export interface MatchStatusInfo {
   label: string;
@@ -8,7 +8,7 @@ export interface MatchStatusInfo {
   description: string;
 }
 
-const MATCH_COLORS: Record<MatchType, string> = {
+const MATCH_COLORS: Record<SlotMatchType, string> = {
   mapped: "teal",
   unmapped: "yellow",
   unknown_variant: "orange",
@@ -17,8 +17,7 @@ const MATCH_COLORS: Record<MatchType, string> = {
   empty: "gray"
 };
 
-/** Canonical display order for the legend. */
-export const MATCH_STATUS_ORDER: MatchType[] = [
+export const MATCH_STATUS_ORDER: SlotMatchType[] = [
   "mapped",
   "unmapped",
   "unknown_variant",
@@ -27,12 +26,7 @@ export const MATCH_STATUS_ORDER: MatchType[] = [
   "empty"
 ];
 
-/**
- * Build the localized match-status table from the active language.
- * Memoized so referential identity is stable across renders that
- * don't change the language.
- */
-export function useMatchStatus(): Record<MatchType, MatchStatusInfo> {
+export function useMatchStatus(): Record<SlotMatchType, MatchStatusInfo> {
   const { t, i18n } = useTranslation();
   return useMemo(
     () => ({

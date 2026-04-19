@@ -19,13 +19,22 @@ export interface SpoolReading {
 // Filament matching
 // ---------------------------------------------------------------------------
 
-export type MatchType =
+/** Match status for an AMS slot. Includes `empty` for slots without a spool. */
+export type SlotMatchType =
   | "mapped"
   | "unmapped"
   | "unknown_variant"
   | "third_party"
   | "unidentified"
   | "empty";
+
+/** Match status for a stored spool. A stored spool always has a tag, so `empty` is not applicable. */
+export type SpoolMatchType =
+  | "mapped"
+  | "unmapped"
+  | "unknown_variant"
+  | "third_party"
+  | "unidentified";
 
 export interface CatalogEntry {
   id: string;
@@ -67,7 +76,7 @@ export interface AmsLocation {
 export interface Spool {
   tag_id: string;
   variant_id: string | null;
-  match_type: MatchType;
+  match_type: SpoolMatchType;
   material: string | null;
   product: string | null;
   color_hex: string | null;
@@ -87,14 +96,25 @@ export interface Spool {
 // Spool history — append-only event log
 // ---------------------------------------------------------------------------
 
-export type SpoolHistorySource = "ams" | "scan" | "manual";
-export type SpoolHistoryKind = "slot_enter" | "slot_exit" | "update";
+/**
+ * Canonical event taxonomy for the spool history log:
+ *   - `ams_load`   — AMS reports a spool loaded into a slot
+ *   - `ams_unload` — AMS reports a slot cleared / spool removed
+ *   - `ams_update` — AMS re-read while the spool was loaded (remain/weight change)
+ *   - `scan`       — user re-scanned the NFC tag externally
+ *   - `adjust`     — user edited the spool manually in the UI
+ */
+export type SpoolHistoryEventType =
+  | "ams_load"
+  | "ams_unload"
+  | "ams_update"
+  | "scan"
+  | "adjust";
 
 export interface SpoolHistoryEvent {
   id: number;
   tag_id: string;
-  source: SpoolHistorySource;
-  kind: SpoolHistoryKind;
+  event_type: SpoolHistoryEventType;
   printer_serial: string | null;
   ams_id: number | null;
   slot_id: number | null;
@@ -178,7 +198,7 @@ export interface AmsSlot {
   nozzle_id: number | null;
   has_spool: boolean;
   reading: SpoolReading | null;
-  match_type: MatchType;
+  match_type: SlotMatchType;
   color_name: string | null;
 }
 

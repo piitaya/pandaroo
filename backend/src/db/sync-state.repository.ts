@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, isNotNull, sql } from "drizzle-orm";
 import { spoolSyncState } from "./schema.js";
 import type { AppDatabase } from "./database.js";
 
@@ -9,6 +9,7 @@ export interface SyncStateRepository {
   markError(tagId: string, error: string): void;
   findByTagId(tagId: string): SpoolSyncStateRow | undefined;
   listAll(): SpoolSyncStateRow[];
+  listErrored(): SpoolSyncStateRow[];
 }
 
 export function createSyncStateRepository(
@@ -61,6 +62,14 @@ export function createSyncStateRepository(
 
     listAll() {
       return db.select().from(spoolSyncState).all();
+    },
+
+    listErrored() {
+      return db
+        .select()
+        .from(spoolSyncState)
+        .where(isNotNull(spoolSyncState.lastSyncError))
+        .all();
     },
   };
 }
