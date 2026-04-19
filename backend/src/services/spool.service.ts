@@ -4,11 +4,7 @@ import type { SyncStateRepository, SpoolSyncStateRow } from "../db/sync-state.re
 import type { Mapping } from "../filament-catalog.js";
 import { matchSpool } from "../filament-catalog.js";
 import type { FastifyBaseLogger } from "fastify";
-import type { AppEventBus, SpoolChangeSet } from "../events.js";
-
-function hasTagId(data: SpoolReading): data is SpoolReading & { tag_id: string } {
-  return !!data.tag_id;
-}
+import type { AppEventBus } from "../events.js";
 
 function isStringArray(arr: unknown[]): arr is string[] {
   return arr.every((v) => typeof v === "string");
@@ -128,14 +124,9 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
       if (!before) return undefined;
       spoolRepo.update(tagId, data);
       log.info({ tagId, ...data }, "Spool updated manually");
-      const changes: SpoolChangeSet = {
-        created: false,
-        remain: data.remain != null && data.remain !== before.remain,
-        lastUsed: false,
-      };
       bus.emit("spool:adjusted", tagId);
-      bus.emit("spool:updated", tagId, changes);
-      const row = spoolRepo.findByTagId(tagId)!;
+      bus.emit("spool:updated", tagId);
+      const row = { ...before, ...data, lastUpdated: new Date().toISOString() };
       const syncRow = syncStateRepo.findByTagId(tagId);
       return enrichSpool(row, syncRow, mapping.byId);
     },
@@ -151,25 +142,16 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
     },
 
     upsert(data, options) {
-      if (!hasTagId(data)) return undefined;
-      const existing = spoolRepo.findByTagId(data.tag_id);
-
+      if (!data.tag_id) return undefined;
+      const tagId = data.tag_id;
+      const existing = spoolRepo.findByTagId(tagId);
       const colorHexes = serializeColorHexes(data.color_hexes);
       const source = options?.source;
 
-      const changes: SpoolChangeSet = {
-        created: false,
-        remain: false,
-        lastUsed: false,
-      };
+      let row: SpoolRow;
+      let created = false;
 
       if (existing) {
-        // State fields (remain) are authoritative from AMS — always take the
-        // incoming value so a transient null doesn't freeze stale data. NFC
-        // scans don't carry remain, so preserve the existing value for scans.
-        const remain =
-          source === "ams" ? data.remain : (data.remain ?? existing.remain);
-
         const next = {
           variantId: data.variant_id ?? existing.variantId,
           material: data.material ?? existing.material,
@@ -177,40 +159,34 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
           colorHex: data.color_hex ?? existing.colorHex,
           colorHexes: colorHexes ?? existing.colorHexes,
           weight: data.weight ?? existing.weight,
-          remain,
+          remain: data.remain ?? existing.remain,
           tempMin: data.temp_min ?? existing.tempMin,
           tempMax: data.temp_max ?? existing.tempMax,
           lastUsed: options?.lastUsed ?? existing.lastUsed,
         };
 
-        changes.remain = next.remain !== existing.remain;
-        changes.lastUsed = next.lastUsed !== existing.lastUsed;
+        // Identity fields (material, colours, temps, capacity) are stamped on
+        // the RFID chip and don't change, so `remain` and `lastUsed` are the
+        // only fields we need to check for a no-op.
+        const changed =
+          next.remain !== existing.remain ||
+          next.lastUsed !== existing.lastUsed;
 
-        const identityChanged =
-          next.variantId !== existing.variantId ||
-          next.material !== existing.material ||
-          next.product !== existing.product ||
-          next.colorHex !== existing.colorHex ||
-          next.colorHexes !== existing.colorHexes ||
-          next.weight !== existing.weight ||
-          next.tempMin !== existing.tempMin ||
-          next.tempMax !== existing.tempMax;
-
-        if (!identityChanged && !changes.remain && !changes.lastUsed) {
-          if (source === "scan") bus.emit("spool:scanned", data.tag_id);
-          const syncRow = syncStateRepo.findByTagId(data.tag_id);
+        if (!changed) {
+          if (source === "scan") bus.emit("spool:scanned", tagId);
+          const syncRow = syncStateRepo.findByTagId(tagId);
           return { spool: enrichSpool(existing, syncRow, mapping.byId), created: false };
         }
 
-        // lastUpdated is auto-bumped by the Drizzle $onUpdate hook.
-        spoolRepo.update(data.tag_id, next);
+        spoolRepo.update(tagId, next);
+        // $onUpdate auto-bumps lastUpdated in the DB; mirror it in-memory for
+        // the return value without a second read.
+        row = { ...existing, ...next, lastUpdated: new Date().toISOString() };
       } else {
-        log.info({ tagId: data.tag_id, material: data.material, product: data.product }, "New spool detected");
-        // Write ISO-8601 explicitly: the SQL default `datetime('now')` returns
-        // `YYYY-MM-DD HH:MM:SS` which doesn't match what `$onUpdate` writes.
+        log.info({ tagId, material: data.material, product: data.product }, "New spool detected");
         const nowIso = new Date().toISOString();
-        spoolRepo.create({
-          tagId: data.tag_id,
+        row = {
+          tagId,
           variantId: data.variant_id,
           material: data.material,
           product: data.product,
@@ -220,21 +196,19 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
           remain: data.remain,
           tempMin: data.temp_min,
           tempMax: data.temp_max,
-          lastUsed: options?.lastUsed,
+          lastUsed: options?.lastUsed ?? null,
           firstSeen: nowIso,
           lastUpdated: nowIso,
-        });
-        changes.created = true;
-        changes.remain = data.remain != null;
-        changes.lastUsed = options?.lastUsed != null;
+        };
+        spoolRepo.create(row);
+        created = true;
       }
 
-      if (source === "scan") bus.emit("spool:scanned", data.tag_id);
-      bus.emit("spool:updated", data.tag_id, changes);
+      if (source === "scan") bus.emit("spool:scanned", tagId);
+      bus.emit("spool:updated", tagId);
 
-      const row = spoolRepo.findByTagId(data.tag_id)!;
-      const syncRow = syncStateRepo.findByTagId(data.tag_id);
-      return { spool: enrichSpool(row, syncRow, mapping.byId), created: changes.created };
+      const syncRow = syncStateRepo.findByTagId(tagId);
+      return { spool: enrichSpool(row, syncRow, mapping.byId), created };
     },
   };
 }

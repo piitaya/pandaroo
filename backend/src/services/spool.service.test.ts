@@ -4,11 +4,7 @@ import { createTestDb } from "../test-helpers/db.js";
 import { createTestLogger } from "../test-helpers/logger.js";
 import { createSpoolRepository } from "../db/spool.repository.js";
 import { createSyncStateRepository } from "../db/sync-state.repository.js";
-import {
-  createEventBus,
-  type AppEventBus,
-  type SpoolChangeSet,
-} from "../events.js";
+import { createEventBus, type AppEventBus } from "../events.js";
 import { createSpoolService, type SpoolService } from "./spool.service.js";
 import type { Mapping } from "../filament-catalog.js";
 
@@ -44,7 +40,7 @@ function baseReading(overrides: Partial<SpoolReading> = {}): SpoolReading {
 
 let service: SpoolService;
 let bus: AppEventBus;
-let updates: Array<[string, SpoolChangeSet]>;
+let updates: string[];
 
 beforeEach(() => {
   const { db } = createTestDb();
@@ -52,7 +48,7 @@ beforeEach(() => {
   const syncStateRepo = createSyncStateRepository(db);
   bus = createEventBus();
   updates = [];
-  bus.on("spool:updated", (tagId, changes) => updates.push([tagId, changes]));
+  bus.on("spool:updated", (tagId) => updates.push(tagId));
   service = createSpoolService({
     spoolRepo,
     syncStateRepo,
@@ -63,27 +59,28 @@ beforeEach(() => {
 });
 
 describe("SpoolService.upsert", () => {
-  it("marks new spool as created and emits change set", () => {
-    service.upsert(baseReading(), { source: "ams" });
-    expect(updates).toHaveLength(1);
-    const [tagId, changes] = updates[0]!;
-    expect(tagId).toBe("TAG-1");
-    expect(changes.created).toBe(true);
-    expect(changes.remain).toBe(true);
+  it("marks new spool as created and emits spool:updated", () => {
+    const result = service.upsert(baseReading(), { source: "ams" });
+    expect(result?.created).toBe(true);
+    expect(updates).toEqual(["TAG-1"]);
   });
 
-  it("AMS source overwrites remain with incoming null — state fields are authoritative", () => {
+  it("preserves remain when a new reading is null — null means 'could not measure'", () => {
     service.upsert(baseReading({ remain: 80 }), { source: "ams" });
     service.upsert(baseReading({ remain: null }), { source: "ams" });
-    const spool = service.findByTagId("TAG-1")!;
-    expect(spool.remain).toBeNull();
+    expect(service.findByTagId("TAG-1")!.remain).toBe(80);
+
+    // Same semantics for scans.
+    service.upsert(baseReading({ remain: null }), { source: "scan" });
+    expect(service.findByTagId("TAG-1")!.remain).toBe(80);
   });
 
-  it("scan source preserves remain when scan doesn't carry it", () => {
+  it("overwrites remain with a numeric reading, including 0", () => {
     service.upsert(baseReading({ remain: 80 }), { source: "ams" });
-    service.upsert(baseReading({ remain: null }), { source: "scan" });
-    const spool = service.findByTagId("TAG-1")!;
-    expect(spool.remain).toBe(80);
+    service.upsert(baseReading({ remain: 42 }), { source: "ams" });
+    expect(service.findByTagId("TAG-1")!.remain).toBe(42);
+    service.upsert(baseReading({ remain: 0 }), { source: "ams" });
+    expect(service.findByTagId("TAG-1")!.remain).toBe(0);
   });
 
   it("merge-preserves identity fields when AMS reports null", () => {
@@ -100,27 +97,12 @@ describe("SpoolService.upsert", () => {
     expect(updates).toHaveLength(0);
   });
 
-  it("flags only `remain` in changes when only remain changed", () => {
+  it("emits spool:updated when remain changes", () => {
     service.upsert(baseReading({ remain: 80 }), { source: "ams" });
     updates.length = 0;
-    service.upsert(baseReading({ remain: 70 }), { source: "ams" });
-    expect(updates).toHaveLength(1);
-    const changes = updates[0]![1];
-    expect(changes.remain).toBe(true);
-  });
-
-  it("persists identity-only changes but doesn't flag them for sync", () => {
-    service.upsert(baseReading({ material: "PLA" }), { source: "ams" });
-    updates.length = 0;
-    service.upsert(baseReading({ material: "PETG" }), { source: "ams" });
-    expect(updates).toHaveLength(1);
-    const changes = updates[0]![1];
-    // Material change alone produces no sync-relevant flags.
-    expect(changes.created).toBe(false);
-    expect(changes.remain).toBe(false);
-    expect(changes.lastUsed).toBe(false);
-    // But the row is still persisted.
-    expect(service.findByTagId("TAG-1")!.material).toBe("PETG");
+    const result = service.upsert(baseReading({ remain: 70 }), { source: "ams" });
+    expect(result?.created).toBe(false);
+    expect(updates).toEqual(["TAG-1"]);
   });
 
   it("emits spool:scanned on scan source", () => {
@@ -157,12 +139,9 @@ describe("SpoolService.patch", () => {
     updates.length = 0;
   });
 
-  it("emits changes with only remain:true when remain changes", () => {
+  it("emits spool:updated with the tag id", () => {
     service.patch("TAG-1", { remain: 60 });
-    expect(updates).toHaveLength(1);
-    const changes = updates[0]![1];
-    expect(changes.remain).toBe(true);
-    expect(changes.created).toBe(false);
+    expect(updates).toEqual(["TAG-1"]);
   });
 
   it("emits spool:adjusted for history recording", () => {

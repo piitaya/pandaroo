@@ -1,7 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { Config } from "@bambu-spoolman-sync/shared";
-import type { AppEventBus, SpoolChangeSet } from "../events.js";
-import { shouldTriggerSync } from "../events.js";
+import type { AppEventBus } from "../events.js";
 import type { SyncStateRepository } from "../db/sync-state.repository.js";
 import { syncByTagIds, type SyncDeps } from "../spoolman-sync.js";
 
@@ -28,18 +27,11 @@ export function createSpoolmanSyncListener(
   let debounceTimer: NodeJS.Timeout | null = null;
   let retryTimer: NodeJS.Timeout | null = null;
 
-  const onSpoolUpdated = (tagId: string, changes: SpoolChangeSet) => {
+  const onSpoolUpdated = (tagId: string) => {
     const config = deps.getConfig();
     if (!config.spoolman.auto_sync || !config.spoolman.url) return;
 
-    // Skip if nothing Spoolman would care about changed — identity/location-only
-    // diffs don't need to re-push the spool.
-    if (!shouldTriggerSync(changes)) {
-      deps.log.debug({ tagId, changes }, "Spool update irrelevant to Spoolman, skipping sync");
-      return;
-    }
-
-    deps.log.debug({ tagId, changes }, "Spool update queued for sync");
+    deps.log.debug({ tagId }, "Spool update queued for sync");
     pendingSync.add(tagId);
 
     if (debounceTimer) return;

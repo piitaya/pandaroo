@@ -8,18 +8,8 @@ export interface SlotLocation {
   slot_id: number;
 }
 
-export interface SpoolChangeSet {
-  created: boolean;
-  remain: boolean;
-  lastUsed: boolean;
-}
-
-export function shouldTriggerSync(changes: SpoolChangeSet): boolean {
-  return changes.created || changes.remain || changes.lastUsed;
-}
-
 export interface AppEvents {
-  "spool:updated": [tagId: string, changes: SpoolChangeSet];
+  "spool:updated": [tagId: string];
   "spool:scanned": [tagId: string];
   "spool:adjusted": [tagId: string];
   "spool:detected": [spool: SpoolReading & { tag_id: string }, location: SlotLocation];
