@@ -15,6 +15,8 @@ export const ErrorCode = {
   NotFound: "not_found",
   Conflict: "conflict",
   NotManual: "not_manual",
+  AmsManagedRemain: "ams_managed_remain",
+  AmsLoaded: "ams_loaded",
   SpoolmanNotConfigured: "spoolman_not_configured",
   SpoolmanUnreachable: "spoolman_unreachable",
   SpoolmanRequestFailed: "spoolman_request_failed",
@@ -34,6 +36,11 @@ export function errorBody(error: string, code?: ErrorCodeValue) {
 export function notFound(reply: FastifyReply, message: string) {
   reply.code(404);
   return errorBody(message, ErrorCode.NotFound);
+}
+
+export function conflict(reply: FastifyReply, message: string, code: ErrorCodeValue) {
+  reply.code(409);
+  return errorBody(message, code);
 }
 
 export const OkResponse = Type.Object({

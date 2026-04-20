@@ -9,6 +9,7 @@ import { ResponsiveDetailModal } from "./ResponsiveDetailModal";
 import { CopyableMono } from "./CopyableMono";
 import { useMatchStatus } from "./matchStatus";
 import { spoolFillColor } from "./spoolFillColor";
+import { spoolLabels } from "./spoolLabel";
 import { SyncDot } from "./SyncDot";
 import { useSlotSpool } from "../hooks";
 import type { AmsSlot, Spool } from "../api";
@@ -46,21 +47,17 @@ function ReadingSection({ slot }: { slot: AmsSlot }) {
           <col style={{ width: "67%" }} />
         </colgroup>
         <Table.Tbody>
-          {slot.color_name && (
+          {(slot.color_name || sp.color_hex) && (
             <Row
               label={t("slot.fields.color_name")}
               value={
                 <Group gap={8} wrap="nowrap">
                   <ColorSwatch hex={sp.color_hex} />
-                  <Text size="sm" truncate>{slot.color_name}</Text>
+                  {slot.color_name && (
+                    <Text size="sm" truncate>{slot.color_name}</Text>
+                  )}
                 </Group>
               }
-            />
-          )}
-          {!slot.color_name && sp.color_hex && (
-            <Row
-              label={t("slot.fields.color")}
-              value={<ColorSwatch hex={sp.color_hex} />}
             />
           )}
           {material && (
@@ -148,8 +145,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function LinkedSpoolCard({ spool, onClose }: { spool: Spool; onClose: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const headline =
-    spool.color_name ?? spool.product?.trim() ?? spool.material?.trim() ?? "—";
+  const labels = spoolLabels(spool);
   const showSync = spool.match_type === "mapped";
 
   return (
@@ -158,10 +154,17 @@ function LinkedSpoolCard({ spool, onClose }: { spool: Spool; onClose: () => void
         <Group gap="sm" wrap="nowrap" align="flex-start">
           <ColorSwatch hex={spool.color_hex} size={32} />
           <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
-            <Text size="sm" fw={500} truncate>{headline}</Text>
-            {spool.material && spool.color_name && (
+            <Text
+              size="sm"
+              fw={500}
+              truncate
+              ff={labels.primaryStyle === "code" ? "monospace" : undefined}
+            >
+              {labels.primary}
+            </Text>
+            {labels.secondary && (
               <Text size="xs" c="dimmed" truncate>
-                {spool.product?.trim() || spool.material}
+                {labels.secondary}
               </Text>
             )}
           </Stack>

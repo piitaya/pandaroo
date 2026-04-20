@@ -18,7 +18,7 @@ export const printerStatusRoutes: FastifyPluginAsync<PrinterStatusRouteDeps> = a
     schema: {
       operationId: "listPrinterStatuses",
       tags: ["Printers"],
-      description: "Get live printer status and AMS contents for all configured printers",
+      description: "Live printer status and AMS contents.",
     },
   }, async () => {
     const config = configStore.current;

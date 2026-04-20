@@ -76,6 +76,10 @@ export function createSpoolHistoryService(
   }) {
     const { tagId, eventType, location, remain, weight } = args;
 
+    // Baseline = latest remain-bearing event of any type. Catches AMS reports
+    // that revert a manual override.
+    const baselineRemain = historyRepo.findLatestWithRemain(tagId)?.remain ?? null;
+
     historyRepo.insertIfChanged(
       {
         tagId,
@@ -86,23 +90,24 @@ export function createSpoolHistoryService(
         remain,
         weight,
       },
-      (last) => {
+      (lastAms) => {
         if (eventType !== "ams_update") return true;
-        if (!last) return true;
+        if (!lastAms) return true;
         const sameSlot =
-          last.printerSerial === (location?.printer_serial ?? null) &&
-          last.amsId === (location?.ams_id ?? null) &&
-          last.slotId === (location?.slot_id ?? null);
+          lastAms.printerSerial === (location?.printer_serial ?? null) &&
+          lastAms.amsId === (location?.ams_id ?? null) &&
+          lastAms.slotId === (location?.slot_id ?? null);
+        if (!sameSlot) return true;
         const remainDelta =
-          last.remain != null && remain != null
-            ? Math.abs(remain - last.remain)
+          baselineRemain != null && remain != null
+            ? Math.abs(remain - baselineRemain)
             : null;
         const remainChanged =
           remainDelta == null
-            ? last.remain !== remain
+            ? baselineRemain !== remain
             : remainDelta >= REMAIN_DELTA_THRESHOLD;
-        const weightChanged = (last.weight ?? null) !== (weight ?? null);
-        return !sameSlot || remainChanged || weightChanged;
+        const weightChanged = (lastAms.weight ?? null) !== (weight ?? null);
+        return remainChanged || weightChanged;
       },
     );
   }
@@ -113,10 +118,7 @@ export function createSpoolHistoryService(
     return { remain: row.remain, weight: row.weight };
   }
 
-  // Keep Spool.remain aligned with the latest history event that carries a
-  // remain value. Runs after history edits/deletes so corrections to the most
-  // recent remain-bearing event also correct the spool's current state.
-  // `lastUpdated` is auto-bumped by the Drizzle $onUpdate hook.
+  // Re-align Spool.remain with the latest remain-bearing history event.
   function syncCurrentRemain(tagId: string) {
     const latest = historyRepo.findLatestWithRemain(tagId);
     const nextRemain = latest?.remain ?? null;
@@ -124,13 +126,15 @@ export function createSpoolHistoryService(
     if (!spool) return;
     if (spool.remain === nextRemain) return;
     spoolRepo.update(tagId, { remain: nextRemain });
+    bus.emit("spool:updated", tagId);
   }
 
   const onSpoolDetected = (
     spool: SpoolReading & { tag_id: string },
     location: SlotLocation,
   ) => {
-    const last = historyRepo.findLatest(spool.tag_id);
+    // Skip adjust/scan rows (null slot) so they don't break the session check.
+    const last = historyRepo.findLatestAms(spool.tag_id);
     const sameSlot =
       last &&
       last.printerSerial === location.printer_serial &&

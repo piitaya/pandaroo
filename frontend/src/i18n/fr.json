@@ -26,14 +26,11 @@
     "help_aria_label": "Que signifient les statuts des slots ?",
     "failed_to_load": "Impossible de charger l'état",
     "no_printers_title": "Aucune imprimante configurée",
-    "no_printers_body": "Ajoutez votre première imprimante Bambu Lab pour surveiller son AMS et faire correspondre les bobines au mapping communautaire.",
+    "no_printers_body": "Ajoutez votre première imprimante Bambu Lab pour surveiller son AMS.",
     "no_printers_action": "Ajouter une imprimante",
     "all_disabled_title": "Toutes les imprimantes sont désactivées",
-    "all_disabled_body": "Des imprimantes sont configurées mais aucune n'est activée. Activez-en au moins une pour suivre son AMS.",
+    "all_disabled_body": "Activez une imprimante pour suivre son AMS.",
     "all_disabled_action": "Gérer les imprimantes",
-    "no_spoolman_title": "Spoolman non connecté",
-    "no_spoolman_body": "Connectez votre instance Spoolman pour synchroniser les bobines reconnues.",
-    "no_spoolman_action": "Connecter Spoolman",
     "empty": {
       "title": "En attente de données AMS",
       "body": "L'imprimante n'a pas encore envoyé son état."
@@ -41,15 +38,15 @@
     "errors": {
       "unauthorized": {
         "title": "Code d'accès invalide",
-        "description": "L'imprimante a refusé le code d'accès. Vérifiez-le sur la page Imprimantes."
+        "description": "Code d'accès refusé. Vérifiez-le sur la page Imprimantes."
       },
       "no_response": {
         "title": "Aucune réponse de l'imprimante",
-        "description": "La connexion a réussi mais l'imprimante n'envoie aucun état. Vérifiez le numéro de série sur la page Imprimantes."
+        "description": "Connectée mais aucun état reçu. Vérifiez le numéro de série sur la page Imprimantes."
       },
       "unreachable": {
         "title": "Imprimante injoignable",
-        "description": "Impossible de se connecter à l'imprimante. Vérifiez l'hôte (IP ou nom de domaine) sur la page Imprimantes."
+        "description": "Connexion impossible. Vérifiez l'hôte sur la page Imprimantes."
       },
       "other": {
         "title": "Erreur de connexion",
@@ -75,7 +72,7 @@
       "linked_spool": "Bobine liée"
     },
     "linked_spool": {
-      "not_tracked_hint": "Cette bobine n'a pas de fiche persistée — elle sera suivie dès qu'un tag RFID connu sera détecté.",
+      "not_tracked_hint": "Pas encore suivie. Scannez le tag RFID ou chargez-la dans un AMS.",
       "view_details": "Voir"
     },
     "fields": {
@@ -112,7 +109,7 @@
   },
   "status": {
     "legend_title": "Guide des statuts",
-    "legend_intro": "Chaque slot AMS est comparé à une liste communautaire de bobines Bambu. Le badge indique si la bobine est reconnue et prête à être synchronisée avec Spoolman.",
+    "legend_intro": "Chaque slot AMS est comparé à une liste communautaire de bobines Bambu.",
     "mapped": {
       "label": "Reconnue",
       "description": "Bobine Bambu connue avec un équivalent Spoolman. Prête à synchroniser."
@@ -131,7 +128,7 @@
     },
     "unidentified": {
       "label": "Non identifiée",
-      "description": "Bobine détectée mais l'imprimante n'a pas encore d'information (par exemple une bobine tierce sans matériau renseigné)."
+      "description": "Bobine détectée mais l'imprimante n'a pas encore d'information."
     },
     "empty": {
       "label": "Vide",
@@ -159,12 +156,12 @@
       "required": "Requis"
     },
     "remove_confirm_title": "Retirer l'imprimante ?",
-    "remove_confirm_body": "« {{name}} » sera retirée de la liste. Vous pourrez l'ajouter à nouveau plus tard.",
+    "remove_confirm_body": "« {{name}} » sera retirée de la liste.",
     "notifications": {
       "added": "Imprimante ajoutée",
       "updated": "Imprimante mise à jour",
       "removed": "Imprimante retirée",
-      "duplicate_serial": "Une imprimante avec ce numéro de série est déjà configurée."
+      "duplicate_serial": "Numéro de série déjà utilisé."
     }
   },
   "settings": {
@@ -196,19 +193,19 @@
     "title": "Synchronisation",
     "connection_card": {
       "title": "Connexion Spoolman",
-      "hint": "Renseignez l'URL de votre instance Spoolman pour activer la synchronisation des slots AMS correspondants.",
+      "hint": "Renseignez l'URL de votre instance Spoolman pour activer la synchronisation.",
       "url": "URL Spoolman",
       "auto_sync": "Synchronisation automatique des bobines",
-      "auto_sync_hint": "Synchroniser automatiquement les changements de bobines avec Spoolman, y compris les mises à jour et les suppressions.",
+      "auto_sync_hint": "Pousser automatiquement les changements vers Spoolman.",
       "archive_on_empty": "Archiver les bobines vides",
-      "archive_on_empty_hint": "Quand le poids restant d'une bobine atteint zéro, elle est archivée dans Spoolman.",
+      "archive_on_empty_hint": "Archiver les bobines dans Spoolman quand elles sont vides.",
       "test": "Tester la connexion",
       "test_ok": "Connecté à Spoolman {{version}}",
-      "test_error": "Impossible de joindre Spoolman. Vérifiez l'URL et que l'instance est bien lancée."
+      "test_error": "Spoolman injoignable. Vérifiez l'URL."
     },
     "actions_card": {
       "title": "Actions",
-      "hint": "Envoyer tous les slots AMS correspondants de toutes les imprimantes à Spoolman.",
+      "hint": "Synchroniser tous les slots reconnus avec Spoolman.",
       "sync_all": "Tout synchroniser"
     }
   },
@@ -224,7 +221,7 @@
       "title": "Historique d'utilisation",
       "has_more": "Des événements plus anciens existent hors de cette fenêtre.",
       "empty_title": "Aucune activité",
-      "empty_hint": "Insérez la bobine dans un AMS, scannez-la ou ajustez son pourcentage restant pour voir des événements ici.",
+      "empty_hint": "Chargez dans un AMS, scannez ou ajustez pour voir les événements.",
       "event": {
         "enter": "Chargée",
         "exit": "Retirée",
@@ -248,11 +245,17 @@
     },
     "details": {
       "title": "Détails"
+    },
+    "danger_zone": {
+      "title": "Zone sensible",
+      "remove_title": "Supprimer cette bobine",
+      "remove_hint": "Supprime la bobine et son historique. La supprime aussi dans Spoolman si elle est synchronisée.",
+      "remove_disabled_hint": "Retirez la bobine de l'AMS d'abord."
     }
   },
   "spools": {
     "title": "Bobines",
-    "empty": "Aucune bobine scannée. Les bobines sont automatiquement suivies lorsqu'elles sont détectées dans l'AMS.",
+    "empty": "Aucune bobine. Scannez un tag ou chargez-en une dans un AMS.",
     "failed_to_load": "Impossible de charger les bobines",
     "last_updated": "Dernière mise à jour",
     "sync_all": "Tout synchroniser avec Spoolman",
@@ -265,9 +268,9 @@
     },
     "adjust_remain": "Ajuster le poids",
     "adjust_remain_title": "Filament restant",
-    "adjust_remain_hint": "Si cette bobine est dans un AMS qui reporte le poids restant, cette valeur sera automatiquement remplacée.",
+    "adjust_remain_disabled_hint": "Retirez la bobine de l'AMS pour l'ajuster.",
     "remove_confirm_title": "Retirer la bobine ?",
-    "remove_confirm_body": "« {{name}} » sera retirée de la base locale.",
+    "remove_confirm_body": "« {{name}} » sera retirée.",
     "notifications": {
       "removed": "Bobine retirée",
       "updated": "Bobine mise à jour"

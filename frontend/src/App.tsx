@@ -7,6 +7,7 @@ import Spools from "./pages/Spools";
 import SpoolDetail from "./pages/SpoolDetail";
 import Settings from "./pages/Settings";
 import Sync from "./pages/Sync";
+import { useEventStream } from "./hooks";
 
 function RedirectSpoolDetail() {
   const { tagId } = useParams<{ tagId: string }>();
@@ -14,6 +15,7 @@ function RedirectSpoolDetail() {
 }
 
 export default function App() {
+  useEventStream();
   return (
     <BrowserRouter>
       <Routes>

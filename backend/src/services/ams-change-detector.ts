@@ -33,6 +33,13 @@ interface LastSeen {
 export function createAmsChangeDetector(bus: AppEventBus, log: FastifyBaseLogger): AmsChangeDetector {
   const lastBySlot = new Map<string, LastSeen>();
 
+  // So the next AMS report re-emits `spool:detected` after a manual adjust.
+  const onSpoolAdjusted = (tagId: string) => {
+    for (const [key, last] of lastBySlot) {
+      if (last.tagId === tagId) lastBySlot.delete(key);
+    }
+  };
+
   const onAmsReported = (_printer: unknown, ams_units: ParsedAmsUnit[]) => {
     for (const unit of ams_units) {
       for (const slot of unit.slots) {
@@ -78,9 +85,11 @@ export function createAmsChangeDetector(bus: AppEventBus, log: FastifyBaseLogger
   return {
     start() {
       bus.on("ams:reported", onAmsReported);
+      bus.on("spool:adjusted", onSpoolAdjusted);
     },
     stop() {
       bus.off("ams:reported", onAmsReported);
+      bus.off("spool:adjusted", onSpoolAdjusted);
       lastBySlot.clear();
     },
   };

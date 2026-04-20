@@ -149,6 +149,26 @@ describe("AmsChangeDetector", () => {
     detector.stop();
   });
 
+  it("re-emits after a manual adjust invalidates the cached signature", () => {
+    const bus = createEventBus();
+    const detector = createAmsChangeDetector(bus, createTestLogger());
+    detector.start();
+
+    const detected = vi.fn();
+    bus.on("spool:detected", detected);
+
+    const units = [{ id: 0, nozzle_id: 0, slots: [makeSlot()] }];
+    bus.emit("ams:reported", printer, units);
+    bus.emit("ams:reported", printer, units);
+    expect(detected).toHaveBeenCalledOnce();
+
+    bus.emit("spool:adjusted", "UUID-A");
+    bus.emit("ams:reported", printer, units);
+    expect(detected).toHaveBeenCalledTimes(2);
+
+    detector.stop();
+  });
+
   it("does not emit for slots without tag_id", () => {
     const bus = createEventBus();
     const detector = createAmsChangeDetector(bus, createTestLogger());

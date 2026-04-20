@@ -3,10 +3,10 @@ import {
   Alert,
   Anchor,
   Badge,
+  Button,
   Card,
   Group,
   Loader,
-  Menu,
   Paper,
   Progress,
   SimpleGrid,
@@ -17,7 +17,6 @@ import {
 } from "@mantine/core";
 import {
   IconArrowLeft,
-  IconDots,
   IconExternalLink,
   IconGauge,
   IconPencil,
@@ -36,12 +35,14 @@ import { SyncDot } from "../components/SyncDot";
 import { formatAmsLocation } from "../components/formatAmsLocation";
 import { useMatchStatus } from "../components/matchStatus";
 import { spoolFillColor } from "../components/spoolFillColor";
+import { spoolLabels } from "../components/spoolLabel";
 import {
   useConfig,
   useRemoveSpool,
   useSpoolHistory,
   useSpoolLocation,
   useSpoolMap,
+  useSpoolReportsRemain,
   useSpoolmanBaseUrl,
   useSyncSpoolman,
 } from "../hooks";
@@ -56,6 +57,7 @@ export default function SpoolDetailPage() {
   const spoolMap = useSpoolMap();
   const spool: Spool | undefined = tagId ? spoolMap.get(tagId) : undefined;
   const location = useSpoolLocation(tagId ?? "");
+  const amsManagesRemain = useSpoolReportsRemain(tagId ?? "");
 
   const { data: configData } = useConfig();
   const { data: spoolmanBaseUrl } = useSpoolmanBaseUrl();
@@ -98,8 +100,7 @@ export default function SpoolDetailPage() {
         : [];
   const heroHex = swatches[0] ?? null;
 
-  const title =
-    spool.color_name ?? spool.product ?? spool.material ?? spool.tag_id;
+  const labels = spoolLabels(spool);
 
   const canManualSync =
     spool.match_type === "mapped" && spoolmanConfigured && !autoSync;
@@ -141,12 +142,16 @@ export default function SpoolDetailPage() {
                     </Group>
                   )}
                 </Group>
-                <Title order={2} style={{ overflowWrap: "anywhere" }}>
-                  {title}
+                <Title
+                  order={2}
+                  ff={labels.primaryStyle === "code" ? "monospace" : undefined}
+                  style={{ overflowWrap: "anywhere" }}
+                >
+                  {labels.primary}
                 </Title>
-                {spool.product && (
+                {labels.secondary && (
                   <Text size="sm" c="dimmed">
-                    {spool.product}
+                    {labels.secondary}
                   </Text>
                 )}
                 <HeroRemain
@@ -170,43 +175,20 @@ export default function SpoolDetailPage() {
                   </ActionIcon>
                 </Tooltip>
               )}
-              <Menu position="bottom-end" withinPortal>
-                <Menu.Target>
-                  <ActionIcon variant="default" size="lg">
-                    <IconDots size={18} />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    leftSection={<IconGauge size={14} />}
-                    onClick={() => setAdjustOpen(true)}
-                  >
-                    {t("spools.adjust_remain")}
-                  </Menu.Item>
-                  {spool.match_type === "mapped" &&
-                    spoolmanUrl &&
-                    (spool.sync.status === "synced" ||
-                      spool.sync.status === "stale") && (
-                      <Menu.Item
-                        leftSection={<IconExternalLink size={14} />}
-                        component="a"
-                        href={`${spoolmanUrl}/spool/show/${spool.sync.spoolman_spool_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {t("slot.sync_status.open_in_spoolman")}
-                      </Menu.Item>
-                    )}
-                  <Menu.Divider />
-                  <Menu.Item
-                    color="red"
-                    leftSection={<IconTrash size={14} />}
-                    onClick={() => setConfirmRemove(true)}
-                  >
-                    {t("common.remove")}
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
+              <Tooltip
+                label={t("spools.adjust_remain_disabled_hint")}
+                disabled={!amsManagesRemain}
+                withArrow
+              >
+                <Button
+                  variant="default"
+                  leftSection={<IconGauge size={16} />}
+                  onClick={() => setAdjustOpen(true)}
+                  disabled={amsManagesRemain}
+                >
+                  {t("spools.adjust_remain")}
+                </Button>
+              </Tooltip>
             </Group>
           </Group>
         </Stack>
@@ -260,6 +242,7 @@ export default function SpoolDetailPage() {
           )}
         </Card>
 
+        <Stack gap="lg">
         <Card withBorder padding="lg" radius="md">
           <Stack gap="sm">
             <Title order={4}>{t("spool_detail.details.title")}</Title>
@@ -330,6 +313,45 @@ export default function SpoolDetailPage() {
             )}
           </Stack>
         </Card>
+
+        <Card
+          withBorder
+          padding="lg"
+          radius="md"
+          style={{ borderColor: "var(--mantine-color-red-4)" }}
+        >
+          <Stack gap="sm">
+            <Title order={4} c="red">
+              {t("spool_detail.danger_zone.title")}
+            </Title>
+            <Group justify="space-between" align="center" wrap="nowrap" gap="md">
+              <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+                <Text size="sm" fw={500}>
+                  {t("spool_detail.danger_zone.remove_title")}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {t("spool_detail.danger_zone.remove_hint")}
+                </Text>
+              </Stack>
+              <Tooltip
+                label={t("spool_detail.danger_zone.remove_disabled_hint")}
+                disabled={!location}
+                withArrow
+              >
+                <Button
+                  color="red"
+                  variant="outline"
+                  leftSection={<IconTrash size={16} />}
+                  onClick={() => setConfirmRemove(true)}
+                  disabled={!!location}
+                >
+                  {t("common.remove")}
+                </Button>
+              </Tooltip>
+            </Group>
+          </Stack>
+        </Card>
+        </Stack>
       </SimpleGrid>
 
       <AdjustRemainModal
@@ -349,7 +371,7 @@ export default function SpoolDetailPage() {
           });
         }}
         title={t("spools.remove_confirm_title")}
-        body={t("spools.remove_confirm_body", { name: title })}
+        body={t("spools.remove_confirm_body", { name: labels.primary })}
         loading={removeSpool.isPending}
       />
     </Stack>

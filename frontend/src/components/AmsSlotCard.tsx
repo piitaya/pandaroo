@@ -12,6 +12,7 @@ import { AmsSlotDetailModal } from "./AmsSlotDetailModal";
 import { ColorSwatch } from "./ColorSwatch";
 import { useMatchStatus } from "./matchStatus";
 import { spoolFillColor } from "./spoolFillColor";
+import { spoolLabels } from "./spoolLabel";
 import { SyncDot } from "./SyncDot";
 import { useConfig, useSlotSpool } from "../hooks";
 import type { AmsSlot } from "../api";
@@ -67,20 +68,17 @@ export function AmsSlotCard({ s }: { s: AmsSlot }) {
   const sync = persistedSpool?.sync;
 
   const sp = s.reading;
-  const colorName = s.color_name;
-  const material =
-    sp?.product?.trim() || sp?.material?.trim() || null;
+  const labels =
+    isEmpty || isUnknownSpool || !sp
+      ? null
+      : spoolLabels({ ...sp, color_name: s.color_name });
   const headline = isEmpty
     ? t("slot.no_spool_loaded")
     : isUnknownSpool
       ? t("slot.unidentified")
-      : (colorName ?? material ?? "—");
-  const secondary =
-    isEmpty || isUnknownSpool
-      ? null
-      : colorName
-        ? material
-        : sp?.variant_id;
+      : (labels?.primary ?? "—");
+  const secondary = labels?.secondary ?? null;
+  const headlineMono = labels?.primaryStyle === "code";
 
   const totalGrams = sp?.weight ? Number(sp.weight) : null;
   const totalGramsValid =
@@ -132,6 +130,7 @@ export function AmsSlotCard({ s }: { s: AmsSlot }) {
                 size="sm"
                 fw={500}
                 truncate
+                ff={headlineMono ? "monospace" : undefined}
                 c={isEmpty || isUnknownSpool ? "dimmed" : undefined}
               >
                 {headline}

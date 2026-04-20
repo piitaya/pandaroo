@@ -81,3 +81,44 @@ describe("SpoolHistoryRepository.insertIfChanged", () => {
     expect(rows.map((r) => r.eventType)).toContain("scan");
   });
 });
+
+describe("SpoolHistoryRepository.findLatestAms", () => {
+  it("skips non-AMS events so intervening adjust/scan rows don't break session detection", () => {
+    historyRepo.insert({
+      tagId: "TAG-1",
+      eventType: "ams_load",
+      printerSerial: "P1",
+      amsId: 0,
+      slotId: 1,
+      remain: 80,
+      weight: 800,
+    });
+    historyRepo.insert({
+      tagId: "TAG-1",
+      eventType: "adjust",
+      printerSerial: null,
+      amsId: null,
+      slotId: null,
+      remain: 50,
+      weight: null,
+    });
+    const latestAny = historyRepo.findLatest("TAG-1");
+    const latestAms = historyRepo.findLatestAms("TAG-1");
+    expect(latestAny?.eventType).toBe("adjust");
+    expect(latestAms?.eventType).toBe("ams_load");
+    expect(latestAms?.slotId).toBe(1);
+  });
+
+  it("returns undefined when no AMS events exist", () => {
+    historyRepo.insert({
+      tagId: "TAG-1",
+      eventType: "scan",
+      printerSerial: null,
+      amsId: null,
+      slotId: null,
+      remain: 80,
+      weight: null,
+    });
+    expect(historyRepo.findLatestAms("TAG-1")).toBeUndefined();
+  });
+});

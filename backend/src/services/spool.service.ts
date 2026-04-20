@@ -81,12 +81,20 @@ export interface UpsertResult {
   created: boolean;
 }
 
+export type PatchSpoolResult =
+  | { ok: true; spool: Spool }
+  | { ok: false; reason: "not_found" | "ams_managed" };
+
+export type DeleteSpoolResult =
+  | { ok: true }
+  | { ok: false; reason: "not_found" | "ams_loaded" };
+
 export interface SpoolService {
   list(): Spool[];
   findByTagId(tagId: string): Spool | undefined;
-  delete(tagId: string): boolean;
+  delete(tagId: string): DeleteSpoolResult;
   listTagIds(): string[];
-  patch(tagId: string, data: { remain?: number }): Spool | undefined;
+  patch(tagId: string, data: { remain?: number }): PatchSpoolResult;
   upsert(data: SpoolReading, options?: UpsertOptions): UpsertResult | undefined;
 }
 
@@ -96,10 +104,11 @@ export interface SpoolServiceDeps {
   mapping: Mapping;
   bus: AppEventBus;
   log: FastifyBaseLogger;
+  getAmsReading: (tagId: string) => SpoolReading | null;
 }
 
 export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
-  const { spoolRepo, syncStateRepo, mapping, bus, log } = deps;
+  const { spoolRepo, syncStateRepo, mapping, bus, log, getAmsReading } = deps;
 
   return {
     list() {
@@ -120,21 +129,26 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
     },
 
     patch(tagId, data) {
+      if (data.remain != null && getAmsReading(tagId)?.remain != null) {
+        return { ok: false, reason: "ams_managed" };
+      }
       const before = spoolRepo.findByTagId(tagId);
-      if (!before) return undefined;
+      if (!before) return { ok: false, reason: "not_found" };
       spoolRepo.update(tagId, data);
       log.info({ tagId, ...data }, "Spool updated manually");
       bus.emit("spool:adjusted", tagId);
       bus.emit("spool:updated", tagId);
       const row = { ...before, ...data, lastUpdated: new Date().toISOString() };
       const syncRow = syncStateRepo.findByTagId(tagId);
-      return enrichSpool(row, syncRow, mapping.byId);
+      return { ok: true, spool: enrichSpool(row, syncRow, mapping.byId) };
     },
 
     delete(tagId) {
+      if (getAmsReading(tagId) != null) return { ok: false, reason: "ams_loaded" };
       const deleted = spoolRepo.delete(tagId);
-      if (deleted) log.info({ tagId }, "Spool deleted");
-      return deleted;
+      if (!deleted) return { ok: false, reason: "not_found" };
+      log.info({ tagId }, "Spool deleted");
+      return { ok: true };
     },
 
     listTagIds() {

@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
-import type { PrinterConfig } from "@bambu-spoolman-sync/shared";
+import type { PrinterConfig, SpoolReading } from "@bambu-spoolman-sync/shared";
 import type { AppEventBus } from "../../events.js";
 import { connect, type InternalClient, type PrinterRuntime } from "./connection.js";
 
@@ -47,6 +47,20 @@ export function listRuntimes(state: PrinterConnectionPool): PrinterRuntime[] {
     ams_units: c.ams_units,
     disconnect: c.disconnect,
   }));
+}
+
+export function findTagReading(
+  state: PrinterConnectionPool,
+  tagId: string,
+): SpoolReading | null {
+  for (const runtime of listRuntimes(state)) {
+    for (const unit of runtime.ams_units) {
+      for (const slot of unit.slots) {
+        if (slot.spool?.tag_id === tagId) return slot.spool;
+      }
+    }
+  }
+  return null;
 }
 
 export async function disconnectAll(state: PrinterConnectionPool): Promise<void> {

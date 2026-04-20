@@ -10,11 +10,12 @@ import { createSpoolService, type SpoolService } from "./services/spool.service.
 import { createSpoolHistoryService, type SpoolHistoryService } from "./services/spool-history.service.js";
 import { createAmsChangeDetector } from "./services/ams-change-detector.js";
 import { createSpoolmanSyncListener } from "./services/spoolman-sync-listener.js";
-import { createEventBus } from "./events.js";
+import { createEventBus, type AppEventBus } from "./events.js";
 import { createConfigStore, type ConfigStore } from "./config-store.js";
 import {
   createPrinterConnectionPool,
   disconnectAll,
+  findTagReading,
   syncPrinters,
   type PrinterConnectionPool,
 } from "./clients/bambu/index.js";
@@ -26,6 +27,7 @@ export interface AppServices {
   readonly spoolService: SpoolService;
   readonly spoolHistoryService: SpoolHistoryService;
   readonly printerPool: PrinterConnectionPool;
+  readonly bus: AppEventBus;
 
   createSyncDeps(): SyncDeps;
   startAll(): void;
@@ -54,12 +56,16 @@ export function createServices(
   const syncStateRepo = createSyncStateRepository(db);
   const historyRepo = createSpoolHistoryRepository(db);
 
+  const printerPool = createPrinterConnectionPool();
+  const amsDetector = createAmsChangeDetector(bus, amsLog);
+
   const spoolService = createSpoolService({
     spoolRepo,
     syncStateRepo,
     mapping,
     bus,
     log: spoolLog,
+    getAmsReading: (tagId) => findTagReading(printerPool, tagId),
   });
   const spoolHistoryService = createSpoolHistoryService({
     historyRepo,
@@ -67,8 +73,6 @@ export function createServices(
     bus,
     log: spoolLog.child({ module: "history" }),
   });
-  const printerPool = createPrinterConnectionPool();
-  const amsDetector = createAmsChangeDetector(bus, amsLog);
 
   const createSyncDeps = (): SyncDeps => {
     const config = configStore.current;
@@ -118,6 +122,7 @@ export function createServices(
     spoolService,
     spoolHistoryService,
     printerPool,
+    bus,
 
     createSyncDeps,
 

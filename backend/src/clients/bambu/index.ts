@@ -6,6 +6,7 @@ export {
   createPrinterConnectionPool,
   syncPrinters,
   listRuntimes,
+  findTagReading,
   disconnectAll,
 } from "./pool.js";
 export { type ParsedSlot, type ParsedAmsUnit } from "./types.js";

@@ -12,7 +12,7 @@ export const filamentCatalogRoutes: FastifyPluginAsync<FilamentCatalogRouteDeps>
     schema: {
       operationId: "getFilamentCatalogStatus",
       tags: ["Filament catalog"],
-      description: "Get filament catalog status",
+      description: "Filament catalog status.",
       response: {
         200: Type.Object({
           count: Type.Number(),
@@ -29,7 +29,7 @@ export const filamentCatalogRoutes: FastifyPluginAsync<FilamentCatalogRouteDeps>
     schema: {
       operationId: "refreshFilamentCatalog",
       tags: ["Filament catalog"],
-      description: "Manually refresh the community filament catalog",
+      description: "Refresh the filament catalog.",
       response: {
         200: Type.Object({ count: Type.Number() }),
         502: ErrorResponse,

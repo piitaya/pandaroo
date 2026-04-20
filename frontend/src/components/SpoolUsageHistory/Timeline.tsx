@@ -30,7 +30,10 @@ export function Timeline({ model }: TimelineProps) {
   const [deleting, setDeleting] = useState<UsagePin | null>(null);
 
   const rows = useMemo(
-    () => [...model.pins].sort((a, b) => b.t - a.t),
+    () =>
+      [...model.pins].sort(
+        (a, b) => b.t - a.t || b.event.id - a.event.id,
+      ),
     [model.pins],
   );
 

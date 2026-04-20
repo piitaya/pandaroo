@@ -41,11 +41,13 @@ function baseReading(overrides: Partial<SpoolReading> = {}): SpoolReading {
 let service: SpoolService;
 let bus: AppEventBus;
 let updates: string[];
+let spoolRepo: ReturnType<typeof createSpoolRepository>;
+let syncStateRepo: ReturnType<typeof createSyncStateRepository>;
 
 beforeEach(() => {
   const { db } = createTestDb();
-  const spoolRepo = createSpoolRepository(db);
-  const syncStateRepo = createSyncStateRepository(db);
+  spoolRepo = createSpoolRepository(db);
+  syncStateRepo = createSyncStateRepository(db);
   bus = createEventBus();
   updates = [];
   bus.on("spool:updated", (tagId) => updates.push(tagId));
@@ -55,6 +57,7 @@ beforeEach(() => {
     mapping,
     bus,
     log: createTestLogger(),
+    getAmsReading: () => null,
   });
 });
 
@@ -151,19 +154,58 @@ describe("SpoolService.patch", () => {
     expect(adjusted).toEqual(["TAG-1"]);
   });
 
-  it("returns undefined for non-existent spool", () => {
-    expect(service.patch("MISSING", { remain: 50 })).toBeUndefined();
+  it("returns not_found for non-existent spool", () => {
+    expect(service.patch("MISSING", { remain: 50 })).toEqual({
+      ok: false,
+      reason: "not_found",
+    });
+  });
+
+  it("blocks when the AMS is managing remain", () => {
+    service.upsert(baseReading(), { source: "ams" });
+    const blocked = createSpoolService({
+      spoolRepo,
+      syncStateRepo,
+      mapping,
+      bus,
+      log: createTestLogger(),
+      getAmsReading: () => baseReading({ remain: 80 }),
+    });
+    expect(blocked.patch("TAG-1", { remain: 50 })).toEqual({
+      ok: false,
+      reason: "ams_managed",
+    });
   });
 });
 
 describe("SpoolService.delete", () => {
-  it("returns true when a spool was deleted", () => {
+  it("returns ok when a spool was deleted", () => {
     service.upsert(baseReading(), { source: "ams" });
-    expect(service.delete("TAG-1")).toBe(true);
+    expect(service.delete("TAG-1")).toEqual({ ok: true });
     expect(service.findByTagId("TAG-1")).toBeUndefined();
   });
 
-  it("returns false when nothing matched", () => {
-    expect(service.delete("MISSING")).toBe(false);
+  it("returns not_found when nothing matched", () => {
+    expect(service.delete("MISSING")).toEqual({
+      ok: false,
+      reason: "not_found",
+    });
+  });
+
+  it("blocks delete when the spool is loaded in an AMS", () => {
+    service.upsert(baseReading(), { source: "ams" });
+    const blocked = createSpoolService({
+      spoolRepo,
+      syncStateRepo,
+      mapping,
+      bus,
+      log: createTestLogger(),
+      getAmsReading: () => baseReading({ remain: null }),
+    });
+    expect(blocked.delete("TAG-1")).toEqual({
+      ok: false,
+      reason: "ams_loaded",
+    });
+    expect(service.findByTagId("TAG-1")).toBeDefined();
   });
 });

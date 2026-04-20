@@ -17,7 +17,7 @@ import type { ConfigStore } from "../config-store.js";
 import type { SpoolService } from "../services/spool.service.js";
 import type { SpoolHistoryService } from "../services/spool-history.service.js";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
-import { ErrorCode, ErrorResponse, LocalSpoolResponse, errorBody, notFound } from "./schemas.js";
+import { ErrorCode, ErrorResponse, LocalSpoolResponse, conflict, errorBody, notFound } from "./schemas.js";
 
 export interface SpoolRouteDeps {
   configStore: ConfigStore;
@@ -33,7 +33,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     schema: {
       operationId: "listSpools",
       tags: ["Spools"],
-      description: "List all locally tracked spools, enriched with filament name from community DB",
+      description: "List tracked spools.",
       response: { 200: Type.Array(LocalSpoolResponse) },
     },
   }, async () => {
@@ -44,14 +44,14 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     schema: {
       operationId: "getSpool",
       tags: ["Spools"],
-      description: "Fetch a single locally tracked spool by tag id",
+      description: "Fetch a spool by tag id.",
       params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
       response: { 200: LocalSpoolResponse, 404: ErrorResponse },
     },
   }, async (req, reply) => {
     const spool = spoolService.findByTagId(req.params.tagId);
     if (!spool) {
-      return notFound(reply, "No spool found with this tag id.");
+      return notFound(reply, "Spool not found.");
     }
     return spool;
   });
@@ -65,8 +65,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     schema: {
       operationId: "scanSpool",
       tags: ["Spools"],
-      description:
-        "Add or update a spool from a scanned NFC tag, persist locally, and return the enriched local spool. `created` indicates whether this tag was new; response is 201 on create, 200 on update.",
+      description: "Add or update a spool from a scanned NFC tag. 201 on create, 200 on update.",
       body: SpoolScanSchema,
       response: { 200: ScanResponse, 201: ScanResponse },
     },
@@ -93,18 +92,27 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     schema: {
       operationId: "patchSpool",
       tags: ["Spools"],
-      description: "Update spool fields (e.g. adjust remaining %)",
+      description: "Update spool fields. 409 when remain is AMS-managed.",
       params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
       body: SpoolPatchSchema,
-      response: { 200: LocalSpoolResponse, 404: ErrorResponse },
+      response: {
+        200: LocalSpoolResponse,
+        404: ErrorResponse,
+        409: ErrorResponse,
+      },
     },
   }, async (req, reply) => {
     const body = req.body as SpoolPatch;
-    const spool = spoolService.patch(req.params.tagId, body);
-    if (!spool) {
-      return notFound(reply, "No spool found with this tag id.");
+    const result = spoolService.patch(req.params.tagId, body);
+    if (result.ok) return result.spool;
+    if (result.reason === "ams_managed") {
+      return conflict(
+        reply,
+        "Unload the spool from the AMS first.",
+        ErrorCode.AmsManagedRemain,
+      );
     }
-    return spool;
+    return notFound(reply, "Spool not found.");
   });
 
   app.get<{ Params: { tagId: string }; Querystring: SpoolHistoryQuery }>(
@@ -113,8 +121,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       schema: {
         operationId: "getSpoolHistory",
         tags: ["Spools"],
-        description:
-          "Fetch the append-only event history for a spool. Returns events newest-first within an optional date range, paginated via `before` cursor.",
+        description: "Event history for a spool. Newest first, cursor-paginated via `before`.",
         params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
         querystring: SpoolHistoryQuerySchema,
         response: { 200: SpoolHistoryResponseSchema, 404: ErrorResponse },
@@ -123,7 +130,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     async (req, reply) => {
       const spool = spoolService.findByTagId(req.params.tagId);
       if (!spool) {
-        return notFound(reply, "No spool found with this tag id.");
+        return notFound(reply, "Spool not found.");
       }
 
       const now = new Date();
@@ -160,8 +167,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       schema: {
         operationId: "updateSpoolHistoryEvent",
         tags: ["Spools"],
-        description:
-          "Edit a manual history event (only `event_type=adjust` events are editable). Updates the recorded `remain` value in place; the spool's current remain is recomputed from the latest remain-bearing event.",
+        description: "Edit a manual (adjust) history event.",
         params: Type.Object({
           tagId: Type.String({ minLength: 1 }),
           eventId: Type.String({ pattern: "^[0-9]+$" }),
@@ -185,11 +191,11 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
         if (result.reason === "not_manual") {
           reply.code(400);
           return errorBody(
-            "Only manual history events can be edited.",
+            "Only manual events can be edited.",
             ErrorCode.NotManual,
           );
         }
-        return notFound(reply, "No history event found for this tag and id.");
+        return notFound(reply, "History event not found.");
       }
       return result.event;
     },
@@ -201,8 +207,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
       schema: {
         operationId: "deleteSpoolHistoryEvent",
         tags: ["Spools"],
-        description:
-          "Delete a manual history event (only `event_type=adjust` events can be removed).",
+        description: "Delete a manual (adjust) history event.",
         params: Type.Object({
           tagId: Type.String({ minLength: 1 }),
           eventId: Type.String({ pattern: "^[0-9]+$" }),
@@ -220,11 +225,11 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
         if (result.reason === "not_manual") {
           reply.code(400);
           return errorBody(
-            "Only manual history events can be removed.",
+            "Only manual events can be removed.",
             ErrorCode.NotManual,
           );
         }
-        return notFound(reply, "No history event found for this tag and id.");
+        return notFound(reply, "History event not found.");
       }
       reply.code(204);
       return;
@@ -235,18 +240,24 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     schema: {
       operationId: "deleteSpool",
       tags: ["Spools"],
-      description:
-        "Delete a locally tracked spool by tag id. Cascades to Spoolman if Spoolman is configured and the spool was synced — regardless of auto_sync, since deleting locally should not leave a zombie on Spoolman.",
+      description: "Delete a spool. 409 when loaded in an AMS. Cascades to Spoolman when synced.",
       params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
-      response: { 204: Type.Null(), 404: ErrorResponse },
+      response: { 204: Type.Null(), 404: ErrorResponse, 409: ErrorResponse },
     },
   }, async (req, reply) => {
     const { tagId } = req.params;
     const spool = spoolService.findByTagId(tagId);
 
-    const deleted = spoolService.delete(tagId);
-    if (!deleted) {
-      return notFound(reply, "No spool found with this tag id.");
+    const result = spoolService.delete(tagId);
+    if (!result.ok) {
+      if (result.reason === "ams_loaded") {
+        return conflict(
+          reply,
+          "Unload the spool from the AMS first.",
+          ErrorCode.AmsLoaded,
+        );
+      }
+      return notFound(reply, "Spool not found.");
     }
 
     const { spoolman } = configStore.current;

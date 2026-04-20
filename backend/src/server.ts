@@ -17,6 +17,7 @@ import { printerStatusRoutes } from "./routes/printer-status.routes.js";
 import { filamentCatalogRoutes } from "./routes/filament-catalog.routes.js";
 import { spoolmanRoutes } from "./routes/spoolman.routes.js";
 import { spoolRoutes } from "./routes/spool.routes.js";
+import { eventsRoutes } from "./routes/events.routes.js";
 
 const MAPPING_SOURCE_URL =
   "https://raw.githubusercontent.com/piitaya/bambu-spoolman-db/main/filaments.json";
@@ -46,10 +47,7 @@ export async function buildApp() {
         title: "Bambu Spoolman Sync",
         description:
           "Sync Bambu Lab AMS spool data with Spoolman.\n\n" +
-          "**Security posture.** This API has no authentication and no rate limiting. " +
-          "It is intended to run on a trusted local network (e.g. the same LAN as your printer " +
-          "and Spoolman instance). Do not expose it to the public internet. If you need remote " +
-          "access, put it behind a reverse proxy with auth (tailscale, nginx+basic auth, etc.).",
+          "No auth, no rate limiting — LAN only. Put behind an authenticated reverse proxy for remote access.",
         version: "0.1.0",
       },
     },
@@ -86,6 +84,7 @@ export async function buildApp() {
     mapping: services.mapping,
     printerPool: services.printerPool,
   });
+  await app.register(eventsRoutes, { bus: services.bus });
 
   const __dirname = dirname(fileURLToPath(import.meta.url));
   const frontendDist = resolve(__dirname, "../../frontend/dist");

@@ -10,7 +10,7 @@ import { ErrorCode, ErrorResponse, errorBody, errorMessage } from "./schemas.js"
 function requireSpoolmanUrl(configStore: ConfigStore, reply: FastifyReply): string | undefined {
   const url = configStore.current.spoolman.url;
   if (url) return url;
-  reply.code(400).send(errorBody("Spoolman URL is not configured.", ErrorCode.SpoolmanNotConfigured));
+  reply.code(400).send(errorBody("Spoolman URL not configured.", ErrorCode.SpoolmanNotConfigured));
   return undefined;
 }
 
@@ -42,7 +42,7 @@ export const spoolmanRoutes: FastifyPluginAsync<SpoolmanRouteDeps> = async (app,
     schema: {
       operationId: "getSpoolmanStatus",
       tags: ["Spoolman"],
-      description: "Check Spoolman connectivity and return version/base URL",
+      description: "Check Spoolman connectivity.",
       response: {
         200: Type.Object({
           ok: Type.Boolean(),
@@ -74,7 +74,7 @@ export const spoolmanRoutes: FastifyPluginAsync<SpoolmanRouteDeps> = async (app,
     schema: {
       operationId: "syncSpoolmanByTagIds",
       tags: ["Spoolman"],
-      description: "Sync spools to Spoolman by tag IDs",
+      description: "Sync selected spools to Spoolman.",
       body: Type.Object({
         tag_ids: Type.Array(Type.String(), { minItems: 1 }),
       }),
@@ -95,7 +95,7 @@ export const spoolmanRoutes: FastifyPluginAsync<SpoolmanRouteDeps> = async (app,
     schema: {
       operationId: "syncSpoolmanAll",
       tags: ["Spoolman"],
-      description: "Sync every spool in the local DB to Spoolman",
+      description: "Sync all tracked spools to Spoolman.",
       response: { 200: SyncResultResponse, 400: ErrorResponse, 502: ErrorResponse },
     },
   }, async (_req, reply) => {

@@ -17,7 +17,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
     schema: {
       operationId: "listPrinters",
       tags: ["Printers"],
-      description: "List all configured printers",
+      description: "List configured printers.",
       response: { 200: Type.Array(PrinterSchema) },
     },
   }, async () => configStore.current.printers);
@@ -26,7 +26,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
     schema: {
       operationId: "createPrinter",
       tags: ["Printers"],
-      description: "Add a new printer",
+      description: "Add a printer.",
       body: PrinterSchema,
       response: { 200: PrinterSchema, 409: ErrorResponse },
     },
@@ -36,7 +36,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
     if (config.printers.some((p) => p.serial === printer.serial)) {
       reply.code(409);
       return errorBody(
-        "A printer with this serial already exists.",
+        "Printer serial already in use.",
         ErrorCode.Conflict,
       );
     }
@@ -51,7 +51,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
     schema: {
       operationId: "updatePrinter",
       tags: ["Printers"],
-      description: "Update an existing printer",
+      description: "Update a printer.",
       params: SerialParams,
       body: PrinterUpdateSchema,
       response: { 200: PrinterSchema, 404: ErrorResponse, 409: ErrorResponse },
@@ -64,7 +64,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
     );
     if (idx === -1) {
       reply.code(404);
-      return errorBody("No printer found with this serial.", ErrorCode.NotFound);
+      return errorBody("Printer not found.", ErrorCode.NotFound);
     }
     if (
       body.serial != null &&
@@ -75,7 +75,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
     ) {
       reply.code(409);
       return errorBody(
-        "A printer with this serial already exists.",
+        "Printer serial already in use.",
         ErrorCode.Conflict,
       );
     }
@@ -90,7 +90,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
     schema: {
       operationId: "deletePrinter",
       tags: ["Printers"],
-      description: "Remove a printer",
+      description: "Remove a printer.",
       params: SerialParams,
       response: { 200: OkResponse, 404: ErrorResponse },
     },
@@ -98,7 +98,7 @@ export const printerRoutes: FastifyPluginAsync<PrinterRouteDeps> = async (app, {
     const config = configStore.current;
     if (!config.printers.some((p) => p.serial === req.params.serial)) {
       reply.code(404);
-      return errorBody("No printer found with this serial.", ErrorCode.NotFound);
+      return errorBody("Printer not found.", ErrorCode.NotFound);
     }
     await configStore.apply({
       ...config,

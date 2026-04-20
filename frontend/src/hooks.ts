@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 import {
   api,
   ApiError,
@@ -16,6 +17,7 @@ import {
   type Spool,
   type AmsLocation,
 } from "./api";
+import type { SpoolReading } from "@bambu-spoolman-sync/shared";
 
 const SPOOL_HISTORY_ROOT = ["spool-history"] as const;
 
@@ -36,22 +38,51 @@ const queryKeys = {
 // mismatches where the first event could slip under `gte`.
 const HISTORY_FROM_ANCHOR = "1970-01-01T00:00:00.000Z";
 
+export function useEventStream() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const source = new EventSource("/api/events");
+    // On (re)connect, re-sync the live-data queries to cover anything missed
+    // while the stream was down. Scoped to avoid nuking unrelated caches.
+    source.addEventListener("connected", () => {
+      qc.invalidateQueries({ queryKey: queryKeys.printers });
+      qc.invalidateQueries({ queryKey: queryKeys.spools });
+      qc.invalidateQueries({ queryKey: queryKeys.spoolHistory.all });
+      qc.invalidateQueries({ queryKey: queryKeys.config });
+    });
+    source.addEventListener("printers-changed", () => {
+      qc.invalidateQueries({ queryKey: queryKeys.printers });
+    });
+    source.addEventListener("spools-changed", (e) => {
+      qc.invalidateQueries({ queryKey: queryKeys.spools });
+      try {
+        const { tag_id } = JSON.parse((e as MessageEvent).data);
+        if (tag_id) {
+          qc.invalidateQueries({ queryKey: queryKeys.spoolHistory.byTag(tag_id) });
+        }
+      } catch {}
+    });
+    source.addEventListener("config-changed", () => {
+      qc.invalidateQueries({ queryKey: queryKeys.config });
+      qc.invalidateQueries({ queryKey: queryKeys.printers });
+    });
+    return () => source.close();
+  }, [qc]);
+}
+
 export const useConfig = () =>
   useQuery({ queryKey: queryKeys.config, queryFn: api.getConfig });
 
-// TODO: Replace polling with WebSocket or SSE for real-time updates
 export const usePrinters = () =>
   useQuery({
     queryKey: queryKeys.printers,
     queryFn: api.getPrinters,
-    refetchInterval: 3000,
   });
 
 export const useSpools = () =>
   useQuery({
     queryKey: queryKeys.spools,
     queryFn: api.listSpools,
-    refetchInterval: 5000,
   });
 
 export const useSpoolHistory = (tagId: string | undefined) =>
@@ -59,7 +90,6 @@ export const useSpoolHistory = (tagId: string | undefined) =>
     queryKey: queryKeys.spoolHistory.byTag(tagId ?? ""),
     queryFn: () => api.getSpoolHistory(tagId!, { from: HISTORY_FROM_ANCHOR }),
     enabled: Boolean(tagId),
-    refetchInterval: 15000,
     placeholderData: (prev) => prev,
   });
 
@@ -73,8 +103,14 @@ export const useFilamentCatalog = () =>
 // Query keeps stable across refetches via structural sharing.
 const EMPTY_SPOOLS: readonly Spool[] = [];
 const EMPTY_PRINTERS: readonly Printer[] = [];
+
+interface AmsSlotInfo {
+  location: AmsLocation;
+  reading: SpoolReading;
+}
+
 const spoolMapCache = new WeakMap<readonly Spool[], Map<string, Spool>>();
-const locationMapCache = new WeakMap<readonly Printer[], Map<string, AmsLocation>>();
+const slotInfoCache = new WeakMap<readonly Printer[], Map<string, AmsSlotInfo>>();
 
 function buildSpoolMap(spools: readonly Spool[]): Map<string, Spool> {
   let map = spoolMapCache.get(spools);
@@ -85,26 +121,28 @@ function buildSpoolMap(spools: readonly Spool[]): Map<string, Spool> {
   return map;
 }
 
-function buildLocationMap(printers: readonly Printer[]): Map<string, AmsLocation> {
-  let map = locationMapCache.get(printers);
+function buildSlotInfoMap(printers: readonly Printer[]): Map<string, AmsSlotInfo> {
+  let map = slotInfoCache.get(printers);
   if (map) return map;
   map = new Map();
   for (const printer of printers) {
     for (const unit of printer.ams_units) {
       for (const slot of unit.slots) {
-        const tagId = slot.reading?.tag_id;
-        if (tagId) {
-          map.set(tagId, {
+        const reading = slot.reading;
+        if (!reading?.tag_id) continue;
+        map.set(reading.tag_id, {
+          location: {
             printer_serial: printer.serial,
             printer_name: printer.name,
             ams_id: unit.id,
             slot_id: slot.slot_id,
-          });
-        }
+          },
+          reading,
+        });
       }
     }
   }
-  locationMapCache.set(printers, map);
+  slotInfoCache.set(printers, map);
   return map;
 }
 
@@ -115,7 +153,13 @@ export function useSpoolMap(): Map<string, Spool> {
 
 export function useSpoolLocation(tagId: string): AmsLocation | null {
   const { data: printers } = usePrinters();
-  return buildLocationMap(printers ?? EMPTY_PRINTERS).get(tagId) ?? null;
+  return buildSlotInfoMap(printers ?? EMPTY_PRINTERS).get(tagId)?.location ?? null;
+}
+
+// True when the tag's AMS slot reports a remain value (not AMS Lite).
+export function useSpoolReportsRemain(tagId: string): boolean {
+  const { data: printers } = usePrinters();
+  return buildSlotInfoMap(printers ?? EMPTY_PRINTERS).get(tagId)?.reading.remain != null;
 }
 
 export function useSlotSpool(tagId: string | null | undefined): Spool | undefined {

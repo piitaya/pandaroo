@@ -1,8 +1,9 @@
 import { Button, Group, Modal, Slider, Stack, Text } from "@mantine/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePatchSpool } from "../hooks";
 import { spoolFillColor } from "./spoolFillColor";
+import { spoolLabels } from "./spoolLabel";
 import type { Spool } from "../api";
 
 export function AdjustRemainModal({
@@ -17,6 +18,10 @@ export function AdjustRemainModal({
   const { t } = useTranslation();
   const [value, setValue] = useState(spool.remain ?? 0);
   const patchSpool = usePatchSpool();
+
+  useEffect(() => {
+    if (opened) setValue(spool.remain ?? 0);
+  }, [opened, spool.remain]);
 
   const totalWeight = spool.weight ?? 0;
   const remainingWeight = totalWeight > 0 ? Math.round(totalWeight * value / 100) : null;
@@ -38,7 +43,7 @@ export function AdjustRemainModal({
     >
       <Stack gap="lg">
         <Text size="sm" c="dimmed">
-          {spool.color_name ?? spool.product ?? spool.material ?? spool.tag_id}
+          {spoolLabels(spool).primary}
         </Text>
         <Stack gap="xs">
           <Group justify="space-between">
@@ -57,7 +62,6 @@ export function AdjustRemainModal({
             color={spoolFillColor(value)}
           />
         </Stack>
-        <Text size="xs" c="dimmed">{t("spools.adjust_remain_hint")}</Text>
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>
             {t("common.cancel")}

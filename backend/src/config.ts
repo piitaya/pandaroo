@@ -5,8 +5,7 @@ import { Value } from "@sinclair/typebox/value";
 import type { Config } from "@bambu-spoolman-sync/shared";
 import { atomicWriteFile } from "./utils/atomic-write.js";
 
-// Keep this schema in sync with the `Config` interface in
-// `@bambu-spoolman-sync/shared` — that interface is the authoritative shape.
+// Keep in sync with the `Config` interface in shared.
 export const PrinterSchema = Type.Object({
   name: Type.String({ minLength: 1 }),
   host: Type.String({ minLength: 1 }),

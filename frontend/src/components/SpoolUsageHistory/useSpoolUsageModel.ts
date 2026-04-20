@@ -38,8 +38,10 @@ export function useSpoolUsageModel(
 ): UsageModel {
   return useMemo(() => {
     const src = events ?? [];
-    const ascending = [...src].sort((a, b) =>
-      a.created_at.localeCompare(b.created_at),
+    // Tie-break on id — `datetime('now')` has second precision so sequential
+    // events can share a `created_at`.
+    const ascending = [...src].sort(
+      (a, b) => a.created_at.localeCompare(b.created_at) || a.id - b.id,
     );
 
     const sessions: UsageSession[] = [];

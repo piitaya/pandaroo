@@ -3,25 +3,21 @@ import {
   Alert,
   Badge,
   Button,
-  Card,
   Group,
   Loader,
   Menu,
   Stack,
-  Text,
   Title
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconChevronDown,
   IconHelp,
-  IconPlugConnected,
   IconPlus,
   IconRefresh,
   IconRefreshDot
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 import { PrinterBlock } from "../components/PrinterBlock";
 import { EmptyStateCard } from "../components/EmptyStateCard";
 import { StatusLegend } from "../components/StatusLegend";
@@ -134,27 +130,6 @@ export default function DashboardPage() {
             variant: "default",
           }}
         />
-      )}
-
-      {printers.length > 0 && !spoolmanConfigured && (
-        <Card withBorder padding="md" radius="md">
-          <Group justify="space-between" wrap="wrap" gap="md" align="center">
-            <Stack gap={2} style={{ flex: "1 1 260px", minWidth: 0 }}>
-              <Text fw={500}>{t("dashboard.no_spoolman_title")}</Text>
-              <Text size="sm" c="dimmed">
-                {t("dashboard.no_spoolman_body")}
-              </Text>
-            </Stack>
-            <Button
-              component={Link}
-              to="/settings/sync"
-              variant="default"
-              leftSection={<IconPlugConnected size={16} />}
-            >
-              {t("dashboard.no_spoolman_action")}
-            </Button>
-          </Group>
-        </Card>
       )}
 
       {printers.map((p) => (

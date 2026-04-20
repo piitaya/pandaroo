@@ -26,14 +26,11 @@
     "help_aria_label": "What do the slot statuses mean?",
     "failed_to_load": "Failed to load state",
     "no_printers_title": "No printers configured",
-    "no_printers_body": "Add your first Bambu Lab printer to start watching its AMS and matching spools against the community mapping.",
+    "no_printers_body": "Add your first Bambu Lab printer to start watching its AMS.",
     "no_printers_action": "Add your first printer",
     "all_disabled_title": "All printers are disabled",
-    "all_disabled_body": "You have printers configured but none are enabled. Enable at least one to start watching its AMS.",
+    "all_disabled_body": "Enable a printer to start watching its AMS.",
     "all_disabled_action": "Manage printers",
-    "no_spoolman_title": "Spoolman not connected",
-    "no_spoolman_body": "Connect your Spoolman instance to start syncing mapped slots.",
-    "no_spoolman_action": "Connect Spoolman",
     "empty": {
       "title": "Waiting for AMS data",
       "body": "The printer hasn't reported its state yet."
@@ -41,15 +38,15 @@
     "errors": {
       "unauthorized": {
         "title": "Invalid access code",
-        "description": "The printer rejected the access code. Verify it on the Printers page."
+        "description": "Access code rejected. Check it on the Printers page."
       },
       "no_response": {
         "title": "No response from printer",
-        "description": "Connected successfully but the printer isn't reporting state. Verify the serial number on the Printers page."
+        "description": "Connected but no state reported. Check the serial on the Printers page."
       },
       "unreachable": {
         "title": "Printer unreachable",
-        "description": "Couldn't connect to the printer. Verify the host (IP or hostname) on the Printers page."
+        "description": "Couldn't connect. Check the host on the Printers page."
       },
       "other": {
         "title": "Connection error",
@@ -75,7 +72,7 @@
       "linked_spool": "Linked spool"
     },
     "linked_spool": {
-      "not_tracked_hint": "This spool has no persisted record — it will be tracked once detected with a known RFID tag.",
+      "not_tracked_hint": "Not yet tracked. Scan the RFID tag or load it in an AMS.",
       "view_details": "View"
     },
     "fields": {
@@ -112,7 +109,7 @@
   },
   "status": {
     "legend_title": "Slot status guide",
-    "legend_intro": "Each AMS slot is matched against a community-maintained list of Bambu spools. The badge tells you whether the spool is recognized and ready to sync to Spoolman.",
+    "legend_intro": "Each AMS slot is matched against a community-maintained list of Bambu spools.",
     "mapped": {
       "label": "Mapped",
       "description": "Known Bambu spool with a Spoolman equivalent. Ready to sync."
@@ -131,7 +128,7 @@
     },
     "unidentified": {
       "label": "Unidentified",
-      "description": "Spool detected but the printer has no info about it yet (e.g. a third-party spool without material set)."
+      "description": "Spool detected but the printer has no info yet."
     },
     "empty": {
       "label": "Empty",
@@ -159,12 +156,12 @@
       "required": "Required"
     },
     "remove_confirm_title": "Remove printer?",
-    "remove_confirm_body": "\"{{name}}\" will be removed from the list. You can add it back later.",
+    "remove_confirm_body": "\"{{name}}\" will be removed from the list.",
     "notifications": {
       "added": "Printer added",
       "updated": "Printer updated",
       "removed": "Printer removed",
-      "duplicate_serial": "A printer with this serial number is already configured."
+      "duplicate_serial": "Serial already in use."
     }
   },
   "settings": {
@@ -196,19 +193,19 @@
     "title": "Sync",
     "connection_card": {
       "title": "Spoolman connection",
-      "hint": "Point this at your Spoolman instance to enable syncing mapped AMS slots as spools.",
+      "hint": "Point this at your Spoolman instance to enable syncing.",
       "url": "Spoolman URL",
       "auto_sync": "Auto-sync on spool updates",
-      "auto_sync_hint": "Automatically sync spool changes to Spoolman, including updates and removals.",
+      "auto_sync_hint": "Automatically push changes to Spoolman.",
       "archive_on_empty": "Archive empty spools",
-      "archive_on_empty_hint": "When a spool's remaining weight reaches zero, archive it in Spoolman.",
+      "archive_on_empty_hint": "Archive spools in Spoolman when empty.",
       "test": "Test connection",
       "test_ok": "Connected to Spoolman {{version}}",
-      "test_error": "Couldn't reach Spoolman. Check the URL and that the instance is running."
+      "test_error": "Couldn't reach Spoolman. Check the URL."
     },
     "actions_card": {
       "title": "Actions",
-      "hint": "Push every mapped AMS slot across all printers to Spoolman.",
+      "hint": "Sync all mapped slots to Spoolman.",
       "sync_all": "Sync all now"
     }
   },
@@ -224,7 +221,7 @@
       "title": "Usage history",
       "has_more": "Older events exist outside this window.",
       "empty_title": "No activity yet",
-      "empty_hint": "Insert this spool into an AMS, scan it, or adjust its remaining percentage to see events here.",
+      "empty_hint": "Load in an AMS, scan, or adjust to see events.",
       "event": {
         "enter": "Loaded",
         "exit": "Removed",
@@ -248,11 +245,17 @@
     },
     "details": {
       "title": "Details"
+    },
+    "danger_zone": {
+      "title": "Danger zone",
+      "remove_title": "Remove this spool",
+      "remove_hint": "Deletes the spool and its history. Also removes from Spoolman when synced.",
+      "remove_disabled_hint": "Unload the spool from the AMS first."
     }
   },
   "spools": {
     "title": "Spools",
-    "empty": "No spools scanned yet. Spools are automatically tracked when detected in the AMS.",
+    "empty": "No spools yet. Scan a tag or load one in an AMS.",
     "failed_to_load": "Failed to load spools",
     "last_updated": "Last updated",
     "sync_all": "Sync all to Spoolman",
@@ -265,9 +268,9 @@
     },
     "adjust_remain": "Adjust remaining",
     "adjust_remain_title": "Adjust filament remaining",
-    "adjust_remain_hint": "If this spool is loaded in an AMS that tracks remaining filament, this value will be automatically overwritten.",
+    "adjust_remain_disabled_hint": "Unload the spool from the AMS to adjust.",
     "remove_confirm_title": "Remove spool?",
-    "remove_confirm_body": "\"{{name}}\" will be removed from the local database.",
+    "remove_confirm_body": "\"{{name}}\" will be removed.",
     "notifications": {
       "removed": "Spool removed",
       "updated": "Spool updated"

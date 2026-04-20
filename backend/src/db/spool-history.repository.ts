@@ -1,9 +1,13 @@
-import { and, desc, eq, gte, isNotNull, lt, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
 import { spoolHistory } from "./schema.js";
 import type { AppDatabase } from "./database.js";
 
 export type SpoolHistoryRow = typeof spoolHistory.$inferSelect;
 export type SpoolHistoryInsert = typeof spoolHistory.$inferInsert;
+
+// Session-defining events only. Adjust/scan rows have null slot metadata
+// and would break session continuity checks.
+const AMS_EVENT_TYPES = ["ams_load", "ams_unload", "ams_update"] as const;
 
 export interface ListHistoryOptions {
   from?: string;
@@ -15,9 +19,8 @@ export interface ListHistoryOptions {
 export interface SpoolHistoryRepository {
   insert(data: SpoolHistoryInsert): void;
   /**
-   * Atomic findLatest + conditional insert in one transaction. Prevents two
-   * concurrent callers from both observing the same "latest" row and writing
-   * duplicate history entries.
+   * Atomic find-latest-AMS + conditional insert in one transaction.
+   * The comparison row is filtered to AMS-type events.
    */
   insertIfChanged(
     data: SpoolHistoryInsert,
@@ -25,6 +28,7 @@ export interface SpoolHistoryRepository {
   ): boolean;
   findById(id: number): SpoolHistoryRow | undefined;
   findLatest(tagId: string): SpoolHistoryRow | undefined;
+  findLatestAms(tagId: string): SpoolHistoryRow | undefined;
   findLatestWithRemain(tagId: string): SpoolHistoryRow | undefined;
   list(tagId: string, options: ListHistoryOptions): SpoolHistoryRow[];
   updateRemain(id: number, remain: number | null): boolean;
@@ -52,7 +56,12 @@ export function createSpoolHistoryRepository(db: AppDatabase): SpoolHistoryRepos
         const latest = tx
           .select()
           .from(spoolHistory)
-          .where(eq(spoolHistory.tagId, data.tagId))
+          .where(
+            and(
+              eq(spoolHistory.tagId, data.tagId),
+              inArray(spoolHistory.eventType, AMS_EVENT_TYPES),
+            ),
+          )
           .orderBy(desc(spoolHistory.createdAt), desc(spoolHistory.id))
           .limit(1)
           .get();
@@ -68,6 +77,21 @@ export function createSpoolHistoryRepository(db: AppDatabase): SpoolHistoryRepos
 
     findLatest(tagId) {
       return findLatestSync(tagId);
+    },
+
+    findLatestAms(tagId) {
+      return db
+        .select()
+        .from(spoolHistory)
+        .where(
+          and(
+            eq(spoolHistory.tagId, tagId),
+            inArray(spoolHistory.eventType, AMS_EVENT_TYPES),
+          ),
+        )
+        .orderBy(desc(spoolHistory.createdAt), desc(spoolHistory.id))
+        .limit(1)
+        .get();
     },
 
     findLatestWithRemain(tagId) {

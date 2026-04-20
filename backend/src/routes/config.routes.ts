@@ -13,7 +13,7 @@ export const configRoutes: FastifyPluginAsync<ConfigRouteDeps> = async (app, { c
     schema: {
       operationId: "getHealth",
       tags: ["System"],
-      description: "Health check",
+      description: "Health check.",
       response: { 200: Type.Object({ status: Type.String() }) },
     },
   }, async () => ({ status: "ok" }));
@@ -22,7 +22,7 @@ export const configRoutes: FastifyPluginAsync<ConfigRouteDeps> = async (app, { c
     schema: {
       operationId: "getConfig",
       tags: ["Config"],
-      description: "Get the current configuration",
+      description: "Get the configuration.",
       response: { 200: ConfigSchema },
     },
   }, async () => configStore.current);
@@ -31,7 +31,7 @@ export const configRoutes: FastifyPluginAsync<ConfigRouteDeps> = async (app, { c
     schema: {
       operationId: "putConfig",
       tags: ["Config"],
-      description: "Replace the full configuration",
+      description: "Replace the configuration.",
       body: ConfigSchema,
       response: { 200: ConfigSchema, 400: ErrorResponse },
     },
