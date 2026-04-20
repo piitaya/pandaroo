@@ -1,4 +1,4 @@
-import type { PrinterErrorCode } from "@bambu-spoolman-sync/shared";
+import type { PrinterErrorCode } from "@pandaroo/shared";
 
 const NETWORK_ERROR_CODES = new Set([
   "EACCES",

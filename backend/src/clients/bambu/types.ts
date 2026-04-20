@@ -1,4 +1,4 @@
-import type { SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading } from "@pandaroo/shared";
 
 export interface ParsedSlot {
   printer_serial: string;

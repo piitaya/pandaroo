@@ -15,7 +15,6 @@ import { configRoutes } from "./routes/config.routes.js";
 import { printerRoutes } from "./routes/printer.routes.js";
 import { printerStatusRoutes } from "./routes/printer-status.routes.js";
 import { filamentCatalogRoutes } from "./routes/filament-catalog.routes.js";
-import { spoolmanRoutes } from "./routes/spoolman.routes.js";
 import { spoolRoutes } from "./routes/spool.routes.js";
 import { eventsRoutes } from "./routes/events.routes.js";
 
@@ -44,9 +43,9 @@ export async function buildApp() {
   await app.register(fastifySwagger, {
     openapi: {
       info: {
-        title: "Bambu Spoolman Sync",
+        title: "Pandaroo",
         description:
-          "Sync Bambu Lab AMS spool data with Spoolman.\n\n" +
+          "Track Bambu Lab AMS spools by their RFID tags.\n\n" +
           "No auth, no rate limiting — LAN only. Put behind an authenticated reverse proxy for remote access.",
         version: "0.1.0",
       },
@@ -69,13 +68,7 @@ export async function buildApp() {
   await app.register(configRoutes, { configStore: services.configStore });
   await app.register(printerRoutes, { configStore: services.configStore });
   await app.register(filamentCatalogRoutes, { mapping: services.mapping });
-  await app.register(spoolmanRoutes, {
-    configStore: services.configStore,
-    spoolService: services.spoolService,
-    createSyncDeps: services.createSyncDeps,
-  });
   await app.register(spoolRoutes, {
-    configStore: services.configStore,
     spoolService: services.spoolService,
     spoolHistoryService: services.spoolHistoryService,
   });

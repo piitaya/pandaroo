@@ -13,8 +13,6 @@ import { ColorSwatch } from "./ColorSwatch";
 import { useMatchStatus } from "./matchStatus";
 import { spoolFillColor } from "./spoolFillColor";
 import { spoolLabels } from "./spoolLabel";
-import { SyncDot } from "./SyncDot";
-import { useConfig, useSlotSpool } from "../hooks";
 import type { AmsSlot } from "../api";
 
 export function amsSlotKey(s: AmsSlot): string {
@@ -62,10 +60,6 @@ export function AmsSlotCard({ s }: { s: AmsSlot }) {
   const { t } = useTranslation();
   const matchStatus = useMatchStatus();
   const status = matchStatus[s.match_type];
-  const { data: configData } = useConfig();
-  const spoolmanConfigured = Boolean(configData?.spoolman?.url);
-  const persistedSpool = useSlotSpool(s.reading?.tag_id);
-  const sync = persistedSpool?.sync;
 
   const sp = s.reading;
   const labels =
@@ -113,14 +107,9 @@ export function AmsSlotCard({ s }: { s: AmsSlot }) {
       >
         <Group justify="space-between" mb="xs" wrap="nowrap">
           <Text fw={500}>{t("slot.label", { n: s.slot_id + 1 })}</Text>
-          <Group gap={4} wrap="nowrap">
-            <Badge color={status.color} variant="light">
-              {status.label}
-            </Badge>
-            {s.match_type === "mapped" && spoolmanConfigured && sync && (
-              <SyncDot sync={sync} />
-            )}
-          </Group>
+          <Badge color={status.color} variant="light">
+            {status.label}
+          </Badge>
         </Group>
         <Stack gap="sm">
           <Group gap="sm" align="flex-start" wrap="nowrap">

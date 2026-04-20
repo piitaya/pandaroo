@@ -26,19 +26,6 @@ export const spools = sqliteTable(
   (t) => [index("spool_last_updated_idx").on(t.lastUpdated)],
 );
 
-export const spoolSyncState = sqliteTable(
-  "spool_sync_state",
-  {
-    tagId: text("tag_id")
-      .primaryKey()
-      .references(() => spools.tagId, { onDelete: "cascade" }),
-    spoolmanSpoolId: integer("spoolman_spool_id"),
-    lastSynced: text("last_synced"),
-    lastSyncError: text("last_sync_error"),
-  },
-  (t) => [index("spool_sync_state_error_idx").on(t.lastSyncError)],
-);
-
 export const spoolHistory = sqliteTable(
   "spool_history",
   {

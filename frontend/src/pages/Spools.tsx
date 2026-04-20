@@ -1,7 +1,6 @@
 import {
   ActionIcon,
   Alert,
-  Button,
   ColorSwatch,
   Group,
   Loader,
@@ -10,18 +9,15 @@ import {
   Stack,
   Text,
   Title,
-  Tooltip
 } from "@mantine/core";
-import { IconCircleFilled, IconDots, IconGauge, IconRefresh, IconTrash } from "@tabler/icons-react";
+import { IconDots, IconGauge, IconTrash } from "@tabler/icons-react";
 import { DataTable, type DataTableSortStatus } from "mantine-datatable";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { Spool, SyncStatus } from "../api";
-import { useConfig, useRemoveSpool, useSpoolMap, useSpools, useSyncAllSpoolman } from "../hooks";
-import { useMatchStatus } from "../components/matchStatus";
+import type { Spool } from "../api";
+import { useRemoveSpool, useSpoolMap, useSpools } from "../hooks";
 import { spoolFillColor } from "../components/spoolFillColor";
-import { syncStatusColor } from "../components/syncStatusColor";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { EmptyStateCard } from "../components/EmptyStateCard";
 import { AdjustRemainModal } from "../components/AdjustRemainModal";
@@ -31,25 +27,8 @@ function formatDate(value: string): string {
   return new Date(normalized).toLocaleString();
 }
 
-const syncSortRank: Record<SyncStatus, number> = {
-  error: 0,
-  stale: 1,
-  never: 2,
-  synced: 3,
-};
-const UNMATCHED_SORT_RANK = 4;
-
-function syncSortValue(spool: Spool): number {
-  return spool.match_type === "mapped"
-    ? syncSortRank[spool.sync.status]
-    : UNMATCHED_SORT_RANK;
-}
-
 function sortData(data: Spool[], { columnAccessor, direction }: DataTableSortStatus<Spool>): Spool[] {
   const sorted = [...data].sort((a, b) => {
-    if (columnAccessor === "sync_status") {
-      return syncSortValue(a) - syncSortValue(b);
-    }
     const aVal = a[columnAccessor as keyof Spool];
     const bVal = b[columnAccessor as keyof Spool];
     if (aVal == null && bVal == null) return 0;
@@ -63,10 +42,7 @@ function sortData(data: Spool[], { columnAccessor, direction }: DataTableSortSta
 
 export default function SpoolsPage() {
   const { data: spools, isLoading, isError, error } = useSpools();
-  const { data: configData } = useConfig();
-  const syncAllSpoolman = useSyncAllSpoolman();
   const removeSpool = useRemoveSpool();
-  const matchStatus = useMatchStatus();
   const { t } = useTranslation();
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<Spool>>({
     columnAccessor: "last_updated",
@@ -74,7 +50,6 @@ export default function SpoolsPage() {
   });
   const [toRemove, setToRemove] = useState<Spool | null>(null);
   const [toAdjustId, setToAdjustId] = useState<string | null>(null);
-  const spoolmanConfigured = Boolean(configData?.spoolman?.url);
 
   // Allow other pages to deep-link a spool by its tag id via navigation state.
   const location = useLocation();
@@ -108,19 +83,7 @@ export default function SpoolsPage() {
 
   return (
     <Stack gap="xl">
-      <Group justify="space-between" wrap="wrap" gap="sm">
-        <Title order={2}>{t("spools.title")}</Title>
-        {spoolmanConfigured && spools && spools.length > 0 && (
-          <Button
-            leftSection={<IconRefresh size={16} />}
-            variant="default"
-            loading={syncAllSpoolman.isPending}
-            onClick={() => syncAllSpoolman.mutate()}
-          >
-            {t("spools.sync_all")}
-          </Button>
-        )}
-      </Group>
+      <Title order={2}>{t("spools.title")}</Title>
 
       {(!spools || spools.length === 0) ? (
         <EmptyStateCard description={t("spools.empty")} />
@@ -201,47 +164,6 @@ export default function SpoolsPage() {
                   {formatDate(spool.last_updated)}
                 </Text>
               ),
-            },
-            {
-              accessor: "sync_status",
-              title: t("spools.sync_status"),
-              sortable: true,
-              width: 90,
-              textAlign: "center",
-              render: (spool) => {
-                if (spool.match_type !== "mapped") {
-                  return (
-                    <Text
-                      c="dimmed"
-                      size="sm"
-                      title={matchStatus[spool.match_type].description}
-                    >
-                      —
-                    </Text>
-                  );
-                }
-                const { sync } = spool;
-                const tooltip =
-                  sync.status === "error"
-                    ? t("spools.sync_tooltip.error", {
-                        error: sync.error,
-                      })
-                    : sync.status === "stale"
-                      ? t("spools.sync_tooltip.stale")
-                      : sync.status === "synced"
-                        ? t("spools.sync_tooltip.synced", {
-                            at: formatDate(sync.at),
-                          })
-                        : t("spools.sync_tooltip.never");
-                return (
-                  <Tooltip label={tooltip} multiline maw={320}>
-                    <IconCircleFilled
-                      size={12}
-                      style={{ color: syncStatusColor(sync.status) }}
-                    />
-                  </Tooltip>
-                );
-              },
             },
             {
               accessor: "actions",

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
-import type { Config } from "@bambu-spoolman-sync/shared";
+import type { Config } from "@pandaroo/shared";
 import { atomicWriteFile } from "./utils/atomic-write.js";
 
 // Keep in sync with the `Config` interface in shared.
@@ -15,14 +15,6 @@ export const PrinterSchema = Type.Object({
 });
 export const ConfigSchema = Type.Object({
   printers: Type.Array(PrinterSchema, { default: [] }),
-  spoolman: Type.Object(
-    {
-      url: Type.Optional(Type.String()),
-      auto_sync: Type.Boolean({ default: false }),
-      archive_on_empty: Type.Boolean({ default: false }),
-    },
-    { default: {} },
-  ),
 });
 
 function parseConfig(data: unknown): Config {

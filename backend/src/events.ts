@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { SpoolReading, PrinterConfig, PrinterStatus, Config } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading, PrinterConfig, PrinterStatus, Config } from "@pandaroo/shared";
 import type { ParsedAmsUnit } from "./clients/bambu/types.js";
 
 export interface SlotLocation {

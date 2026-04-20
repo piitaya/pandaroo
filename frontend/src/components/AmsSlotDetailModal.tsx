@@ -10,7 +10,6 @@ import { CopyableMono } from "./CopyableMono";
 import { useMatchStatus } from "./matchStatus";
 import { spoolFillColor } from "./spoolFillColor";
 import { spoolLabels } from "./spoolLabel";
-import { SyncDot } from "./SyncDot";
 import { useSlotSpool } from "../hooks";
 import type { AmsSlot, Spool } from "../api";
 
@@ -146,7 +145,6 @@ function LinkedSpoolCard({ spool, onClose }: { spool: Spool; onClose: () => void
   const { t } = useTranslation();
   const navigate = useNavigate();
   const labels = spoolLabels(spool);
-  const showSync = spool.match_type === "mapped";
 
   return (
     <Card withBorder padding="sm" radius="md">
@@ -168,7 +166,6 @@ function LinkedSpoolCard({ spool, onClose }: { spool: Spool; onClose: () => void
               </Text>
             )}
           </Stack>
-          {showSync && <SyncDot sync={spool.sync} />}
         </Group>
         <Group justify="space-between" gap="xs" wrap="nowrap" align="flex-end">
           <Text size="xs" c="dimmed" truncate>

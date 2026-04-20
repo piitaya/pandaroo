@@ -1,7 +1,7 @@
 services:
-  bambu-spoolman-sync:
-    image: ghcr.io/piitaya/bambu-spoolman-sync:beta
-    container_name: bambu-spoolman-sync
+  pandaroo:
+    image: ghcr.io/piitaya/pandaroo:beta
+    container_name: pandaroo
     restart: unless-stopped
     ports:
       - "4000:4000"

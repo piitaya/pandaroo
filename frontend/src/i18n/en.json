@@ -17,12 +17,6 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "sync_all": "Sync to Spoolman",
-    "sync_menu": {
-      "all_spools": "Sync all spools",
-      "ams_loaded": "Sync AMS loaded spools"
-    },
-    "auto_sync_on": "Auto-sync on",
     "help_aria_label": "What do the slot statuses mean?",
     "failed_to_load": "Failed to load state",
     "no_printers_title": "No printers configured",
@@ -60,12 +54,10 @@
     "unidentified": "Unidentified spool",
     "remaining": "Remaining: {{value}}%",
     "details_aria_label": "Slot details",
-    "sync_aria_label": "Sync this slot to Spoolman",
     "sections": {
       "filament": "Filament",
       "identification": "Identification",
       "physical": "Physical",
-      "sync": "Sync",
       "source": "Source",
       "history": "History",
       "ams_reading": "AMS reading",
@@ -83,40 +75,24 @@
       "colors_hex": "Hex colors",
       "material": "Material",
       "bambu_filament": "Bambu filament",
-      "spoolman_filament": "Spoolman filament",
       "spool_uid": "Spool UID",
       "total_weight": "Total weight",
       "remaining": "Remaining",
       "printer_reports": "Printer reports",
       "nozzle_temp": "Nozzle temp",
-      "sync_status": "Sync status",
-      "spoolman_spool": "Spoolman spool",
-      "sync_last": "Last sync",
-      "sync_error": "Sync error",
       "printer_serial": "Printer",
       "current_location": "Currently loaded",
       "first_seen": "First seen",
       "last_used": "Last used",
       "last_updated": "Last updated"
-    },
-    "sync_status": {
-      "never": "Never synced",
-      "synced": "Synced",
-      "stale": "Out of date",
-      "error": "Error",
-      "open_in_spoolman": "Open in Spoolman"
     }
   },
   "status": {
     "legend_title": "Slot status guide",
     "legend_intro": "Each AMS slot is matched against a community-maintained list of Bambu spools.",
-    "mapped": {
-      "label": "Mapped",
-      "description": "Known Bambu spool with a Spoolman equivalent. Ready to sync."
-    },
-    "unmapped": {
-      "label": "Unmapped",
-      "description": "Known Bambu spool, but no Spoolman equivalent yet."
+    "known": {
+      "label": "Known",
+      "description": "Recognized Bambu spool in the community catalog."
     },
     "unknown": {
       "label": "Unknown",
@@ -169,8 +145,7 @@
     "saved": "Settings saved",
     "tabs": {
       "general": "General",
-      "printers": "Printers",
-      "sync": "Sync"
+      "printers": "Printers"
     },
     "mapping_card": {
       "title": "Filament mapping",
@@ -187,26 +162,6 @@
       "theme_auto": "Auto (match system)",
       "theme_light": "Light",
       "theme_dark": "Dark"
-    }
-  },
-  "sync": {
-    "title": "Sync",
-    "connection_card": {
-      "title": "Spoolman connection",
-      "hint": "Point this at your Spoolman instance to enable syncing.",
-      "url": "Spoolman URL",
-      "auto_sync": "Auto-sync on spool updates",
-      "auto_sync_hint": "Automatically push changes to Spoolman.",
-      "archive_on_empty": "Archive empty spools",
-      "archive_on_empty_hint": "Archive spools in Spoolman when empty.",
-      "test": "Test connection",
-      "test_ok": "Connected to Spoolman {{version}}",
-      "test_error": "Couldn't reach Spoolman. Check the URL."
-    },
-    "actions_card": {
-      "title": "Actions",
-      "hint": "Sync all mapped slots to Spoolman.",
-      "sync_all": "Sync all now"
     }
   },
   "spool_detail": {
@@ -249,7 +204,7 @@
     "danger_zone": {
       "title": "Danger zone",
       "remove_title": "Remove this spool",
-      "remove_hint": "Deletes the spool and its history. Also removes from Spoolman when synced.",
+      "remove_hint": "Deletes the spool and its history.",
       "remove_disabled_hint": "Unload the spool from the AMS first."
     }
   },
@@ -258,14 +213,6 @@
     "empty": "No spools yet. Scan a tag or load one in an AMS.",
     "failed_to_load": "Failed to load spools",
     "last_updated": "Last updated",
-    "sync_all": "Sync all to Spoolman",
-    "sync_status": "Sync",
-    "sync_tooltip": {
-      "never": "Not yet synced to Spoolman",
-      "synced": "Synced · {{at}}",
-      "stale": "Spool data changed since last sync",
-      "error": "Last sync failed: {{error}}"
-    },
     "adjust_remain": "Adjust remaining",
     "adjust_remain_title": "Adjust filament remaining",
     "adjust_remain_disabled_hint": "Unload the spool from the AMS to adjust.",
@@ -274,12 +221,6 @@
     "notifications": {
       "removed": "Spool removed",
       "updated": "Spool updated"
-    }
-  },
-  "spoolman": {
-    "sync_all": {
-      "done": "Synced {{synced}} slots ({{skipped}} skipped)",
-      "partial": "Synced {{synced}} slots with {{errors}} errors"
     }
   },
   "errors": {

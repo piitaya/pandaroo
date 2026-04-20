@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
-import type { SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading } from "@pandaroo/shared";
 import {
   SpoolScanSchema,
   SpoolPatchSchema,
@@ -13,14 +13,11 @@ import {
   type SpoolHistoryEventPatch,
   type SpoolHistoryQuery,
 } from "./schemas.js";
-import type { ConfigStore } from "../config-store.js";
 import type { SpoolService } from "../services/spool.service.js";
 import type { SpoolHistoryService } from "../services/spool-history.service.js";
-import { createSpoolmanClient } from "../clients/spoolman.client.js";
 import { ErrorCode, ErrorResponse, LocalSpoolResponse, conflict, errorBody, notFound } from "./schemas.js";
 
 export interface SpoolRouteDeps {
-  configStore: ConfigStore;
   spoolService: SpoolService;
   spoolHistoryService: SpoolHistoryService;
 }
@@ -28,7 +25,7 @@ export interface SpoolRouteDeps {
 const DEFAULT_HISTORY_LIMIT = 1000;
 const DEFAULT_HISTORY_WINDOW_DAYS = 30;
 
-export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { configStore, spoolService, spoolHistoryService }) => {
+export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { spoolService, spoolHistoryService }) => {
   app.get("/api/spools", {
     schema: {
       operationId: "listSpools",
@@ -240,14 +237,12 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     schema: {
       operationId: "deleteSpool",
       tags: ["Spools"],
-      description: "Delete a spool. 409 when loaded in an AMS. Cascades to Spoolman when synced.",
+      description: "Delete a spool. 409 when loaded in an AMS.",
       params: Type.Object({ tagId: Type.String({ minLength: 1 }) }),
       response: { 204: Type.Null(), 404: ErrorResponse, 409: ErrorResponse },
     },
   }, async (req, reply) => {
     const { tagId } = req.params;
-    const spool = spoolService.findByTagId(tagId);
-
     const result = spoolService.delete(tagId);
     if (!result.ok) {
       if (result.reason === "ams_loaded") {
@@ -258,23 +253,6 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
         );
       }
       return notFound(reply, "Spool not found.");
-    }
-
-    const { spoolman } = configStore.current;
-    const spoolmanSpoolId =
-      spool && (spool.sync.status === "synced" || spool.sync.status === "stale")
-        ? spool.sync.spoolman_spool_id
-        : null;
-    if (spoolman.url && spoolmanSpoolId != null) {
-      try {
-        const client = createSpoolmanClient(spoolman.url);
-        await client.deleteSpool(spoolmanSpoolId);
-      } catch (err) {
-        app.log.warn(
-          { tagId, spoolmanSpoolId, err },
-          "Spoolman cascade-delete failed — local spool already deleted",
-        );
-      }
     }
 
     reply.code(204);

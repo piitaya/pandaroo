@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
-import type { Config } from "@bambu-spoolman-sync/shared";
+import type { Config } from "@pandaroo/shared";
 import { saveConfig } from "./config.js";
 import type { AppEventBus } from "./events.js";
 
@@ -25,8 +25,6 @@ export function createConfigStore(
       config = validated;
       log.info({
         printerCount: config.printers.length,
-        spoolmanUrl: config.spoolman.url ?? null,
-        autoSync: config.spoolman.auto_sync,
       }, "Config saved");
       bus.emit("config:changed", config);
     },

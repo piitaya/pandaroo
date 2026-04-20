@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAmsChangeDetector } from "./ams-change-detector.js";
 import { createEventBus } from "../events.js";
 import { createTestLogger } from "../test-helpers/logger.js";
-import type { Printer, AmsSlot, SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { Printer, AmsSlot, SpoolReading } from "@pandaroo/shared";
 
 const printer: Printer = {
   name: "Test",

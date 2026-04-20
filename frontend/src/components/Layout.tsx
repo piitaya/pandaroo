@@ -42,7 +42,7 @@ export default function Layout() {
     >
       <AppShell.Header p="sm">
         <Group h="100%" gap="sm">
-          <Title order={4}>Bambu Spoolman Sync</Title>
+          <Title order={4}>Pandaroo</Title>
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="sm" visibleFrom="sm">

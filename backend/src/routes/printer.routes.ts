@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
-import type { PrinterConfig } from "@bambu-spoolman-sync/shared";
+import type { PrinterConfig } from "@pandaroo/shared";
 import { PrinterSchema } from "../config.js";
 import type { ConfigStore } from "../config-store.js";
 import { ErrorCode, ErrorResponse, OkResponse, errorBody } from "./schemas.js";

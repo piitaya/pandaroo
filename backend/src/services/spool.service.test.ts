@@ -1,9 +1,8 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import type { SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading } from "@pandaroo/shared";
 import { createTestDb } from "../test-helpers/db.js";
 import { createTestLogger } from "../test-helpers/logger.js";
 import { createSpoolRepository } from "../db/spool.repository.js";
-import { createSyncStateRepository } from "../db/sync-state.repository.js";
 import { createEventBus, type AppEventBus } from "../events.js";
 import { createSpoolService, type SpoolService } from "./spool.service.js";
 import type { Mapping } from "../filament-catalog.js";
@@ -42,18 +41,15 @@ let service: SpoolService;
 let bus: AppEventBus;
 let updates: string[];
 let spoolRepo: ReturnType<typeof createSpoolRepository>;
-let syncStateRepo: ReturnType<typeof createSyncStateRepository>;
 
 beforeEach(() => {
   const { db } = createTestDb();
   spoolRepo = createSpoolRepository(db);
-  syncStateRepo = createSyncStateRepository(db);
   bus = createEventBus();
   updates = [];
   bus.on("spool:updated", (tagId) => updates.push(tagId));
   service = createSpoolService({
     spoolRepo,
-    syncStateRepo,
     mapping,
     bus,
     log: createTestLogger(),
@@ -165,7 +161,6 @@ describe("SpoolService.patch", () => {
     service.upsert(baseReading(), { source: "ams" });
     const blocked = createSpoolService({
       spoolRepo,
-      syncStateRepo,
       mapping,
       bus,
       log: createTestLogger(),
@@ -196,7 +191,6 @@ describe("SpoolService.delete", () => {
     service.upsert(baseReading(), { source: "ams" });
     const blocked = createSpoolService({
       spoolRepo,
-      syncStateRepo,
       mapping,
       bus,
       log: createTestLogger(),

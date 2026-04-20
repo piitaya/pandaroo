@@ -43,6 +43,13 @@
       "when": 1776537600000,
       "tag": "0005_arch_review",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1776689950362,
+      "tag": "0006_drop_spool_sync_state",
+      "breakpoints": true
     }
   ]
 }

@@ -12,7 +12,6 @@ describe("ConfigSchema", () => {
     expect(Value.Check(ConfigSchema, coerced)).toBe(true);
     const c = coerced as any;
     expect(c.printers).toEqual([]);
-    expect(c.spoolman.auto_sync).toBe(false);
   });
 
   it("rejects a printer missing required fields", () => {

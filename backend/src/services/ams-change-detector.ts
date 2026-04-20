@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
-import type { SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading } from "@pandaroo/shared";
 import type { ParsedSlot, ParsedAmsUnit } from "../clients/bambu/types.js";
 import type { AppEventBus, SlotLocation } from "../events.js";
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseSpoolScan } from "./schemas.js";
 import { matchSpool } from "../filament-catalog.js";
-import type { CatalogEntry } from "@bambu-spoolman-sync/shared";
+import type { CatalogEntry } from "@pandaroo/shared";
 
 const mapping = new Map<string, CatalogEntry>([
-  ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
+  ["A01-B6", { id: "A01-B6" }],
 ]);
 
 function makeScan(over: Record<string, unknown> = {}) {
@@ -72,16 +72,16 @@ describe("SpoolScanSchema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       const match = matchSpool(result.data, mapping);
-      expect(match.type).toBe("mapped");
-      expect(match.entry?.spoolman_id).toBe("bambulab_pla_matte_darkblue");
+      expect(match.type).toBe("known");
+      expect(match.entry?.id).toBe("A01-B6");
     }
   });
 
-  it("returns unknown_variant for unrecognized variant_id", () => {
+  it("returns unknown for unrecognized variant_id", () => {
     const result = parseSpoolScan(makeScan({ variant_id: "X99-Z9" }));
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(matchSpool(result.data, mapping).type).toBe("unknown_variant");
+      expect(matchSpool(result.data, mapping).type).toBe("unknown");
     }
   });
 });

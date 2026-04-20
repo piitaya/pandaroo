@@ -1,39 +1,21 @@
 import {
   ActionIcon,
   Alert,
-  Badge,
-  Button,
   Group,
   Loader,
-  Menu,
   Stack,
   Title
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import {
-  IconChevronDown,
-  IconHelp,
-  IconPlus,
-  IconRefresh,
-  IconRefreshDot
-} from "@tabler/icons-react";
+import { IconHelp, IconPlus } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { PrinterBlock } from "../components/PrinterBlock";
 import { EmptyStateCard } from "../components/EmptyStateCard";
 import { StatusLegend } from "../components/StatusLegend";
-import { collectActiveTagIds } from "../api";
-import {
-  usePrinters,
-  useConfig,
-  useSyncAllSpoolman,
-  useSyncSpoolman
-} from "../hooks";
+import { usePrinters } from "../hooks";
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error } = usePrinters();
-  const { data: configData } = useConfig();
-  const syncSpoolman = useSyncSpoolman();
-  const syncAllSpoolman = useSyncAllSpoolman();
   const { t } = useTranslation();
   const [legendOpened, { open: openLegend, close: closeLegend }] =
     useDisclosure(false);
@@ -51,60 +33,18 @@ export default function DashboardPage() {
   const printers = allPrinters.filter((p) => p.enabled);
   const hasAnyPrinter = allPrinters.length > 0;
 
-  const spoolmanConfigured = Boolean(configData?.spoolman?.url);
-  const autoSync = Boolean(configData?.spoolman?.auto_sync);
-  const showSyncAll = spoolmanConfigured && !autoSync;
-
   return (
     <Stack gap="xl">
-      <Group justify="space-between" wrap="wrap" gap="sm">
-        <Group gap="xs" wrap="nowrap">
-          <Title order={2}>{t("dashboard.title")}</Title>
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            onClick={openLegend}
-            aria-label={t("dashboard.help_aria_label")}
-          >
-            <IconHelp size={20} />
-          </ActionIcon>
-        </Group>
-        {showSyncAll && (
-          <Menu position="bottom-end" withArrow>
-            <Menu.Target>
-              <Button
-                leftSection={<IconRefresh size={16} />}
-                rightSection={<IconChevronDown size={14} />}
-                variant="default"
-                loading={syncSpoolman.isPending || syncAllSpoolman.isPending}
-              >
-                {t("dashboard.sync_all")}
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item onClick={() => syncAllSpoolman.mutate()}>
-                {t("dashboard.sync_menu.all_spools")}
-              </Menu.Item>
-              <Menu.Item
-                onClick={() =>
-                  syncSpoolman.mutate(data ? collectActiveTagIds(data) : [])
-                }
-              >
-                {t("dashboard.sync_menu.ams_loaded")}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        )}
-        {spoolmanConfigured && autoSync && (
-          <Badge
-            color="teal"
-            variant="light"
-            size="lg"
-            leftSection={<IconRefreshDot size={14} />}
-          >
-            {t("dashboard.auto_sync_on")}
-          </Badge>
-        )}
+      <Group gap="xs" wrap="nowrap">
+        <Title order={2}>{t("dashboard.title")}</Title>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          onClick={openLegend}
+          aria-label={t("dashboard.help_aria_label")}
+        >
+          <IconHelp size={20} />
+        </ActionIcon>
       </Group>
 
       {printers.length === 0 && !hasAnyPrinter && (

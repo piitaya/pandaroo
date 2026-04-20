@@ -1,4 +1,4 @@
-import type { SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading } from "@pandaroo/shared";
 import type { ParsedSlot, ParsedAmsUnit } from "./types.js";
 
 export function toSpoolReading(tray: unknown): SpoolReading | null {
