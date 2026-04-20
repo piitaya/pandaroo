@@ -15,7 +15,7 @@ COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 RUN npm ci
 
-COPY tsconfig.json ./
+COPY tsconfig.base.json ./
 COPY shared ./shared
 COPY backend ./backend
 COPY frontend ./frontend
