@@ -17,7 +17,7 @@ import type { ConfigStore } from "../config-store.js";
 import type { SpoolService } from "../services/spool.service.js";
 import type { SpoolHistoryService } from "../services/spool-history.service.js";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
-import { ErrorCode, ErrorResponse, LocalSpoolResponse, errorBody } from "./schemas.js";
+import { ErrorCode, ErrorResponse, LocalSpoolResponse, errorBody, notFound } from "./schemas.js";
 
 export interface SpoolRouteDeps {
   configStore: ConfigStore;
@@ -51,8 +51,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
   }, async (req, reply) => {
     const spool = spoolService.findByTagId(req.params.tagId);
     if (!spool) {
-      reply.code(404);
-      return errorBody("No spool found with this tag id.", ErrorCode.NotFound);
+      return notFound(reply, "No spool found with this tag id.");
     }
     return spool;
   });
@@ -103,8 +102,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     const body = req.body as SpoolPatch;
     const spool = spoolService.patch(req.params.tagId, body);
     if (!spool) {
-      reply.code(404);
-      return errorBody("No spool found with this tag id.", ErrorCode.NotFound);
+      return notFound(reply, "No spool found with this tag id.");
     }
     return spool;
   });
@@ -125,8 +123,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
     async (req, reply) => {
       const spool = spoolService.findByTagId(req.params.tagId);
       if (!spool) {
-        reply.code(404);
-        return errorBody("No spool found with this tag id.", ErrorCode.NotFound);
+        return notFound(reply, "No spool found with this tag id.");
       }
 
       const now = new Date();
@@ -192,11 +189,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
             ErrorCode.NotManual,
           );
         }
-        reply.code(404);
-        return errorBody(
-          "No history event found for this tag and id.",
-          ErrorCode.NotFound,
-        );
+        return notFound(reply, "No history event found for this tag and id.");
       }
       return result.event;
     },
@@ -231,11 +224,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
             ErrorCode.NotManual,
           );
         }
-        reply.code(404);
-        return errorBody(
-          "No history event found for this tag and id.",
-          ErrorCode.NotFound,
-        );
+        return notFound(reply, "No history event found for this tag and id.");
       }
       reply.code(204);
       return;
@@ -257,8 +246,7 @@ export const spoolRoutes: FastifyPluginAsync<SpoolRouteDeps> = async (app, { con
 
     const deleted = spoolService.delete(tagId);
     if (!deleted) {
-      reply.code(404);
-      return errorBody("No spool found with this tag id.", ErrorCode.NotFound);
+      return notFound(reply, "No spool found with this tag id.");
     }
 
     const { spoolman } = configStore.current;

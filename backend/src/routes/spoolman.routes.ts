@@ -1,11 +1,18 @@
 import { Type } from "@sinclair/typebox";
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import { createSpoolmanClient } from "../clients/spoolman.client.js";
 import type { ConfigStore } from "../config-store.js";
 import type { SpoolService } from "../services/spool.service.js";
 import type { SyncDeps } from "../spoolman-sync.js";
 import { syncByTagIds } from "../spoolman-sync.js";
 import { ErrorCode, ErrorResponse, errorBody, errorMessage } from "./schemas.js";
+
+function requireSpoolmanUrl(configStore: ConfigStore, reply: FastifyReply): string | undefined {
+  const url = configStore.current.spoolman.url;
+  if (url) return url;
+  reply.code(400).send(errorBody("Spoolman URL is not configured.", ErrorCode.SpoolmanNotConfigured));
+  return undefined;
+}
 
 export interface SpoolmanRouteDeps {
   configStore: ConfigStore;
@@ -47,11 +54,8 @@ export const spoolmanRoutes: FastifyPluginAsync<SpoolmanRouteDeps> = async (app,
       },
     },
   }, async (_req, reply) => {
-    const url = configStore.current.spoolman.url;
-    if (!url) {
-      reply.code(400);
-      return errorBody("Spoolman URL is not configured.", ErrorCode.SpoolmanNotConfigured);
-    }
+    const url = requireSpoolmanUrl(configStore, reply);
+    if (!url) return;
     const signal = AbortSignal.timeout(3000);
     try {
       const client = createSpoolmanClient(url);
@@ -78,11 +82,7 @@ export const spoolmanRoutes: FastifyPluginAsync<SpoolmanRouteDeps> = async (app,
     },
   }, async (req, reply) => {
     const { tag_ids } = req.body as { tag_ids: string[] };
-    const url = configStore.current.spoolman.url;
-    if (!url) {
-      reply.code(400);
-      return errorBody("Spoolman URL is not configured.", ErrorCode.SpoolmanNotConfigured);
-    }
+    if (!requireSpoolmanUrl(configStore, reply)) return;
     try {
       return await syncByTagIds(createSyncDeps(), tag_ids);
     } catch (err) {
@@ -99,11 +99,7 @@ export const spoolmanRoutes: FastifyPluginAsync<SpoolmanRouteDeps> = async (app,
       response: { 200: SyncResultResponse, 400: ErrorResponse, 502: ErrorResponse },
     },
   }, async (_req, reply) => {
-    const url = configStore.current.spoolman.url;
-    if (!url) {
-      reply.code(400);
-      return errorBody("Spoolman URL is not configured.", ErrorCode.SpoolmanNotConfigured);
-    }
+    if (!requireSpoolmanUrl(configStore, reply)) return;
     const tagIds = spoolService.listTagIds();
     if (tagIds.length === 0) {
       return { synced: [], skipped: [], errors: [] };

@@ -1,7 +1,6 @@
 export type {
   Printer,
   PrinterConfig,
-  PrinterInput,
   PrinterPatch,
   Config,
   SlotMatchType,
@@ -23,7 +22,6 @@ import type {
   Config,
   Printer,
   PrinterConfig,
-  PrinterInput,
   PrinterPatch,
   Spool,
   SpoolHistoryResponse,
@@ -88,7 +86,7 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(config)
     }),
-  createPrinter: (input: PrinterInput) =>
+  createPrinter: (input: PrinterConfig) =>
     req<PrinterConfig>("/api/printers", {
       method: "POST",
       body: JSON.stringify(input)

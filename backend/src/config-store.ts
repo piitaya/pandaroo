@@ -1,5 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
-import { saveConfig, type Config } from "./config.js";
+import type { Config } from "@bambu-spoolman-sync/shared";
+import { saveConfig } from "./config.js";
 import type { AppEventBus } from "./events.js";
 
 export interface ConfigStore {

@@ -10,8 +10,6 @@ import type {
 import type { ParsedSlot } from "./clients/bambu/types.js";
 import { atomicWriteFile } from "./utils/atomic-write.js";
 
-export type { CatalogEntry };
-
 const CatalogEntrySchema = Type.Object({
   id: Type.String(),
   code: Type.Optional(Type.String()),
