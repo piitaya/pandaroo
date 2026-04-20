@@ -21,18 +21,16 @@ export interface SpoolReading {
 
 /** Match status for an AMS slot. Includes `empty` for slots without a spool. */
 export type SlotMatchType =
-  | "mapped"
-  | "unmapped"
-  | "unknown_variant"
+  | "known"
+  | "unknown"
   | "third_party"
   | "unidentified"
   | "empty";
 
 /** Match status for a stored spool. A stored spool always has a tag, so `empty` is not applicable. */
 export type SpoolMatchType =
-  | "mapped"
-  | "unmapped"
-  | "unknown_variant"
+  | "known"
+  | "unknown"
   | "third_party"
   | "unidentified";
 
@@ -42,21 +40,7 @@ export interface CatalogEntry {
   material?: string;
   color_name?: string;
   color_hex?: string;
-  /** Spoolman external filament ID (field name matches community DB format) */
-  spoolman_id?: string | null;
 }
-
-// ---------------------------------------------------------------------------
-// Sync state — one discriminated union used everywhere
-// ---------------------------------------------------------------------------
-
-export type SyncState =
-  | { status: "never" }
-  | { status: "synced"; spoolman_spool_id: number; at: string }
-  | { status: "stale"; spoolman_spool_id: number; at: string }
-  | { status: "error"; error: string };
-
-export type SyncStatus = SyncState["status"];
 
 // ---------------------------------------------------------------------------
 // AMS location — where a spool is physically loaded
@@ -89,7 +73,6 @@ export interface Spool {
   last_used: string | null;
   first_seen: string;
   last_updated: string;
-  sync: SyncState;
 }
 
 // ---------------------------------------------------------------------------
@@ -130,23 +113,6 @@ export interface SpoolHistoryResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Sync results
-// ---------------------------------------------------------------------------
-
-export interface SpoolSyncResult {
-  tag_id: string;
-  spoolman_spool_id: number;
-  created_filament: boolean;
-  created_spool: boolean;
-}
-
-export interface SyncResult {
-  synced: SpoolSyncResult[];
-  skipped: Array<{ tag_id: string; reason: string }>;
-  errors: Array<{ tag_id: string; error: string }>;
-}
-
-// ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
@@ -162,11 +128,6 @@ export type PrinterPatch = Partial<PrinterConfig>;
 
 export interface Config {
   printers: PrinterConfig[];
-  spoolman: {
-    url?: string;
-    auto_sync: boolean;
-    archive_on_empty: boolean;
-  };
 }
 
 // ---------------------------------------------------------------------------

@@ -17,10 +17,8 @@ import {
 } from "@mantine/core";
 import {
   IconArrowLeft,
-  IconExternalLink,
   IconGauge,
   IconPencil,
-  IconRefresh,
   IconTrash,
 } from "@tabler/icons-react";
 import { useState, type ReactNode } from "react";
@@ -30,22 +28,18 @@ import { AdjustRemainModal } from "../components/AdjustRemainModal";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CopyableMono } from "../components/CopyableMono";
 import { SpoolIllustration } from "../components/SpoolIllustration";
-import { SpoolUsageHistory } from "../components/SpoolUsageHistory";
-import { SyncDot } from "../components/SyncDot";
 import { formatAmsLocation } from "../components/formatAmsLocation";
 import { useMatchStatus } from "../components/matchStatus";
 import { spoolFillColor } from "../components/spoolFillColor";
 import { spoolLabels } from "../components/spoolLabel";
 import {
-  useConfig,
   useRemoveSpool,
   useSpoolHistory,
   useSpoolLocation,
   useSpoolMap,
   useSpoolReportsRemain,
-  useSpoolmanBaseUrl,
-  useSyncSpoolman,
 } from "../hooks";
+import { SpoolUsageHistory } from "../components/SpoolUsageHistory";
 import type { Spool } from "../api";
 
 export default function SpoolDetailPage() {
@@ -59,13 +53,6 @@ export default function SpoolDetailPage() {
   const location = useSpoolLocation(tagId ?? "");
   const amsManagesRemain = useSpoolReportsRemain(tagId ?? "");
 
-  const { data: configData } = useConfig();
-  const { data: spoolmanBaseUrl } = useSpoolmanBaseUrl();
-  const spoolmanUrl = spoolmanBaseUrl?.replace(/\/+$/, "") ?? null;
-  const spoolmanConfigured = Boolean(configData?.spoolman?.url);
-  const autoSync = Boolean(configData?.spoolman?.auto_sync);
-
-  const syncSpoolman = useSyncSpoolman();
   const removeSpool = useRemoveSpool();
 
   const [adjustOpen, setAdjustOpen] = useState(false);
@@ -102,9 +89,6 @@ export default function SpoolDetailPage() {
 
   const labels = spoolLabels(spool);
 
-  const canManualSync =
-    spool.match_type === "mapped" && spoolmanConfigured && !autoSync;
-
   return (
     <Stack gap="lg">
       <BackLink />
@@ -133,14 +117,6 @@ export default function SpoolDetailPage() {
                       {spool.material}
                     </Badge>
                   )}
-                  {spoolmanConfigured && spool.match_type === "mapped" && (
-                    <Group gap={4} wrap="nowrap">
-                      <SyncDot sync={spool.sync} />
-                      <Text size="xs" c="dimmed">
-                        {t(`slot.sync_status.${spool.sync.status}`)}
-                      </Text>
-                    </Group>
-                  )}
                 </Group>
                 <Title
                   order={2}
@@ -161,35 +137,20 @@ export default function SpoolDetailPage() {
                 />
               </Stack>
             </Group>
-            <Group gap="xs" wrap="nowrap">
-              {canManualSync && (
-                <Tooltip label={t("slot.sync_aria_label")} withArrow>
-                  <ActionIcon
-                    variant="default"
-                    size="lg"
-                    loading={syncSpoolman.isPending}
-                    onClick={() => syncSpoolman.mutate([spool.tag_id])}
-                    aria-label={t("slot.sync_aria_label")}
-                  >
-                    <IconRefresh size={18} />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-              <Tooltip
-                label={t("spools.adjust_remain_disabled_hint")}
-                disabled={!amsManagesRemain}
-                withArrow
+            <Tooltip
+              label={t("spools.adjust_remain_disabled_hint")}
+              disabled={!amsManagesRemain}
+              withArrow
+            >
+              <Button
+                variant="default"
+                leftSection={<IconGauge size={16} />}
+                onClick={() => setAdjustOpen(true)}
+                disabled={amsManagesRemain}
               >
-                <Button
-                  variant="default"
-                  leftSection={<IconGauge size={16} />}
-                  onClick={() => setAdjustOpen(true)}
-                  disabled={amsManagesRemain}
-                >
-                  {t("spools.adjust_remain")}
-                </Button>
-              </Tooltip>
-            </Group>
+                {t("spools.adjust_remain")}
+              </Button>
+            </Tooltip>
           </Group>
         </Stack>
       </Paper>
@@ -278,39 +239,6 @@ export default function SpoolDetailPage() {
               {new Date(spool.last_updated).toLocaleString()}
             </Text>
           </DetailRow>
-          {spool.match_type === "mapped" &&
-            (spool.sync.status === "synced" || spool.sync.status === "stale") && (
-              <DetailRow label={t("slot.fields.spoolman_spool")}>
-                <Group gap={4} wrap="nowrap">
-                  <Text size="sm">#{spool.sync.spoolman_spool_id}</Text>
-                  {spoolmanUrl && (
-                    <Tooltip
-                      label={t("slot.sync_status.open_in_spoolman")}
-                      withArrow
-                    >
-                      <ActionIcon
-                        size="sm"
-                        variant="subtle"
-                        color="gray"
-                        component="a"
-                        href={`${spoolmanUrl}/spool/show/${spool.sync.spoolman_spool_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <IconExternalLink size={14} />
-                      </ActionIcon>
-                    </Tooltip>
-                  )}
-                </Group>
-              </DetailRow>
-            )}
-            {spool.match_type === "mapped" && spool.sync.status === "error" && (
-              <DetailRow label={t("slot.fields.sync_error")}>
-                <Text size="sm" c="red">
-                  {spool.sync.error}
-                </Text>
-              </DetailRow>
-            )}
           </Stack>
         </Card>
 

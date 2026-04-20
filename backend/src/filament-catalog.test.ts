@@ -3,11 +3,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createMapping, matchSlot, matchSpool } from "./filament-catalog.js";
-import type { AmsSlot, CatalogEntry, SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { AmsSlot, CatalogEntry, SpoolReading } from "@pandaroo/shared";
 
 const mapping = new Map<string, CatalogEntry>([
-  ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],
-  ["A18-B0", { id: "A18-B0", spoolman_id: null }],
+  ["A01-B6", { id: "A01-B6" }],
 ]);
 
 const spool = (over: Partial<SpoolReading> = {}): SpoolReading => ({
@@ -37,20 +36,15 @@ const slot = (over?: {
 });
 
 describe("matchSpool", () => {
-  it("matches a known variant with a spoolman_id", () => {
+  it("matches a known variant", () => {
     const r = matchSpool(spool(), mapping);
-    expect(r.type).toBe("mapped");
+    expect(r.type).toBe("known");
     expect(r.entry?.id).toBe("A01-B6");
   });
 
-  it("returns unmapped when variant exists but spoolman_id is null", () => {
-    const r = matchSpool(spool({ variant_id: "A18-B0" }), mapping);
-    expect(r.type).toBe("unmapped");
-  });
-
-  it("returns unknown_variant for an id not in the mapping", () => {
+  it("returns unknown for a variant not in the mapping", () => {
     const r = matchSpool(spool({ variant_id: "ZZ-99" }), mapping);
-    expect(r.type).toBe("unknown_variant");
+    expect(r.type).toBe("unknown");
   });
 
   it("returns third_party when variant_id is missing but other fields exist", () => {
@@ -82,7 +76,7 @@ describe("matchSlot", () => {
   });
 
   it("delegates to matchSpool when spool exists", () => {
-    expect(matchSlot(slot(), mapping).type).toBe("mapped");
+    expect(matchSlot(slot(), mapping).type).toBe("known");
   });
 
   it("does not try to match by color or name", () => {
@@ -92,7 +86,7 @@ describe("matchSlot", () => {
       }),
       mapping,
     );
-    expect(r.type).toBe("unknown_variant");
+    expect(r.type).toBe("unknown");
   });
 });
 

@@ -3,7 +3,7 @@ import type {
   SpoolHistoryEvent,
   SpoolHistoryEventType,
   SpoolReading,
-} from "@bambu-spoolman-sync/shared";
+} from "@pandaroo/shared";
 import type { AppEventBus, SlotLocation } from "../events.js";
 import type {
   ListHistoryOptions,

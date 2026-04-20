@@ -17,7 +17,7 @@ import {
   type Spool,
   type AmsLocation,
 } from "./api";
-import type { SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading } from "@pandaroo/shared";
 
 const SPOOL_HISTORY_ROOT = ["spool-history"] as const;
 
@@ -30,7 +30,6 @@ const queryKeys = {
     all: SPOOL_HISTORY_ROOT,
     byTag: (tagId: string) => [...SPOOL_HISTORY_ROOT, tagId] as const,
   },
-  spoolmanBaseUrl: (url: string) => ["spoolman-base-url", url] as const,
 };
 
 // Fixed anchor: ask the backend for every event ever recorded for this tag.
@@ -348,67 +347,3 @@ export const useRefreshMapping = () => {
   });
 };
 
-// ---------------------------------------------------------------------------
-// Spoolman
-// ---------------------------------------------------------------------------
-
-export const useSpoolmanBaseUrl = () => {
-  const { data: configData } = useConfig();
-  const url = configData?.spoolman?.url;
-  return useQuery({
-    queryKey: queryKeys.spoolmanBaseUrl(url ?? ""),
-    queryFn: async () => {
-      const { base_url } = await api.getSpoolmanStatus();
-      return base_url;
-    },
-    enabled: Boolean(url),
-    staleTime: Infinity,
-    retry: false
-  });
-};
-
-function useSyncResultHandlers() {
-  const qc = useQueryClient();
-  const { t } = useTranslation();
-  const toast = useToasts();
-  return {
-    onSuccess: (result: Awaited<ReturnType<typeof api.syncSpoolman>>) => {
-      qc.invalidateQueries({ queryKey: queryKeys.printers });
-      qc.invalidateQueries({ queryKey: queryKeys.spools });
-      if (result.errors.length > 0) {
-        toast.error(
-          new Error(
-            t("spoolman.sync_all.partial", {
-              synced: result.synced.length,
-              errors: result.errors.length
-            })
-          )
-        );
-        return;
-      }
-      toast.success(
-        t("spoolman.sync_all.done", {
-          synced: result.synced.length,
-          skipped: result.skipped.length
-        })
-      );
-    },
-    onError: toast.error
-  };
-}
-
-export const useSyncSpoolman = () => {
-  const handlers = useSyncResultHandlers();
-  return useMutation({
-    mutationFn: (tagIds: string[]) => api.syncSpoolman(tagIds),
-    ...handlers
-  });
-};
-
-export const useSyncAllSpoolman = () => {
-  const handlers = useSyncResultHandlers();
-  return useMutation({
-    mutationFn: () => api.syncAllSpoolman(),
-    ...handlers
-  });
-};

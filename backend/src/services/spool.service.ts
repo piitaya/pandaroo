@@ -1,6 +1,5 @@
-import type { SpoolReading, Spool, SyncState, CatalogEntry } from "@bambu-spoolman-sync/shared";
+import type { SpoolReading, Spool, CatalogEntry } from "@pandaroo/shared";
 import type { SpoolRepository, SpoolRow } from "../db/spool.repository.js";
-import type { SyncStateRepository, SpoolSyncStateRow } from "../db/sync-state.repository.js";
 import type { Mapping } from "../filament-catalog.js";
 import { matchSpool } from "../filament-catalog.js";
 import type { FastifyBaseLogger } from "fastify";
@@ -25,26 +24,8 @@ function serializeColorHexes(hexes: string[] | null): string | null {
   return JSON.stringify(hexes);
 }
 
-export function deriveSyncState(
-  spoolRow: SpoolRow | undefined,
-  syncRow: SpoolSyncStateRow | undefined,
-): SyncState {
-  if (!syncRow) return { status: "never" };
-  if (syncRow.lastSyncError) return { status: "error", error: syncRow.lastSyncError };
-  if (syncRow.lastSynced == null || syncRow.spoolmanSpoolId == null) return { status: "never" };
-
-  const lastUpdated = spoolRow?.lastUpdated;
-  const isStale = lastUpdated != null && lastUpdated > syncRow.lastSynced;
-  return {
-    status: isStale ? "stale" : "synced",
-    spoolman_spool_id: syncRow.spoolmanSpoolId,
-    at: syncRow.lastSynced,
-  };
-}
-
 function enrichSpool(
   row: SpoolRow,
-  syncRow: SpoolSyncStateRow | undefined,
   mapping: Map<string, CatalogEntry>,
 ): Spool {
   const match = matchSpool(
@@ -67,7 +48,6 @@ function enrichSpool(
     last_used: row.lastUsed,
     first_seen: row.firstSeen,
     last_updated: row.lastUpdated,
-    sync: deriveSyncState(row, syncRow),
   };
 }
 
@@ -93,14 +73,12 @@ export interface SpoolService {
   list(): Spool[];
   findByTagId(tagId: string): Spool | undefined;
   delete(tagId: string): DeleteSpoolResult;
-  listTagIds(): string[];
   patch(tagId: string, data: { remain?: number }): PatchSpoolResult;
   upsert(data: SpoolReading, options?: UpsertOptions): UpsertResult | undefined;
 }
 
 export interface SpoolServiceDeps {
   spoolRepo: SpoolRepository;
-  syncStateRepo: SyncStateRepository;
   mapping: Mapping;
   bus: AppEventBus;
   log: FastifyBaseLogger;
@@ -108,24 +86,17 @@ export interface SpoolServiceDeps {
 }
 
 export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
-  const { spoolRepo, syncStateRepo, mapping, bus, log, getAmsReading } = deps;
+  const { spoolRepo, mapping, bus, log, getAmsReading } = deps;
 
   return {
     list() {
-      const rows = spoolRepo.list();
-      const syncByTagId = new Map(
-        syncStateRepo.listAll().map((row) => [row.tagId, row]),
-      );
-      return rows.map((row) =>
-        enrichSpool(row, syncByTagId.get(row.tagId), mapping.byId),
-      );
+      return spoolRepo.list().map((row) => enrichSpool(row, mapping.byId));
     },
 
     findByTagId(tagId) {
       const row = spoolRepo.findByTagId(tagId);
       if (!row) return undefined;
-      const syncRow = syncStateRepo.findByTagId(tagId);
-      return enrichSpool(row, syncRow, mapping.byId);
+      return enrichSpool(row, mapping.byId);
     },
 
     patch(tagId, data) {
@@ -139,8 +110,7 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
       bus.emit("spool:adjusted", tagId);
       bus.emit("spool:updated", tagId);
       const row = { ...before, ...data, lastUpdated: new Date().toISOString() };
-      const syncRow = syncStateRepo.findByTagId(tagId);
-      return { ok: true, spool: enrichSpool(row, syncRow, mapping.byId) };
+      return { ok: true, spool: enrichSpool(row, mapping.byId) };
     },
 
     delete(tagId) {
@@ -149,10 +119,6 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
       if (!deleted) return { ok: false, reason: "not_found" };
       log.info({ tagId }, "Spool deleted");
       return { ok: true };
-    },
-
-    listTagIds() {
-      return spoolRepo.list().map((row) => row.tagId);
     },
 
     upsert(data, options) {
@@ -188,8 +154,7 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
 
         if (!changed) {
           if (source === "scan") bus.emit("spool:scanned", tagId);
-          const syncRow = syncStateRepo.findByTagId(tagId);
-          return { spool: enrichSpool(existing, syncRow, mapping.byId), created: false };
+          return { spool: enrichSpool(existing, mapping.byId), created: false };
         }
 
         spoolRepo.update(tagId, next);
@@ -221,8 +186,7 @@ export function createSpoolService(deps: SpoolServiceDeps): SpoolService {
       if (source === "scan") bus.emit("spool:scanned", tagId);
       bus.emit("spool:updated", tagId);
 
-      const syncRow = syncStateRepo.findByTagId(tagId);
-      return { spool: enrichSpool(row, syncRow, mapping.byId), created };
+      return { spool: enrichSpool(row, mapping.byId), created };
     },
   };
 }

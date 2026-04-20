@@ -8,8 +8,8 @@ export function errorMessage(err: unknown): string {
 
 /**
  * Stable machine-readable error codes. Clients can switch on `code` to render
- * localized messages, trigger UI flows (e.g. "open Spoolman settings"), or
- * decide to retry. `error` remains a human-readable English string.
+ * localized messages or decide to retry. `error` remains a human-readable
+ * English string.
  */
 export const ErrorCode = {
   NotFound: "not_found",
@@ -17,9 +17,6 @@ export const ErrorCode = {
   NotManual: "not_manual",
   AmsManagedRemain: "ams_managed_remain",
   AmsLoaded: "ams_loaded",
-  SpoolmanNotConfigured: "spoolman_not_configured",
-  SpoolmanUnreachable: "spoolman_unreachable",
-  SpoolmanRequestFailed: "spoolman_request_failed",
   CatalogRefreshFailed: "catalog_refresh_failed",
 } as const;
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -51,30 +48,11 @@ const NullableString = Type.Union([Type.String(), Type.Null()]);
 const NullableNumber = Type.Union([Type.Number(), Type.Null()]);
 
 const MatchTypeEnum = Type.Union([
-  Type.Literal("mapped"),
-  Type.Literal("unmapped"),
-  Type.Literal("unknown_variant"),
+  Type.Literal("known"),
+  Type.Literal("unknown"),
   Type.Literal("third_party"),
   Type.Literal("unidentified"),
   Type.Literal("empty"),
-]);
-
-const SyncStateSchema = Type.Union([
-  Type.Object({ status: Type.Literal("never") }),
-  Type.Object({
-    status: Type.Literal("synced"),
-    spoolman_spool_id: Type.Integer(),
-    at: Type.String(),
-  }),
-  Type.Object({
-    status: Type.Literal("stale"),
-    spoolman_spool_id: Type.Integer(),
-    at: Type.String(),
-  }),
-  Type.Object({
-    status: Type.Literal("error"),
-    error: Type.String(),
-  }),
 ]);
 
 export const SpoolPatchSchema = Type.Object({
@@ -164,6 +142,5 @@ export const LocalSpoolResponse = Type.Object({
   last_used: NullableString,
   first_seen: Type.String(),
   last_updated: Type.String(),
-  sync: SyncStateSchema,
 });
 

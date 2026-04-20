@@ -4,14 +4,12 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 const TAB_BY_PATH: Record<string, string> = {
   "/settings": "general",
-  "/settings/printers": "printers",
-  "/settings/sync": "sync"
+  "/settings/printers": "printers"
 };
 
 const PATH_BY_TAB: Record<string, string> = {
   general: "/settings",
-  printers: "/settings/printers",
-  sync: "/settings/sync"
+  printers: "/settings/printers"
 };
 
 export default function SettingsLayout() {
@@ -32,7 +30,6 @@ export default function SettingsLayout() {
         <Tabs.List>
           <Tabs.Tab value="general">{t("settings.tabs.general")}</Tabs.Tab>
           <Tabs.Tab value="printers">{t("settings.tabs.printers")}</Tabs.Tab>
-          <Tabs.Tab value="sync">{t("settings.tabs.sync")}</Tabs.Tab>
         </Tabs.List>
       </Tabs>
       <Outlet />

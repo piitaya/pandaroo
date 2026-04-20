@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
-import type { PrinterConfig, SpoolReading } from "@bambu-spoolman-sync/shared";
+import type { PrinterConfig, SpoolReading } from "@pandaroo/shared";
 import type { AppEventBus } from "../../events.js";
 import { connect, type InternalClient, type PrinterRuntime } from "./connection.js";
 

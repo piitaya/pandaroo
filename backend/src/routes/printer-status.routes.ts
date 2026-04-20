@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import type { AmsSlot } from "@bambu-spoolman-sync/shared";
+import type { AmsSlot } from "@pandaroo/shared";
 import { matchSlot, type Mapping } from "../filament-catalog.js";
 import type { ConfigStore } from "../config-store.js";
 import { listRuntimes, type PrinterConnectionPool } from "../clients/bambu/index.js";

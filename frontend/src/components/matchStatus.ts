@@ -9,18 +9,16 @@ export interface MatchStatusInfo {
 }
 
 const MATCH_COLORS: Record<SlotMatchType, string> = {
-  mapped: "teal",
-  unmapped: "yellow",
-  unknown_variant: "orange",
-  third_party: "gray",
+  known: "teal",
+  unknown: "orange",
+  third_party: "blue",
   unidentified: "gray",
   empty: "gray"
 };
 
 export const MATCH_STATUS_ORDER: SlotMatchType[] = [
-  "mapped",
-  "unmapped",
-  "unknown_variant",
+  "known",
+  "unknown",
   "third_party",
   "unidentified",
   "empty"
@@ -30,19 +28,14 @@ export function useMatchStatus(): Record<SlotMatchType, MatchStatusInfo> {
   const { t, i18n } = useTranslation();
   return useMemo(
     () => ({
-      mapped: {
-        label: t("status.mapped.label"),
-        color: MATCH_COLORS.mapped,
-        description: t("status.mapped.description")
+      known: {
+        label: t("status.known.label"),
+        color: MATCH_COLORS.known,
+        description: t("status.known.description")
       },
-      unmapped: {
-        label: t("status.unmapped.label"),
-        color: MATCH_COLORS.unmapped,
-        description: t("status.unmapped.description")
-      },
-      unknown_variant: {
+      unknown: {
         label: t("status.unknown.label"),
-        color: MATCH_COLORS.unknown_variant,
+        color: MATCH_COLORS.unknown,
         description: t("status.unknown.description")
       },
       third_party: {

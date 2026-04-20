@@ -6,7 +6,7 @@ import type {
   SlotMatchType,
   SpoolMatchType,
   CatalogEntry,
-} from "@bambu-spoolman-sync/shared";
+} from "@pandaroo/shared";
 import type { ParsedSlot } from "./clients/bambu/types.js";
 import { atomicWriteFile } from "./utils/atomic-write.js";
 
@@ -16,7 +16,6 @@ const CatalogEntrySchema = Type.Object({
   material: Type.Optional(Type.String()),
   color_name: Type.Optional(Type.String()),
   color_hex: Type.Optional(Type.String()),
-  spoolman_id: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
 const FilamentsFileSchema = Type.Array(CatalogEntrySchema);
@@ -39,9 +38,8 @@ export function matchSpool(
   if (!hasInfo) return { type: "unidentified" };
   if (!spool.variant_id) return { type: "third_party" };
   const entry = mapping.get(spool.variant_id);
-  if (!entry) return { type: "unknown_variant" };
-  if (!entry.spoolman_id) return { type: "unmapped", entry };
-  return { type: "mapped", entry };
+  if (!entry) return { type: "unknown" };
+  return { type: "known", entry };
 }
 
 export function matchSlot(

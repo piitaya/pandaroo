@@ -1,5 +1,5 @@
 {
-  "name": "@bambu-spoolman-sync/frontend",
+  "name": "@pandaroo/frontend",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@bambu-spoolman-sync/shared": "*",
+    "@pandaroo/shared": "*",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",

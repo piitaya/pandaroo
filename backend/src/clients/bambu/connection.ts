@@ -1,6 +1,6 @@
 import mqtt, { type MqttClient } from "mqtt";
 import type { FastifyBaseLogger } from "fastify";
-import type { PrinterConfig, PrinterStatus } from "@bambu-spoolman-sync/shared";
+import type { PrinterConfig, PrinterStatus } from "@pandaroo/shared";
 import type { AppEventBus } from "../../events.js";
 import { classifyMqttError } from "./errors.js";
 import { parseAmsReport } from "./parse.js";

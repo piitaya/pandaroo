@@ -1,0 +1,1 @@
+DROP TABLE `spool_sync_state`;

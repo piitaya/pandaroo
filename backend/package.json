@@ -1,5 +1,5 @@
 {
-  "name": "@bambu-spoolman-sync/backend",
+  "name": "@pandaroo/backend",
   "private": true,
   "type": "module",
   "main": "dist/server.js",
@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@bambu-spoolman-sync/shared": "*",
+    "@pandaroo/shared": "*",
     "@fastify/static": "^9.1.0",
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.5",

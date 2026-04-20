@@ -9,13 +9,11 @@ export type {
   SpoolHistoryEvent,
   SpoolHistoryEventType,
   SpoolHistoryResponse,
-  SyncState,
-  SyncStatus,
   AmsSlot,
   AmsUnit,
   AmsLocation,
   PrinterErrorCode,
-} from "@bambu-spoolman-sync/shared";
+} from "@pandaroo/shared";
 
 
 import type {
@@ -25,8 +23,7 @@ import type {
   PrinterPatch,
   Spool,
   SpoolHistoryResponse,
-  SyncResult,
-} from "@bambu-spoolman-sync/shared";
+} from "@pandaroo/shared";
 
 /**
  * Thrown by `req()` on non-2xx responses. Carries the HTTP status
@@ -71,14 +68,6 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function collectActiveTagIds(printers: Printer[]): string[] {
-  return printers.flatMap((p) =>
-    p.ams_units.flatMap((u) =>
-      u.slots.map((s) => s.reading?.tag_id).filter((tag_id): tag_id is string => !!tag_id)
-    )
-  );
-}
-
 export const api = {
   getConfig: () => req<Config>("/api/config"),
   putConfig: (config: Config) =>
@@ -104,19 +93,6 @@ export const api = {
   getFilamentCatalog: () => req<{ count: number; fetched_at: string | null }>("/api/filament-catalog/status"),
   refreshFilamentCatalog: () =>
     req<{ count: number }>("/api/filament-catalog/refresh", { method: "POST" }),
-  getSpoolmanStatus: () =>
-    req<{
-      ok: true;
-      info: { version?: string };
-      base_url: string | null;
-    }>("/api/spoolman/status"),
-  syncSpoolman: (tagIds: string[]) =>
-    req<SyncResult>("/api/spoolman/sync", {
-      method: "POST",
-      body: JSON.stringify({ tag_ids: tagIds }),
-    }),
-  syncAllSpoolman: () =>
-    req<SyncResult>("/api/spoolman/sync-all", { method: "POST" }),
   listSpools: () => req<Spool[]>("/api/spools"),
   getSpool: (tagId: string) =>
     req<Spool>(`/api/spools/${encodeURIComponent(tagId)}`),
@@ -144,7 +120,7 @@ export const api = {
       method: "DELETE",
     }),
   patchHistoryEvent: (tagId: string, eventId: number, data: { remain: number | null }) =>
-    req<import("@bambu-spoolman-sync/shared").SpoolHistoryEvent>(
+    req<import("@pandaroo/shared").SpoolHistoryEvent>(
       `/api/spools/${encodeURIComponent(tagId)}/history/${eventId}`,
       { method: "PATCH", body: JSON.stringify(data) },
     ),

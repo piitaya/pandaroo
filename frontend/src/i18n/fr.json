@@ -17,12 +17,6 @@
   },
   "dashboard": {
     "title": "Tableau de bord",
-    "sync_all": "Synchroniser avec Spoolman",
-    "sync_menu": {
-      "all_spools": "Synchroniser toutes les bobines",
-      "ams_loaded": "Synchroniser les bobines de l'AMS"
-    },
-    "auto_sync_on": "Auto-sync activée",
     "help_aria_label": "Que signifient les statuts des slots ?",
     "failed_to_load": "Impossible de charger l'état",
     "no_printers_title": "Aucune imprimante configurée",
@@ -60,12 +54,10 @@
     "unidentified": "Bobine non identifiée",
     "remaining": "Restant : {{value}}%",
     "details_aria_label": "Détails du slot",
-    "sync_aria_label": "Synchroniser ce slot avec Spoolman",
     "sections": {
       "filament": "Filament",
       "identification": "Identification",
       "physical": "Caractéristiques",
-      "sync": "Synchronisation",
       "source": "Source",
       "history": "Historique",
       "ams_reading": "Lecture AMS",
@@ -83,40 +75,24 @@
       "colors_hex": "Couleurs (hex)",
       "material": "Matériau",
       "bambu_filament": "Filament Bambu",
-      "spoolman_filament": "Filament Spoolman",
       "spool_uid": "UID de la bobine",
       "total_weight": "Poids total",
       "remaining": "Restant",
       "printer_reports": "Estimation imprimante",
       "nozzle_temp": "Température buse",
-      "sync_status": "État de synchronisation",
-      "spoolman_spool": "Bobine Spoolman",
-      "sync_last": "Dernière synchronisation",
-      "sync_error": "Erreur de synchronisation",
       "printer_serial": "Imprimante",
       "current_location": "Chargé dans",
       "first_seen": "Première détection",
       "last_used": "Dernière utilisation",
       "last_updated": "Dernière mise à jour"
-    },
-    "sync_status": {
-      "never": "Jamais synchronisé",
-      "synced": "Synchronisé",
-      "stale": "À synchroniser",
-      "error": "Erreur",
-      "open_in_spoolman": "Ouvrir dans Spoolman"
     }
   },
   "status": {
     "legend_title": "Guide des statuts",
     "legend_intro": "Chaque slot AMS est comparé à une liste communautaire de bobines Bambu.",
-    "mapped": {
-      "label": "Reconnue",
-      "description": "Bobine Bambu connue avec un équivalent Spoolman. Prête à synchroniser."
-    },
-    "unmapped": {
-      "label": "Sans correspondance",
-      "description": "Bobine Bambu connue, mais pas encore d'équivalent Spoolman."
+    "known": {
+      "label": "Connue",
+      "description": "Bobine Bambu présente dans le catalogue communautaire."
     },
     "unknown": {
       "label": "Inconnue",
@@ -169,8 +145,7 @@
     "saved": "Paramètres enregistrés",
     "tabs": {
       "general": "Général",
-      "printers": "Imprimantes",
-      "sync": "Synchronisation"
+      "printers": "Imprimantes"
     },
     "mapping_card": {
       "title": "Mappage des filaments",
@@ -187,26 +162,6 @@
       "theme_auto": "Automatique (système)",
       "theme_light": "Clair",
       "theme_dark": "Sombre"
-    }
-  },
-  "sync": {
-    "title": "Synchronisation",
-    "connection_card": {
-      "title": "Connexion Spoolman",
-      "hint": "Renseignez l'URL de votre instance Spoolman pour activer la synchronisation.",
-      "url": "URL Spoolman",
-      "auto_sync": "Synchronisation automatique des bobines",
-      "auto_sync_hint": "Pousser automatiquement les changements vers Spoolman.",
-      "archive_on_empty": "Archiver les bobines vides",
-      "archive_on_empty_hint": "Archiver les bobines dans Spoolman quand elles sont vides.",
-      "test": "Tester la connexion",
-      "test_ok": "Connecté à Spoolman {{version}}",
-      "test_error": "Spoolman injoignable. Vérifiez l'URL."
-    },
-    "actions_card": {
-      "title": "Actions",
-      "hint": "Synchroniser tous les slots reconnus avec Spoolman.",
-      "sync_all": "Tout synchroniser"
     }
   },
   "spool_detail": {
@@ -249,7 +204,7 @@
     "danger_zone": {
       "title": "Zone sensible",
       "remove_title": "Supprimer cette bobine",
-      "remove_hint": "Supprime la bobine et son historique. La supprime aussi dans Spoolman si elle est synchronisée.",
+      "remove_hint": "Supprime la bobine et son historique.",
       "remove_disabled_hint": "Retirez la bobine de l'AMS d'abord."
     }
   },
@@ -258,14 +213,6 @@
     "empty": "Aucune bobine. Scannez un tag ou chargez-en une dans un AMS.",
     "failed_to_load": "Impossible de charger les bobines",
     "last_updated": "Dernière mise à jour",
-    "sync_all": "Tout synchroniser avec Spoolman",
-    "sync_status": "Sync",
-    "sync_tooltip": {
-      "never": "Pas encore synchronisée avec Spoolman",
-      "synced": "Synchronisée · {{at}}",
-      "stale": "Les données ont changé depuis la dernière synchronisation",
-      "error": "Dernière synchronisation échouée : {{error}}"
-    },
     "adjust_remain": "Ajuster le poids",
     "adjust_remain_title": "Filament restant",
     "adjust_remain_disabled_hint": "Retirez la bobine de l'AMS pour l'ajuster.",
@@ -274,12 +221,6 @@
     "notifications": {
       "removed": "Bobine retirée",
       "updated": "Bobine mise à jour"
-    }
-  },
-  "spoolman": {
-    "sync_all": {
-      "done": "{{synced}} slots synchronisés ({{skipped}} ignorés)",
-      "partial": "{{synced}} slots synchronisés avec {{errors}} erreurs"
     }
   },
   "errors": {

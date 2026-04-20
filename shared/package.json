@@ -1,5 +1,5 @@
 {
-  "name": "@bambu-spoolman-sync/shared",
+  "name": "@pandaroo/shared",
   "private": true,
   "type": "module",
   "exports": {
