@@ -2,8 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createMapping, matchSlot, matchSpool, type CatalogEntry } from "./filament-catalog.js";
-import type { AmsSlot, SpoolReading } from "@bambu-spoolman-sync/shared";
+import { createMapping, matchSlot, matchSpool } from "./filament-catalog.js";
+import type { AmsSlot, CatalogEntry, SpoolReading } from "@bambu-spoolman-sync/shared";
 
 const mapping = new Map<string, CatalogEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],

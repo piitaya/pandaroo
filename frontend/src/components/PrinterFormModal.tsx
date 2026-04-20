@@ -3,9 +3,9 @@ import { useForm } from "@mantine/form";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useCreatePrinter, useUpdatePrinter } from "../hooks";
-import type { PrinterConfig, PrinterInput } from "../api";
+import type { PrinterConfig } from "../api";
 
-const emptyValues: PrinterInput = {
+const emptyValues: PrinterConfig = {
   name: "",
   host: "",
   serial: "",
@@ -27,7 +27,7 @@ export function PrinterFormModal({ opened, onClose, editing }: PrinterFormModalP
   const required = (v: string) =>
     v.trim() ? null : t("printers.form.required");
 
-  const form = useForm<PrinterInput>({
+  const form = useForm<PrinterConfig>({
     initialValues: emptyValues,
     validate: {
       name: required,
@@ -45,7 +45,7 @@ export function PrinterFormModal({ opened, onClose, editing }: PrinterFormModalP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, editing]);
 
-  const submit = async (values: PrinterInput) => {
+  const submit = async (values: PrinterConfig) => {
     try {
       if (editing) {
         await update.mutateAsync({ serial: editing.serial, patch: { ...values } });

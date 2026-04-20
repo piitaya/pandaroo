@@ -9,7 +9,7 @@ import {
   type SpoolmanFilament,
   type SpoolmanSpool,
 } from "./clients/spoolman.client.js";
-import type { CatalogEntry } from "./filament-catalog.js";
+import type { CatalogEntry } from "@bambu-spoolman-sync/shared";
 import { deriveSyncState } from "./services/spool.service.js";
 import type { SpoolRow, SpoolRepository } from "./db/spool.repository.js";
 import type {

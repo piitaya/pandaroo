@@ -10,20 +10,26 @@ import {
   api,
   ApiError,
   type Config,
-  type PrinterInput,
+  type PrinterConfig,
   type PrinterPatch,
   type Printer,
   type Spool,
   type AmsLocation,
 } from "./api";
 
-const CONFIG_KEY = ["config"] as const;
-const PRINTERS_KEY = ["printers"] as const;
-const SPOOLS_KEY = ["spools"] as const;
-const FILAMENT_CATALOG_KEY = ["filament-catalog"] as const;
-const SPOOL_HISTORY_PREFIX = ["spool-history"] as const;
-const SPOOL_HISTORY_KEY = (tagId: string) =>
-  [...SPOOL_HISTORY_PREFIX, tagId] as const;
+const SPOOL_HISTORY_ROOT = ["spool-history"] as const;
+
+const queryKeys = {
+  config: ["config"] as const,
+  printers: ["printers"] as const,
+  spools: ["spools"] as const,
+  filamentCatalog: ["filament-catalog"] as const,
+  spoolHistory: {
+    all: SPOOL_HISTORY_ROOT,
+    byTag: (tagId: string) => [...SPOOL_HISTORY_ROOT, tagId] as const,
+  },
+  spoolmanBaseUrl: (url: string) => ["spoolman-base-url", url] as const,
+};
 
 // Fixed anchor: ask the backend for every event ever recorded for this tag.
 // Keeps the query key stable and avoids first_seen/millisecond-precision
@@ -31,26 +37,26 @@ const SPOOL_HISTORY_KEY = (tagId: string) =>
 const HISTORY_FROM_ANCHOR = "1970-01-01T00:00:00.000Z";
 
 export const useConfig = () =>
-  useQuery({ queryKey: CONFIG_KEY, queryFn: api.getConfig });
+  useQuery({ queryKey: queryKeys.config, queryFn: api.getConfig });
 
 // TODO: Replace polling with WebSocket or SSE for real-time updates
 export const usePrinters = () =>
   useQuery({
-    queryKey: PRINTERS_KEY,
+    queryKey: queryKeys.printers,
     queryFn: api.getPrinters,
     refetchInterval: 3000,
   });
 
 export const useSpools = () =>
   useQuery({
-    queryKey: SPOOLS_KEY,
+    queryKey: queryKeys.spools,
     queryFn: api.listSpools,
     refetchInterval: 5000,
   });
 
 export const useSpoolHistory = (tagId: string | undefined) =>
   useQuery({
-    queryKey: SPOOL_HISTORY_KEY(tagId ?? ""),
+    queryKey: queryKeys.spoolHistory.byTag(tagId ?? ""),
     queryFn: () => api.getSpoolHistory(tagId!, { from: HISTORY_FROM_ANCHOR }),
     enabled: Boolean(tagId),
     refetchInterval: 15000,
@@ -59,7 +65,7 @@ export const useSpoolHistory = (tagId: string | undefined) =>
 
 export const useFilamentCatalog = () =>
   useQuery({
-    queryKey: FILAMENT_CATALOG_KEY,
+    queryKey: queryKeys.filamentCatalog,
     queryFn: api.getFilamentCatalog,
   });
 
@@ -178,9 +184,9 @@ function usePrinterConflictHandler() {
 export const useCreatePrinter = () => {
   const { t } = useTranslation();
   return useMutationWithToast({
-    mutationFn: (input: PrinterInput) => api.createPrinter(input),
+    mutationFn: (input: PrinterConfig) => api.createPrinter(input),
     successMessage: t("printers.notifications.added"),
-    invalidate: [CONFIG_KEY, PRINTERS_KEY],
+    invalidate: [queryKeys.config, queryKeys.printers],
     onError: usePrinterConflictHandler(),
   });
 };
@@ -191,7 +197,7 @@ export const useUpdatePrinter = () => {
     mutationFn: ({ serial, patch }: { serial: string; patch: PrinterPatch }) =>
       api.updatePrinter(serial, patch),
     successMessage: t("printers.notifications.updated"),
-    invalidate: [CONFIG_KEY, PRINTERS_KEY],
+    invalidate: [queryKeys.config, queryKeys.printers],
     onError: usePrinterConflictHandler(),
   });
 };
@@ -201,7 +207,7 @@ export const useRemovePrinter = () => {
   return useMutationWithToast({
     mutationFn: (serial: string) => api.removePrinter(serial),
     successMessage: t("printers.notifications.removed"),
-    invalidate: [CONFIG_KEY, PRINTERS_KEY],
+    invalidate: [queryKeys.config, queryKeys.printers],
   });
 };
 
@@ -210,7 +216,7 @@ export const usePutConfig = () => {
   return useMutationWithToast({
     mutationFn: (config: Config) => api.putConfig(config),
     successMessage: t("settings.saved"),
-    invalidate: [CONFIG_KEY, PRINTERS_KEY],
+    invalidate: [queryKeys.config, queryKeys.printers],
   });
 };
 
@@ -220,7 +226,7 @@ export const usePatchSpool = () => {
     mutationFn: ({ tagId, data }: { tagId: string; data: { remain?: number } }) =>
       api.patchSpool(tagId, data),
     successMessage: t("spools.notifications.updated"),
-    invalidate: [SPOOLS_KEY, SPOOL_HISTORY_PREFIX],
+    invalidate: [queryKeys.spools, queryKeys.spoolHistory.all],
   });
 };
 
@@ -229,7 +235,7 @@ export const useRemoveSpool = () => {
   return useMutationWithToast({
     mutationFn: (tagId: string) => api.removeSpool(tagId),
     successMessage: t("spools.notifications.removed"),
-    invalidate: [SPOOLS_KEY],
+    invalidate: [queryKeys.spools],
   });
 };
 
@@ -246,7 +252,7 @@ export const usePatchHistoryEvent = () => {
       data: { remain: number | null };
     }) => api.patchHistoryEvent(tagId, eventId, data),
     successMessage: t("spool_detail.usage.manual.updated"),
-    invalidate: [SPOOL_HISTORY_PREFIX],
+    invalidate: [queryKeys.spoolHistory.all],
   });
 };
 
@@ -256,7 +262,7 @@ export const useDeleteHistoryEvent = () => {
     mutationFn: ({ tagId, eventId }: { tagId: string; eventId: number }) =>
       api.deleteHistoryEvent(tagId, eventId),
     successMessage: t("spool_detail.usage.manual.deleted"),
-    invalidate: [SPOOL_HISTORY_PREFIX],
+    invalidate: [queryKeys.spoolHistory.all],
   });
 };
 
@@ -270,10 +276,10 @@ export const useReorderPrinters = () => {
   return useMutation({
     mutationFn: (config: Config) => api.putConfig(config),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: PRINTERS_KEY });
+      qc.invalidateQueries({ queryKey: queryKeys.printers });
     },
     onError: (err) => {
-      qc.invalidateQueries({ queryKey: CONFIG_KEY });
+      qc.invalidateQueries({ queryKey: queryKeys.config });
       toast.error(err);
     }
   });
@@ -290,8 +296,8 @@ export const useRefreshMapping = () => {
   return useMutation({
     mutationFn: () => api.refreshFilamentCatalog(),
     onSuccess: ({ count }) => {
-      qc.invalidateQueries({ queryKey: PRINTERS_KEY });
-      qc.invalidateQueries({ queryKey: FILAMENT_CATALOG_KEY });
+      qc.invalidateQueries({ queryKey: queryKeys.printers });
+      qc.invalidateQueries({ queryKey: queryKeys.filamentCatalog });
       toast.success(t("settings.mapping_card.refreshed", { count }));
     },
     onError: toast.error
@@ -306,7 +312,7 @@ export const useSpoolmanBaseUrl = () => {
   const { data: configData } = useConfig();
   const url = configData?.spoolman?.url;
   return useQuery({
-    queryKey: ["spoolman-base-url", url ?? ""],
+    queryKey: queryKeys.spoolmanBaseUrl(url ?? ""),
     queryFn: async () => {
       const { base_url } = await api.getSpoolmanStatus();
       return base_url;
@@ -323,8 +329,8 @@ function useSyncResultHandlers() {
   const toast = useToasts();
   return {
     onSuccess: (result: Awaited<ReturnType<typeof api.syncSpoolman>>) => {
-      qc.invalidateQueries({ queryKey: PRINTERS_KEY });
-      qc.invalidateQueries({ queryKey: SPOOLS_KEY });
+      qc.invalidateQueries({ queryKey: queryKeys.printers });
+      qc.invalidateQueries({ queryKey: queryKeys.spools });
       if (result.errors.length > 0) {
         toast.error(
           new Error(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseSpoolScan } from "./schemas.js";
-import { matchSpool, type CatalogEntry } from "../filament-catalog.js";
+import { matchSpool } from "../filament-catalog.js";
+import type { CatalogEntry } from "@bambu-spoolman-sync/shared";
 
 const mapping = new Map<string, CatalogEntry>([
   ["A01-B6", { id: "A01-B6", spoolman_id: "bambulab_pla_matte_darkblue" }],

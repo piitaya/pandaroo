@@ -1,5 +1,6 @@
 import { Type, type Static } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
+import type { FastifyReply } from "fastify";
 
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -28,6 +29,11 @@ export const ErrorResponse = Type.Object({
 
 export function errorBody(error: string, code?: ErrorCodeValue) {
   return code ? { error, code } : { error };
+}
+
+export function notFound(reply: FastifyReply, message: string) {
+  reply.code(404);
+  return errorBody(message, ErrorCode.NotFound);
 }
 
 export const OkResponse = Type.Object({

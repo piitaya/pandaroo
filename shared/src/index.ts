@@ -158,7 +158,6 @@ export interface PrinterConfig {
   enabled: boolean;
 }
 
-export type PrinterInput = PrinterConfig;
 export type PrinterPatch = Partial<PrinterConfig>;
 
 export interface Config {
