@@ -10,12 +10,21 @@ import type {
 import type { ParsedSlot } from "./clients/bambu/types.js";
 import { atomicWriteFile } from "./utils/atomic-write.js";
 
+const NullableString = Type.Union([Type.String(), Type.Null()]);
+const NullableNumber = Type.Union([Type.Number(), Type.Null()]);
+
 const CatalogEntrySchema = Type.Object({
   id: Type.String(),
-  code: Type.Optional(Type.String()),
-  material: Type.Optional(Type.String()),
-  color_name: Type.Optional(Type.String()),
-  color_hex: Type.Optional(Type.String()),
+  sku: Type.String(),
+  material: NullableString,
+  product: Type.String(),
+  color_name: Type.String(),
+  color_hex: Type.String(),
+  color_hexes: Type.Array(Type.String()),
+  weight: NullableNumber,
+  temp_min: NullableNumber,
+  temp_max: NullableNumber,
+  integrations: Type.Record(Type.String(), Type.String()),
 });
 
 const FilamentsFileSchema = Type.Array(CatalogEntrySchema);

@@ -36,10 +36,16 @@ export type SpoolMatchType =
 
 export interface CatalogEntry {
   id: string;
-  code?: string;
-  material?: string;
-  color_name?: string;
-  color_hex?: string;
+  sku: string;
+  material: string | null;
+  product: string;
+  color_name: string;
+  color_hex: string;
+  color_hexes: string[];
+  weight: number | null;
+  temp_min: number | null;
+  temp_max: number | null;
+  integrations: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------

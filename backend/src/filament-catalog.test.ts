@@ -5,9 +5,21 @@ import { join } from "node:path";
 import { createMapping, matchSlot, matchSpool } from "./filament-catalog.js";
 import type { AmsSlot, CatalogEntry, SpoolReading } from "@pandaroo/shared";
 
-const mapping = new Map<string, CatalogEntry>([
-  ["A01-B6", { id: "A01-B6" }],
-]);
+const entry = (id: string): CatalogEntry => ({
+  id,
+  sku: "0",
+  material: null,
+  product: "",
+  color_name: "",
+  color_hex: "000000FF",
+  color_hexes: [],
+  weight: null,
+  temp_min: null,
+  temp_max: null,
+  integrations: {},
+});
+
+const mapping = new Map<string, CatalogEntry>([["A01-B6", entry("A01-B6")]]);
 
 const spool = (over: Partial<SpoolReading> = {}): SpoolReading => ({
   tag_id: "UUID1",
@@ -107,7 +119,7 @@ describe("createMapping.refresh mutex", () => {
     // Prime the cache so createMapping's initial load reads from disk and
     // doesn't trigger a network fetch we'd have to unblock.
     const cachePath = join(tmpDir, "filaments.json");
-    await writeFile(cachePath, JSON.stringify([{ id: "A01-B6" }]), "utf-8");
+    await writeFile(cachePath, JSON.stringify([entry("A01-B6")]), "utf-8");
 
     let fetchCount = 0;
     let resolveFetch!: () => void;
@@ -117,7 +129,7 @@ describe("createMapping.refresh mutex", () => {
     globalThis.fetch = vi.fn(async () => {
       fetchCount++;
       await release;
-      return new Response(JSON.stringify([{ id: "A01-B6" }, { id: "X-9" }]), {
+      return new Response(JSON.stringify([entry("A01-B6"), entry("X-9")]), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
