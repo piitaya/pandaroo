@@ -6,6 +6,8 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { CATALOG_REPO } from "@pandaroo/shared";
+
 import { configPath, dataDir, loadConfig } from "./config.js";
 import { createMapping } from "./filament-catalog.js";
 import { createServices } from "./composition-root.js";
@@ -18,8 +20,7 @@ import { filamentCatalogRoutes } from "./routes/filament-catalog.routes.js";
 import { spoolRoutes } from "./routes/spool.routes.js";
 import { eventsRoutes } from "./routes/events.routes.js";
 
-const MAPPING_SOURCE_URL =
-  "https://raw.githubusercontent.com/piitaya/bambu-spoolman-db/main/filaments.json";
+const MAPPING_SOURCE_URL = `https://raw.githubusercontent.com/${CATALOG_REPO}/main/filaments.json`;
 
 export async function buildApp() {
   const useJsonLogs = process.env.LOG_FORMAT === "json";

@@ -30,6 +30,7 @@ import { CopyableMono } from "../components/CopyableMono";
 import { SpoolIllustration } from "../components/SpoolIllustration";
 import { formatAmsLocation } from "../components/formatAmsLocation";
 import { useMatchStatus } from "../components/matchStatus";
+import { ReportUnknownFilamentAlert } from "../components/ReportUnknownFilamentAlert";
 import { spoolFillColor } from "../components/spoolFillColor";
 import { spoolLabels } from "../components/spoolLabel";
 import {
@@ -154,6 +155,8 @@ export default function SpoolDetailPage() {
           </Group>
         </Stack>
       </Paper>
+
+      <ReportUnknownFilamentAlert source={spool} matchType={spool.match_type} />
 
       <Card withBorder padding="lg" radius="md">
         <Stack gap="sm">

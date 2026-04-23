@@ -29,7 +29,7 @@ which filament is loaded. That's fine until Bambu renames a product
 or ships a slightly different shade, and then you get a wrong match.
 Pandaroo reads the RFID variant id printed on every genuine Bambu
 spool and looks it up in a community-maintained catalog
-([`piitaya/bambu-spoolman-db`](https://github.com/piitaya/bambu-spoolman-db)).
+([`piitaya/bambu-filaments`](https://github.com/piitaya/bambu-filaments)).
 If the variant is in the catalog, the match is exact. If it isn't,
 the app tells you.
 
@@ -116,7 +116,7 @@ For production: `npm run build && npm start`.
   (port 8883, TLS, LAN-only mode), streaming AMS state as it changes.
   SQLite via Drizzle and better-sqlite3.
 * **Matching**: the RFID variant id is looked up in the cached
-  [`bambu-spoolman-db`](https://github.com/piitaya/bambu-spoolman-db)
+  [`bambu-filaments`](https://github.com/piitaya/bambu-filaments)
   catalog. No fuzzy name matching, no hex comparisons.
 * **Storage**: a `spools` table (one row per RFID tag), plus
   `spool_history`, an append-only event log with types `ams_load`,

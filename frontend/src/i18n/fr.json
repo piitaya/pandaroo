@@ -87,28 +87,33 @@
       "last_updated": "Dernière mise à jour"
     }
   },
+  "unknown_filament": {
+    "title": "Filament absent du catalogue",
+    "description": "Ce filament n'est pas encore dans le catalogue communautaire. Le signaler ouvre une issue pré-remplie pour demander son ajout.",
+    "action": "Signaler le filament"
+  },
   "status": {
     "legend_title": "Guide des statuts",
-    "legend_intro": "Chaque slot AMS est comparé à une liste communautaire de bobines Bambu.",
+    "legend_intro": "Chaque slot AMS est comparé à une liste communautaire de filaments Bambu.",
     "known": {
-      "label": "Connue",
-      "description": "Bobine Bambu présente dans le catalogue communautaire."
+      "label": "Connu",
+      "description": "Filament Bambu présent dans le catalogue communautaire."
     },
     "unknown": {
-      "label": "Inconnue",
-      "description": "Bobine Bambu que nous ne reconnaissons pas encore."
+      "label": "Inconnu",
+      "description": "Filament Bambu que nous ne reconnaissons pas encore."
     },
     "third_party": {
-      "label": "Tierce",
-      "description": "Bobine non-Bambu ou sans étiquette RFID."
+      "label": "Tiers",
+      "description": "Filament non-Bambu ou sans étiquette RFID."
     },
     "unidentified": {
-      "label": "Non identifiée",
-      "description": "Bobine détectée mais l'imprimante n'a pas encore d'information."
+      "label": "Non identifié",
+      "description": "Filament détecté mais l'imprimante n'a pas encore d'information."
     },
     "empty": {
       "label": "Vide",
-      "description": "Aucune bobine chargée."
+      "description": "Aucun filament chargé."
     }
   },
   "printers": {

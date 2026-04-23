@@ -87,6 +87,11 @@
       "last_updated": "Last updated"
     }
   },
+  "unknown_filament": {
+    "title": "Filament not in the catalog",
+    "description": "This filament isn't in the community catalog yet. Reporting it opens a pre-filled issue so it can be added.",
+    "action": "Report filament"
+  },
   "status": {
     "legend_title": "Slot status guide",
     "legend_intro": "Each AMS slot is matched against a community-maintained list of Bambu spools.",

@@ -10,6 +10,7 @@ import {
 } from "@mantine/core";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { CATALOG_REPO } from "@pandaroo/shared";
 import { useFilamentCatalog, useRefreshMapping } from "../hooks";
 import {
   DEFAULT_LANGUAGE,
@@ -17,8 +18,6 @@ import {
   persistLanguage,
   type Language
 } from "../i18n";
-
-const REPO_LABEL = "piitaya/bambu-spoolman-db";
 
 export default function SettingsPage() {
   const { data: catalog } = useFilamentCatalog();
@@ -84,7 +83,7 @@ export default function SettingsPage() {
         <Stack gap="md">
           <Title order={4}>{t("settings.mapping_card.title")}</Title>
           <Text size="sm" c="dimmed">
-            {t("settings.mapping_card.source_hint", { repo: REPO_LABEL })}
+            {t("settings.mapping_card.source_hint", { repo: CATALOG_REPO })}
             <br />
             {t("settings.mapping_card.last_fetched", {
               when: fetchedAt,

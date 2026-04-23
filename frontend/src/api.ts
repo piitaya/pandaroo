@@ -6,6 +6,7 @@ export type {
   SlotMatchType,
   SpoolMatchType,
   Spool,
+  SpoolReading,
   SpoolHistoryEvent,
   SpoolHistoryEventType,
   SpoolHistoryResponse,

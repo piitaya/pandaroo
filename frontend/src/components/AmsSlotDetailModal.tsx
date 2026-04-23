@@ -8,6 +8,7 @@ import { Plain, Row } from "./DetailTable";
 import { ResponsiveDetailModal } from "./ResponsiveDetailModal";
 import { CopyableMono } from "./CopyableMono";
 import { useMatchStatus } from "./matchStatus";
+import { ReportUnknownFilamentAlert } from "./ReportUnknownFilamentAlert";
 import { spoolFillColor } from "./spoolFillColor";
 import { spoolLabels } from "./spoolLabel";
 import { useSlotSpool } from "../hooks";
@@ -40,6 +41,7 @@ function ReadingSection({ slot }: { slot: AmsSlot }) {
           {status.label}
         </Badge>
       </Group>
+      <ReportUnknownFilamentAlert source={sp} matchType={slot.match_type} />
       <Table layout="fixed" withRowBorders>
         <colgroup>
           <col style={{ width: "33%" }} />
