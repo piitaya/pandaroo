@@ -17,7 +17,7 @@ const R_OUT = 92;
 const R_BORE = 22;
 const R_HUB = 28;
 const R_COIL_MIN = R_HUB + 3;
-const R_COIL_MAX = 72;
+const R_COIL_MAX = 80;
 
 interface Dot {
   x: number;
@@ -77,7 +77,12 @@ export function SpoolIllustration({ hex, hexes, remain, size = 180 }: SpoolIllus
   );
   const base = bases[0];
   const pct = remain == null ? 0 : Math.max(0, Math.min(100, remain)) / 100;
-  const rCoil = R_COIL_MIN + (R_COIL_MAX - R_COIL_MIN) * pct;
+  // Filament amount is proportional to the annular area (π·(r² − r_min²)),
+  // so solve for r from pct to get a visually accurate fill level.
+  const rCoil = Math.sqrt(
+    R_COIL_MIN * R_COIL_MIN +
+      pct * (R_COIL_MAX * R_COIL_MAX - R_COIL_MIN * R_COIL_MIN),
+  );
 
   const windings = useMemo(() => {
     const ringStep = 2.5;
