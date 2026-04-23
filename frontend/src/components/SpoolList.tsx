@@ -6,7 +6,6 @@ import {
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import { useNavigate } from "react-router-dom";
 import type { Spool } from "../api";
 import { formatGrams } from "../lib/format";
 import { ColorSwatch } from "./ColorSwatch";
@@ -16,10 +15,10 @@ import { spoolFillColor } from "./spoolFillColor";
 
 interface Props {
   spools: readonly Spool[];
+  onOpen: (tagId: string) => void;
 }
 
-export function SpoolList({ spools }: Props) {
-  const navigate = useNavigate();
+export function SpoolList({ spools, onOpen }: Props) {
   return (
     <Box role="list">
       {spools.map((spool) => {
@@ -28,9 +27,7 @@ export function SpoolList({ spools }: Props) {
         <UnstyledButton
           key={spool.tag_id}
           role="listitem"
-          onClick={() =>
-            navigate(`/inventory/${encodeURIComponent(spool.tag_id)}`)
-          }
+          onClick={() => onOpen(spool.tag_id)}
           style={{
             display: "block",
             width: "100%",

@@ -85,6 +85,21 @@ export default function SpoolsPage() {
   const hasRestoredScroll = useRef(false);
   const navigationType = useNavigationType();
 
+  const openSpool = (tagId: string) => {
+    const el =
+      effectiveView === "table"
+        ? tableScrollRef.current
+        : panelScrollRef.current;
+    if (el) {
+      const current = window.history.state ?? {};
+      window.history.replaceState(
+        { ...current, usr: { ...(current.usr ?? {}), scroll: el.scrollTop } },
+        "",
+      );
+    }
+    navigate(`/inventory/${encodeURIComponent(tagId)}`);
+  };
+
   // Allow other pages to deep-link a spool by its tag id via navigation state.
   const location = useLocation();
   const navigate = useNavigate();
@@ -124,25 +139,6 @@ export default function SpoolsPage() {
     if (typeof state?.scroll === "number") el.scrollTop = state.scroll;
     hasRestoredScroll.current = true;
   }, [sorted.length, effectiveView, navigationType, location.state]);
-
-  useEffect(() => {
-    const el =
-      effectiveView === "table"
-        ? tableScrollRef.current
-        : panelScrollRef.current;
-    if (!el) return;
-    const save = () => {
-      // Direct replaceState avoids a React re-render; React Router will read
-      // this entry's state on the next pop/navigation.
-      const current = window.history.state ?? {};
-      window.history.replaceState(
-        { ...current, usr: { ...(current.usr ?? {}), scroll: el.scrollTop } },
-        "",
-      );
-    };
-    el.addEventListener("scroll", save, { passive: true });
-    return () => el.removeEventListener("scroll", save);
-  }, [effectiveView]);
 
   const sortStatus: DataTableSortStatus<Spool> = {
     columnAccessor: sort.field,
@@ -241,9 +237,9 @@ export default function SpoolsPage() {
               style={{ flex: 1, overflow: "auto" }}
             >
               {effectiveView === "grid" ? (
-                <SpoolGrid spools={sorted} />
+                <SpoolGrid spools={sorted} onOpen={openSpool} />
               ) : (
-                <SpoolList spools={sorted} />
+                <SpoolList spools={sorted} onOpen={openSpool} />
               )}
             </Box>
           ) : (
@@ -256,9 +252,7 @@ export default function SpoolsPage() {
               idAccessor="tag_id"
               sortStatus={sortStatus}
               onSortStatusChange={handleSortStatusChange}
-              onRowClick={({ record }) =>
-                navigate(`/inventory/${encodeURIComponent(record.tag_id)}`)
-              }
+              onRowClick={({ record }) => openSpool(record.tag_id)}
               columns={[
                 {
                   accessor: "color_hex",

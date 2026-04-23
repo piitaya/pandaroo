@@ -1,5 +1,4 @@
 import { Badge, Card, Group, Progress, SimpleGrid, Stack, Text } from "@mantine/core";
-import { useNavigate } from "react-router-dom";
 import type { Spool } from "../api";
 import { formatGrams } from "../lib/format";
 import { swatchBackground } from "./ColorSwatch";
@@ -9,10 +8,10 @@ import { spoolFillColor } from "./spoolFillColor";
 
 interface Props {
   spools: readonly Spool[];
+  onOpen: (tagId: string) => void;
 }
 
-export function SpoolGrid({ spools }: Props) {
-  const navigate = useNavigate();
+export function SpoolGrid({ spools, onOpen }: Props) {
   return (
     <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="md">
       {spools.map((spool) => {
@@ -25,7 +24,7 @@ export function SpoolGrid({ spools }: Props) {
           withBorder
           radius="md"
           padding="sm"
-          onClick={() => navigate(`/inventory/${encodeURIComponent(spool.tag_id)}`)}
+          onClick={() => onOpen(spool.tag_id)}
           style={{ cursor: "pointer" }}
         >
           <Card.Section>
