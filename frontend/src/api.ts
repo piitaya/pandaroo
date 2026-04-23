@@ -14,10 +14,12 @@ export type {
   AmsUnit,
   AmsLocation,
   PrinterErrorCode,
+  CatalogEntry,
 } from "@pandaroo/shared";
 
 
 import type {
+  CatalogEntry,
   Config,
   Printer,
   PrinterConfig,
@@ -92,6 +94,7 @@ export const api = {
     }),
   getPrinters: () => req<Printer[]>("/api/printer-statuses"),
   getFilamentCatalog: () => req<{ count: number; fetched_at: string | null }>("/api/filament-catalog/status"),
+  listFilamentCatalog: () => req<CatalogEntry[]>("/api/filament-catalog"),
   refreshFilamentCatalog: () =>
     req<{ count: number }>("/api/filament-catalog/refresh", { method: "POST" }),
   listSpools: () => req<Spool[]>("/api/spools"),

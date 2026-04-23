@@ -1,25 +1,39 @@
-import { AppShell, Group, NavLink, Title } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Group,
+  Title,
+  Tooltip,
+} from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
   IconBroadcast,
   IconCylinder,
-  IconSettings
+  IconSettings,
 } from "@tabler/icons-react";
+import { useIsMobile } from "../lib/breakpoints";
 import { ErrorBoundary } from "./ErrorBoundary";
 import BottomBar, { BOTTOM_BAR_HEIGHT, type NavItem } from "./BottomBar";
+
+const HEADER_HEIGHT = 56;
 
 export default function Layout() {
   const location = useLocation();
   const { t } = useTranslation();
-  const isMobile = useMediaQuery("(max-width: 48em)") ?? false;
+  const isMobile = useIsMobile();
 
-  const links: NavItem[] = [
+  const primaryLinks: NavItem[] = [
     { to: "/live", label: t("nav.live"), icon: IconBroadcast },
     { to: "/inventory", label: t("nav.inventory"), icon: IconCylinder },
-    { to: "/settings", label: t("nav.settings"), icon: IconSettings }
   ];
+  const settingsLink: NavItem = {
+    to: "/settings",
+    label: t("nav.settings"),
+    icon: IconSettings,
+  };
+  const mobileLinks = [...primaryLinks, settingsLink];
 
   const isActive = (to: string) =>
     to === "/live"
@@ -27,44 +41,69 @@ export default function Layout() {
       : location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
-    <AppShell
-      padding="md"
-      header={{ height: 56 }}
-      navbar={{
-        width: 240,
-        breakpoint: "sm",
-        collapsed: { mobile: true }
-      }}
-      footer={{
-        height: BOTTOM_BAR_HEIGHT,
-        collapsed: !isMobile
-      }}
-    >
-      <AppShell.Header p="sm">
-        <Group h="100%" gap="sm">
-          <Title order={4}>Pandaroo</Title>
+    <Box style={{ display: "flex", flexDirection: "column", height: "100dvh" }}>
+      <Box
+        component="header"
+        p="sm"
+        style={{
+          flexShrink: 0,
+          height: HEADER_HEIGHT,
+          borderBottom: "1px solid var(--mantine-color-default-border)",
+          background: "var(--mantine-color-body)",
+        }}
+      >
+        <Group h="100%" gap="sm" wrap="nowrap" justify="space-between">
+          <Group gap="xl" wrap="nowrap">
+            <Title order={4}>Pandaroo</Title>
+            <Group gap={4} wrap="nowrap" visibleFrom="sm">
+              {primaryLinks.map(({ to, label, icon: Icon }) => (
+                <Button
+                  key={to}
+                  component={Link}
+                  to={to}
+                  variant={isActive(to) ? "light" : "subtle"}
+                  color={isActive(to) ? undefined : "gray"}
+                  leftSection={<Icon size={16} stroke={1.5} />}
+                  size="sm"
+                >
+                  {label}
+                </Button>
+              ))}
+            </Group>
+          </Group>
+          <Tooltip label={settingsLink.label}>
+            <ActionIcon
+              component={Link}
+              to={settingsLink.to}
+              variant={isActive(settingsLink.to) ? "light" : "subtle"}
+              color={isActive(settingsLink.to) ? undefined : "gray"}
+              size="lg"
+              aria-label={settingsLink.label}
+              visibleFrom="sm"
+            >
+              <settingsLink.icon size={18} stroke={1.5} />
+            </ActionIcon>
+          </Tooltip>
         </Group>
-      </AppShell.Header>
-      <AppShell.Navbar p="sm" visibleFrom="sm">
-        {links.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            component={Link}
-            to={to}
-            label={label}
-            leftSection={<Icon size={18} stroke={1.5} />}
-            active={isActive(to)}
-          />
-        ))}
-      </AppShell.Navbar>
-      <AppShell.Footer>
-        <BottomBar items={links} isActive={isActive} />
-      </AppShell.Footer>
-      <AppShell.Main>
+      </Box>
+      <Box component="main" style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
         <ErrorBoundary>
           <Outlet />
         </ErrorBoundary>
-      </AppShell.Main>
-    </AppShell>
+      </Box>
+      {isMobile && (
+        <Box
+          component="footer"
+          style={{
+            flexShrink: 0,
+            height: BOTTOM_BAR_HEIGHT,
+            borderTop: "1px solid var(--mantine-color-default-border)",
+            background: "var(--mantine-color-body)",
+          }}
+        >
+          <BottomBar items={mobileLinks} isActive={isActive} />
+        </Box>
+      )}
+    </Box>
   );
 }

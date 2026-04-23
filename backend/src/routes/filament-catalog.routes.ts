@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { FastifyPluginAsync } from "fastify";
-import type { Mapping } from "../filament-catalog.js";
+import { CatalogEntrySchema, type Mapping } from "../filament-catalog.js";
 import { ErrorCode, ErrorResponse, errorBody, errorMessage } from "./schemas.js";
 
 export interface FilamentCatalogRouteDeps {
@@ -8,6 +8,17 @@ export interface FilamentCatalogRouteDeps {
 }
 
 export const filamentCatalogRoutes: FastifyPluginAsync<FilamentCatalogRouteDeps> = async (app, { mapping }) => {
+  app.get("/api/filament-catalog", {
+    schema: {
+      operationId: "listFilamentCatalog",
+      tags: ["Filament catalog"],
+      description: "List all known filament catalog entries.",
+      response: {
+        200: Type.Array(CatalogEntrySchema),
+      },
+    },
+  }, async () => Array.from(mapping.byId.values()));
+
   app.get("/api/filament-catalog/status", {
     schema: {
       operationId: "getFilamentCatalogStatus",

@@ -11,6 +11,9 @@
     "remove": "Remove",
     "copy": "Copy",
     "copied": "Copied",
+    "clear": "Clear",
+    "yes": "Yes",
+    "no": "No",
     "left_nozzle": "Left nozzle",
     "right_nozzle": "Right nozzle",
     "drag_handle": "Drag to reorder"
@@ -170,7 +173,7 @@
     }
   },
   "spool_detail": {
-    "back": "Back to inventory",
+    "back": "Back",
     "location": {
       "not_loaded": "Not currently loaded"
     },
@@ -213,20 +216,98 @@
       "remove_disabled_hint": "Unload the spool from the AMS first."
     }
   },
+  "stock": {
+    "title": "Stock",
+    "spools_count_one": "across 1 spool",
+    "spools_count_other": "across {{count}} spools",
+    "spools_count_short_one": "1 spool",
+    "spools_count_short_other": "{{count}} spools",
+    "low_stock_one": "1 low",
+    "low_stock_other": "{{count}} low",
+    "low_stock_tooltip": "Spools below {{pct}}% remaining",
+    "unknown_weight_short": "weight unknown"
+  },
   "spools": {
     "title": "Spools",
     "empty": "No spools yet. Scan a tag or load one in an AMS.",
+    "no_match": "No spools match the current filters.",
     "failed_to_load": "Failed to load spools",
     "last_updated": "Last updated",
+    "last_used": "Last used",
     "adjust_remain": "Adjust remaining",
     "adjust_remain_title": "Adjust filament remaining",
     "adjust_remain_disabled_hint": "Unload the spool from the AMS to adjust.",
     "remove_confirm_title": "Remove spool?",
     "remove_confirm_body": "\"{{name}}\" will be removed.",
+    "filters": {
+      "label": "Filters",
+      "search_placeholder": "Search by color, product, material…",
+      "material": "Material",
+      "material_placeholder": "Pick a material…",
+      "product": "Product",
+      "product_placeholder": "Pick a product…",
+      "color": "Color",
+      "color_placeholder": "Pick a color…",
+      "any": "Any",
+      "clear": "Clear",
+      "stock": {
+        "label": "Stock level",
+        "all": "All",
+        "low": "Low",
+        "full": "Full"
+      },
+      "ams_only": "Only spools in AMS",
+      "weight_unknown": "Only spools with unknown weight"
+    },
+    "sort": {
+      "label": "Sort by",
+      "toggle_direction": "Toggle sort direction",
+      "last_updated": "Last updated",
+      "last_used": "Last used",
+      "first_seen": "First seen",
+      "remain": "Remaining %",
+      "remain_grams": "Remaining weight",
+      "material": "Material",
+      "product": "Product",
+      "color_name": "Color",
+      "direction": {
+        "asc": "Ascending",
+        "desc": "Descending"
+      }
+    },
     "notifications": {
       "removed": "Spool removed",
       "updated": "Spool updated"
+    },
+    "view": {
+      "table": "Table",
+      "list": "List",
+      "grid": "Grid"
+    },
+    "columns": {
+      "color_name": "Color",
+      "product": "Product",
+      "material": "Material",
+      "remaining": "Remaining",
+      "in_ams": "AMS",
+      "last_used": "Last used",
+      "last_updated": "Last updated"
     }
+  },
+  "color_family": {
+    "red": "Red",
+    "orange": "Orange",
+    "yellow": "Yellow",
+    "green": "Green",
+    "teal": "Teal",
+    "blue": "Blue",
+    "purple": "Purple",
+    "pink": "Pink",
+    "beige": "Beige",
+    "brown": "Brown",
+    "white": "White",
+    "grey": "Grey",
+    "black": "Black"
   },
   "errors": {
     "generic": "Error"

@@ -13,7 +13,7 @@ import { atomicWriteFile } from "./utils/atomic-write.js";
 const NullableString = Type.Union([Type.String(), Type.Null()]);
 const NullableNumber = Type.Union([Type.Number(), Type.Null()]);
 
-const CatalogEntrySchema = Type.Object({
+export const CatalogEntrySchema = Type.Object({
   id: Type.String(),
   sku: Type.String(),
   material: NullableString,

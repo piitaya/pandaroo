@@ -11,6 +11,9 @@
     "remove": "Retirer",
     "copy": "Copier",
     "copied": "Copié",
+    "clear": "Effacer",
+    "yes": "Oui",
+    "no": "Non",
     "left_nozzle": "Buse gauche",
     "right_nozzle": "Buse droite",
     "drag_handle": "Glisser pour réordonner"
@@ -170,7 +173,7 @@
     }
   },
   "spool_detail": {
-    "back": "Retour à l'inventaire",
+    "back": "Retour",
     "location": {
       "not_loaded": "Pas dans un AMS"
     },
@@ -213,20 +216,98 @@
       "remove_disabled_hint": "Retirez la bobine de l'AMS d'abord."
     }
   },
+  "stock": {
+    "title": "Stock",
+    "spools_count_one": "sur 1 bobine",
+    "spools_count_other": "sur {{count}} bobines",
+    "spools_count_short_one": "1 bobine",
+    "spools_count_short_other": "{{count}} bobines",
+    "low_stock_one": "1 faible",
+    "low_stock_other": "{{count}} faibles",
+    "low_stock_tooltip": "Bobines sous {{pct}}% restants",
+    "unknown_weight_short": "poids inconnu"
+  },
   "spools": {
     "title": "Bobines",
     "empty": "Aucune bobine. Scannez un tag ou chargez-en une dans un AMS.",
+    "no_match": "Aucune bobine ne correspond aux filtres.",
     "failed_to_load": "Impossible de charger les bobines",
     "last_updated": "Dernière mise à jour",
+    "last_used": "Dernière utilisation",
     "adjust_remain": "Ajuster le poids",
     "adjust_remain_title": "Filament restant",
     "adjust_remain_disabled_hint": "Retirez la bobine de l'AMS pour l'ajuster.",
     "remove_confirm_title": "Retirer la bobine ?",
     "remove_confirm_body": "« {{name}} » sera retirée.",
+    "filters": {
+      "label": "Filtres",
+      "search_placeholder": "Rechercher par couleur, produit, matière…",
+      "material": "Matière",
+      "material_placeholder": "Choisir une matière…",
+      "product": "Produit",
+      "product_placeholder": "Choisir un produit…",
+      "color": "Couleur",
+      "color_placeholder": "Choisir une couleur…",
+      "any": "Tous",
+      "clear": "Effacer",
+      "stock": {
+        "label": "Niveau",
+        "all": "Tous",
+        "low": "Faible",
+        "full": "Pleine"
+      },
+      "ams_only": "Uniquement dans l'AMS",
+      "weight_unknown": "Uniquement sans poids défini"
+    },
+    "sort": {
+      "label": "Trier par",
+      "toggle_direction": "Changer le sens du tri",
+      "last_updated": "Dernière mise à jour",
+      "last_used": "Dernière utilisation",
+      "first_seen": "Première vue",
+      "remain": "Restant %",
+      "remain_grams": "Poids restant",
+      "material": "Matière",
+      "product": "Produit",
+      "color_name": "Couleur",
+      "direction": {
+        "asc": "Ascendant",
+        "desc": "Descendant"
+      }
+    },
     "notifications": {
       "removed": "Bobine retirée",
       "updated": "Bobine mise à jour"
+    },
+    "view": {
+      "table": "Tableau",
+      "list": "Liste",
+      "grid": "Grille"
+    },
+    "columns": {
+      "color_name": "Couleur",
+      "product": "Produit",
+      "material": "Matériau",
+      "remaining": "Restant",
+      "in_ams": "AMS",
+      "last_used": "Dernière utilisation",
+      "last_updated": "Dernière mise à jour"
     }
+  },
+  "color_family": {
+    "red": "Rouge",
+    "orange": "Orange",
+    "yellow": "Jaune",
+    "green": "Vert",
+    "teal": "Turquoise",
+    "blue": "Bleu",
+    "purple": "Violet",
+    "pink": "Rose",
+    "beige": "Beige",
+    "brown": "Marron",
+    "white": "Blanc",
+    "grey": "Gris",
+    "black": "Noir"
   },
   "errors": {
     "generic": "Erreur"

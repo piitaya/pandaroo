@@ -1,55 +1,88 @@
 import {
-  ActionIcon,
   Alert,
+  Box,
   ColorSwatch,
   Group,
   Loader,
-  Menu,
   Progress,
-  Stack,
   Text,
-  Title,
 } from "@mantine/core";
-import { IconDots, IconGauge, IconTrash } from "@tabler/icons-react";
+import { useDebouncedValue } from "@mantine/hooks";
 import { DataTable, type DataTableSortStatus } from "mantine-datatable";
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  NavigationType,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useSearchParams,
+} from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { Spool } from "../api";
-import { useRemoveSpool, useSpoolMap, useSpools } from "../hooks";
+import { useLoadedTagIds, useSpools } from "../hooks";
+import { useIsMobile } from "../lib/breakpoints";
+import { formatGrams } from "../lib/format";
 import { spoolFillColor } from "../components/spoolFillColor";
-import { ConfirmModal } from "../components/ConfirmModal";
 import { EmptyStateCard } from "../components/EmptyStateCard";
-import { AdjustRemainModal } from "../components/AdjustRemainModal";
+import { PageShell } from "../components/PageShell";
+import { SpoolGrid } from "../components/SpoolGrid";
+import { SpoolList } from "../components/SpoolList";
+import {
+  applySpoolFilters,
+  applySpoolSort,
+  searchParamsToSpoolState,
+  SORT_FIELDS,
+  spoolStateToSearchParams,
+  remainingGrams,
+  SpoolFilterPanel,
+  SpoolToolbar,
+  type SpoolFilters,
+  type SpoolSort,
+  type SpoolSortField,
+  type SpoolView,
+} from "../components/SpoolToolbar";
 
-function formatDate(value: string): string {
+function formatDate(value: string | null): string {
+  if (!value) return "—";
   const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
   return new Date(normalized).toLocaleString();
 }
 
-function sortData(data: Spool[], { columnAccessor, direction }: DataTableSortStatus<Spool>): Spool[] {
-  const sorted = [...data].sort((a, b) => {
-    const aVal = a[columnAccessor as keyof Spool];
-    const bVal = b[columnAccessor as keyof Spool];
-    if (aVal == null && bVal == null) return 0;
-    if (aVal == null) return 1;
-    if (bVal == null) return -1;
-    if (typeof aVal === "number" && typeof bVal === "number") return aVal - bVal;
-    return String(aVal).localeCompare(String(bVal));
-  });
-  return direction === "desc" ? sorted.reverse() : sorted;
-}
-
 export default function SpoolsPage() {
   const { data: spools, isLoading, isError, error } = useSpools();
-  const removeSpool = useRemoveSpool();
+  const loadedTags = useLoadedTagIds();
   const { t } = useTranslation();
-  const [sortStatus, setSortStatus] = useState<DataTableSortStatus<Spool>>({
-    columnAccessor: "last_updated",
-    direction: "desc",
-  });
-  const [toRemove, setToRemove] = useState<Spool | null>(null);
-  const [toAdjustId, setToAdjustId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState<SpoolFilters>(
+    () => searchParamsToSpoolState(searchParams).filters,
+  );
+  const [sort, setSort] = useState<SpoolSort>(
+    () => searchParamsToSpoolState(searchParams).sort,
+  );
+  const [view, setView] = useState<SpoolView>(
+    () => searchParamsToSpoolState(searchParams).view,
+  );
+  const isMobile = useIsMobile();
+  const effectiveView: SpoolView = isMobile ? "list" : view;
+
+  // Mirror filter/sort/view into the URL so back-navigation from a spool
+  // detail page restores the user's view, and URLs are shareable. Debounced so
+  // each keystroke in search doesn't trigger a Router re-render.
+  const [debouncedFilters] = useDebouncedValue(filters, 250);
+  useEffect(() => {
+    setSearchParams(spoolStateToSearchParams(debouncedFilters, sort, view), {
+      replace: true,
+    });
+  }, [debouncedFilters, sort, view, setSearchParams]);
+
+  // Preserve scroll position across detail navigations. Stored in
+  // window.history.state.usr (read by React Router as location.state) so it's
+  // scoped to this specific history entry — no cross-contamination with other
+  // /inventory visits, and persists across reloads.
+  const panelScrollRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const hasRestoredScroll = useRef(false);
+  const navigationType = useNavigationType();
 
   // Allow other pages to deep-link a spool by its tag id via navigation state.
   const location = useLocation();
@@ -64,170 +97,253 @@ export default function SpoolsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const spoolsByTagId = useSpoolMap();
-  const toAdjust = toAdjustId ? spoolsByTagId.get(toAdjustId) ?? null : null;
-
-  const sorted = useMemo(
-    () => (spools ? sortData(spools, sortStatus) : []),
-    [spools, sortStatus],
+  const filtered = useMemo(
+    () => (spools ? applySpoolFilters(spools, filters, loadedTags) : []),
+    [spools, filters, loadedTags],
   );
 
-  if (isLoading) return <Loader />;
+  const sorted = useMemo(
+    () => applySpoolSort(filtered, sort),
+    [filtered, sort],
+  );
+
+  useLayoutEffect(() => {
+    if (hasRestoredScroll.current) return;
+    if (navigationType !== NavigationType.Pop) {
+      hasRestoredScroll.current = true;
+      return;
+    }
+    if (!sorted.length) return;
+    const el =
+      effectiveView === "table"
+        ? tableScrollRef.current
+        : panelScrollRef.current;
+    if (!el) return;
+    const state = location.state as { scroll?: number } | null;
+    if (typeof state?.scroll === "number") el.scrollTop = state.scroll;
+    hasRestoredScroll.current = true;
+  }, [sorted.length, effectiveView, navigationType, location.state]);
+
+  useEffect(() => {
+    const el =
+      effectiveView === "table"
+        ? tableScrollRef.current
+        : panelScrollRef.current;
+    if (!el) return;
+    const save = () => {
+      // Direct replaceState avoids a React re-render; React Router will read
+      // this entry's state on the next pop/navigation.
+      const current = window.history.state ?? {};
+      window.history.replaceState(
+        { ...current, usr: { ...(current.usr ?? {}), scroll: el.scrollTop } },
+        "",
+      );
+    };
+    el.addEventListener("scroll", save, { passive: true });
+    return () => el.removeEventListener("scroll", save);
+  }, [effectiveView]);
+
+  const sortStatus: DataTableSortStatus<Spool> = {
+    columnAccessor: sort.field,
+    direction: sort.direction,
+  };
+
+  const handleSortStatusChange = (status: DataTableSortStatus<Spool>) => {
+    const accessor = status.columnAccessor as string;
+    if (SORT_FIELDS.includes(accessor as SpoolSortField)) {
+      setSort({ field: accessor as SpoolSortField, direction: status.direction });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <PageShell>
+        <Loader />
+      </PageShell>
+    );
+  }
   if (isError) {
     return (
-      <Alert color="red" title={t("spools.failed_to_load")}>
-        {error instanceof Error ? error.message : String(error)}
-      </Alert>
+      <PageShell>
+        <Alert color="red" title={t("spools.failed_to_load")}>
+          {error instanceof Error ? error.message : String(error)}
+        </Alert>
+      </PageShell>
+    );
+  }
+  if (!spools || spools.length === 0) {
+    return (
+      <PageShell>
+        <EmptyStateCard description={t("spools.empty")} />
+      </PageShell>
     );
   }
 
   return (
-    <Stack gap="xl">
-      <Title order={2}>{t("spools.title")}</Title>
-
-      {(!spools || spools.length === 0) ? (
-        <EmptyStateCard description={t("spools.empty")} />
-      ) : (
-        <DataTable
-          withTableBorder
-          highlightOnHover
-          records={sorted}
-          idAccessor="tag_id"
-          sortStatus={sortStatus}
-          onSortStatusChange={setSortStatus}
-          onRowClick={({ record }) => navigate(`/inventory/${encodeURIComponent(record.tag_id)}`)}
-          columns={[
-            {
-              accessor: "color_hex",
-              title: t("slot.fields.color"),
-              sortable: false,
-              render: (spool) =>
-                spool.color_hex ? (
-                  <ColorSwatch color={`#${spool.color_hex}`} size={24} />
-                ) : (
-                  <Text c="dimmed" size="sm">—</Text>
-                ),
-            },
-            {
-              accessor: "color_name",
-              title: t("slot.fields.color_name"),
-              sortable: true,
-              render: (spool) => (
-                <Text size="sm" fw={500}>
-                  {spool.color_name ?? "—"}
-                </Text>
-              ),
-            },
-            {
-              accessor: "product",
-              title: t("slot.fields.bambu_filament"),
-              sortable: true,
-              render: (spool) => (
-                <Text size="sm">
-                  {spool.product ?? "—"}
-                </Text>
-              ),
-            },
-            {
-              accessor: "material",
-              title: t("slot.fields.material"),
-              sortable: true,
-            },
-            {
-              accessor: "remain",
-              title: t("slot.fields.remaining"),
-              sortable: true,
-              width: 160,
-              render: (spool) =>
-                spool.remain != null ? (
-                  <Group gap="xs" wrap="nowrap">
-                    <Progress
-                      value={spool.remain}
-                      size="sm"
-                      style={{ flex: 1 }}
-                      color={spoolFillColor(spool.remain)}
-                    />
-                    <Text size="xs" c="dimmed" w={36} ta="right">
-                      {spool.remain}%
-                    </Text>
-                  </Group>
-                ) : (
-                  <Text c="dimmed" size="sm">—</Text>
-                ),
-            },
-            {
-              accessor: "last_updated",
-              title: t("spools.last_updated"),
-              sortable: true,
-              render: (spool) => (
-                <Text size="xs" c="dimmed">
-                  {formatDate(spool.last_updated)}
-                </Text>
-              ),
-            },
-            {
-              accessor: "actions",
-              title: "",
-              width: 50,
-              textAlign: "center",
-              render: (spool) => (
-                <Menu position="bottom-end" withinPortal>
-                  <Menu.Target>
-                    <ActionIcon
-                      variant="subtle"
-                      color="gray"
-                      size="sm"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <IconDots size={16} />
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      leftSection={<IconGauge size={14} />}
-                      onClick={(e) => { e.stopPropagation(); setToAdjustId(spool.tag_id); }}
-                    >
-                      {t("spools.adjust_remain")}
-                    </Menu.Item>
-                    <Menu.Item
-                      color="red"
-                      leftSection={<IconTrash size={14} />}
-                      onClick={(e) => { e.stopPropagation(); setToRemove(spool); }}
-                    >
-                      {t("common.remove")}
-                    </Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
-              ),
-            },
-          ]}
-        />
-      )}
-
-      {toAdjust && (
-        <AdjustRemainModal
-          key={toAdjust.tag_id}
-          spool={toAdjust}
-          opened
-          onClose={() => setToAdjustId(null)}
-        />
-      )}
-
-      <ConfirmModal
-        opened={toRemove !== null}
-        onClose={() => setToRemove(null)}
-        onConfirm={() => {
-          if (!toRemove) return;
-          removeSpool.mutate(toRemove.tag_id, {
-            onSettled: () => setToRemove(null),
-          });
+    <Box style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <Box
+        component="header"
+        p="sm"
+        style={{
+          flexShrink: 0,
+          borderBottom: "1px solid var(--mantine-color-default-border)",
         }}
-        title={t("spools.remove_confirm_title")}
-        body={t("spools.remove_confirm_body", {
-          name: toRemove?.color_name ?? toRemove?.tag_id,
-        })}
-        loading={removeSpool.isPending}
-      />
-    </Stack>
+      >
+        <SpoolToolbar
+          spools={spools}
+          loadedTags={loadedTags}
+          filters={filters}
+          onFiltersChange={setFilters}
+          sort={sort}
+          onSortChange={setSort}
+          view={view}
+          onViewChange={setView}
+        />
+      </Box>
+      <Box style={{ flex: 1, minHeight: 0, display: "flex" }}>
+        <Box
+          component="aside"
+          w={320}
+          visibleFrom="sm"
+          p="md"
+          style={{
+            flexShrink: 0,
+            overflow: "auto",
+            borderRight: "1px solid var(--mantine-color-default-border)",
+          }}
+        >
+          <SpoolFilterPanel
+            spools={spools}
+            filters={filters}
+            onFiltersChange={setFilters}
+            sort={sort}
+            onSortChange={setSort}
+          />
+        </Box>
+        <Box
+          style={{
+            flex: 1,
+            minWidth: 0,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {sorted.length === 0 ? (
+            <Box p="md" style={{ overflow: "auto" }}>
+              <EmptyStateCard description={t("spools.no_match")} />
+            </Box>
+          ) : effectiveView === "grid" || effectiveView === "list" ? (
+            <Box
+              ref={panelScrollRef}
+              p={effectiveView === "grid" ? "md" : 0}
+              style={{ flex: 1, overflow: "auto" }}
+            >
+              {effectiveView === "grid" ? (
+                <SpoolGrid spools={sorted} />
+              ) : (
+                <SpoolList spools={sorted} />
+              )}
+            </Box>
+          ) : (
+            <DataTable
+              height="100%"
+              scrollViewportRef={tableScrollRef}
+              withTableBorder={false}
+              highlightOnHover
+              records={sorted}
+              idAccessor="tag_id"
+              sortStatus={sortStatus}
+              onSortStatusChange={handleSortStatusChange}
+              onRowClick={({ record }) =>
+                navigate(`/inventory/${encodeURIComponent(record.tag_id)}`)
+              }
+              columns={[
+                {
+                  accessor: "color_hex",
+                  title: "",
+                  sortable: false,
+                  width: 40,
+                  render: (spool) =>
+                    spool.color_hex ? (
+                      <ColorSwatch color={`#${spool.color_hex}`} size={24} />
+                    ) : (
+                      <Text c="dimmed" size="sm">—</Text>
+                    ),
+                },
+                {
+                  accessor: "color_name",
+                  title: t("spools.columns.color_name"),
+                  sortable: true,
+                  render: (spool) => (
+                    <Text size="sm" fw={500}>
+                      {spool.color_name ?? "—"}
+                    </Text>
+                  ),
+                },
+                {
+                  accessor: "product",
+                  title: t("spools.columns.product"),
+                  sortable: true,
+                  render: (spool) => (
+                    <Text size="sm">{spool.product ?? "—"}</Text>
+                  ),
+                },
+                {
+                  accessor: "material",
+                  title: t("spools.columns.material"),
+                  sortable: true,
+                },
+                {
+                  accessor: "remain",
+                  title: t("spools.columns.remaining"),
+                  sortable: true,
+                  width: 200,
+                  render: (spool) =>
+                    spool.remain != null ? (
+                      <Group gap="xs" wrap="nowrap">
+                        <Progress
+                          value={spool.remain}
+                          size="sm"
+                          style={{ flex: 1 }}
+                          color={spoolFillColor(spool.remain)}
+                        />
+                        <Text size="xs" w={64} ta="right">
+                          {formatGrams(remainingGrams(spool))}
+                        </Text>
+                      </Group>
+                    ) : (
+                      <Text c="dimmed" size="sm">—</Text>
+                    ),
+                },
+                {
+                  accessor: "in_ams",
+                  title: t("spools.columns.in_ams"),
+                  sortable: false,
+                  width: 90,
+                  textAlign: "center",
+                  render: (spool) =>
+                    loadedTags.has(spool.tag_id) ? (
+                      <Text size="sm">{t("common.yes")}</Text>
+                    ) : (
+                      <Text size="sm" c="dimmed">—</Text>
+                    ),
+                },
+                {
+                  accessor: "last_used",
+                  title: t("spools.columns.last_used"),
+                  sortable: true,
+                  render: (spool) => (
+                    <Text size="xs" c="dimmed">
+                      {formatDate(spool.last_used)}
+                    </Text>
+                  ),
+                },
+              ]}
+            />
+          )}
+        </Box>
+      </Box>
+    </Box>
   );
 }

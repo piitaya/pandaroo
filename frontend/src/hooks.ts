@@ -26,6 +26,7 @@ const queryKeys = {
   printers: ["printers"] as const,
   spools: ["spools"] as const,
   filamentCatalog: ["filament-catalog"] as const,
+  filamentCatalogEntries: ["filament-catalog", "entries"] as const,
   spoolHistory: {
     all: SPOOL_HISTORY_ROOT,
     byTag: (tagId: string) => [...SPOOL_HISTORY_ROOT, tagId] as const,
@@ -98,6 +99,12 @@ export const useFilamentCatalog = () =>
     queryFn: api.getFilamentCatalog,
   });
 
+export const useFilamentCatalogEntries = () =>
+  useQuery({
+    queryKey: queryKeys.filamentCatalogEntries,
+    queryFn: api.listFilamentCatalog,
+  });
+
 // Share derived Maps across callers — keyed by array identity, which React
 // Query keeps stable across refetches via structural sharing.
 const EMPTY_SPOOLS: readonly Spool[] = [];
@@ -110,6 +117,7 @@ interface AmsSlotInfo {
 
 const spoolMapCache = new WeakMap<readonly Spool[], Map<string, Spool>>();
 const slotInfoCache = new WeakMap<readonly Printer[], Map<string, AmsSlotInfo>>();
+const loadedTagsCache = new WeakMap<readonly Printer[], Set<string>>();
 
 function buildSpoolMap(spools: readonly Spool[]): Map<string, Spool> {
   let map = spoolMapCache.get(spools);
@@ -153,6 +161,25 @@ export function useSpoolMap(): Map<string, Spool> {
 export function useSpoolLocation(tagId: string): AmsLocation | null {
   const { data: printers } = usePrinters();
   return buildSlotInfoMap(printers ?? EMPTY_PRINTERS).get(tagId)?.location ?? null;
+}
+
+export function useLoadedTagIds(): ReadonlySet<string> {
+  const { data: printers } = usePrinters();
+  const key = printers ?? EMPTY_PRINTERS;
+  let set = loadedTagsCache.get(key);
+  if (!set) {
+    set = new Set();
+    for (const printer of key) {
+      for (const unit of printer.ams_units) {
+        for (const slot of unit.slots) {
+          const tag = slot.reading?.tag_id;
+          if (tag) set.add(tag);
+        }
+      }
+    }
+    loadedTagsCache.set(key, set);
+  }
+  return set;
 }
 
 // True when the tag's AMS slot reports a remain value (not AMS Lite).
@@ -341,6 +368,7 @@ export const useRefreshMapping = () => {
     onSuccess: ({ count }) => {
       qc.invalidateQueries({ queryKey: queryKeys.printers });
       qc.invalidateQueries({ queryKey: queryKeys.filamentCatalog });
+      qc.invalidateQueries({ queryKey: queryKeys.filamentCatalogEntries });
       toast.success(t("settings.mapping_card.refreshed", { count }));
     },
     onError: toast.error

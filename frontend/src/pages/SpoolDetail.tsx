@@ -23,13 +23,14 @@ import {
 } from "@tabler/icons-react";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AdjustRemainModal } from "../components/AdjustRemainModal";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CopyableMono } from "../components/CopyableMono";
 import { SpoolIllustration } from "../components/SpoolIllustration";
 import { formatAmsLocation } from "../components/formatAmsLocation";
 import { useMatchStatus } from "../components/matchStatus";
+import { PageShell } from "../components/PageShell";
 import { ReportUnknownFilamentAlert } from "../components/ReportUnknownFilamentAlert";
 import { spoolFillColor } from "../components/spoolFillColor";
 import { spoolLabels } from "../components/spoolLabel";
@@ -67,10 +68,12 @@ export default function SpoolDetailPage() {
 
   if (!spool) {
     return (
-      <Stack gap="lg">
-        <BackLink />
-        <Loader />
-      </Stack>
+      <PageShell>
+        <Stack gap="lg">
+          <BackLink />
+          <Loader />
+        </Stack>
+      </PageShell>
     );
   }
 
@@ -91,10 +94,11 @@ export default function SpoolDetailPage() {
   const labels = spoolLabels(spool);
 
   return (
-    <Stack gap="lg">
-      <BackLink />
+    <PageShell>
+      <Stack gap="lg">
+        <BackLink />
 
-      <Paper p="lg" radius="md" withBorder>
+        <Paper p="lg" radius="md" withBorder>
         <Stack gap="md">
           <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
             <Group
@@ -305,7 +309,8 @@ export default function SpoolDetailPage() {
         body={t("spools.remove_confirm_body", { name: labels.primary })}
         loading={removeSpool.isPending}
       />
-    </Stack>
+      </Stack>
+    </PageShell>
   );
 }
 
@@ -356,8 +361,25 @@ function HeroRemain({ spool, totalWeight, onAdjust }: HeroRemainProps) {
 
 function BackLink() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const goBack = () => {
+    // Fall back to the list when this is the first history entry
+    // (e.g. a deep-linked spool URL opened in a new tab).
+    if (location.key === "default") {
+      navigate("/inventory");
+    } else {
+      navigate(-1);
+    }
+  };
   return (
-    <Anchor component={Link} to="/inventory" size="sm" c="dimmed">
+    <Anchor
+      component="button"
+      type="button"
+      size="sm"
+      c="dimmed"
+      onClick={goBack}
+    >
       <Group gap={4} wrap="nowrap">
         <IconArrowLeft size={14} />
         {t("spool_detail.back")}
