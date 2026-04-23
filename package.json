@@ -8,10 +8,11 @@
     "frontend"
   ],
   "scripts": {
-    "dev": "npm-run-all -p dev:backend dev:frontend",
+    "dev": "npm --workspace shared run build && npm-run-all -p dev:shared dev:backend dev:frontend",
+    "dev:shared": "npm --workspace shared run dev",
     "dev:backend": "npm --workspace backend run dev",
     "dev:frontend": "npm --workspace frontend run dev",
-    "build": "npm --workspace frontend run build && npm --workspace backend run build",
+    "build": "npm --workspace shared run build && npm --workspace frontend run build && npm --workspace backend run build",
     "start": "npm --workspace backend run start",
     "test": "npm --workspace backend run test"
   },
