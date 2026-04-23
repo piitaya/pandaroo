@@ -7,10 +7,11 @@ import {
   Progress,
   Text,
 } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { useDebouncedValue } from "@mantine/hooks";
 import { DataTable, type DataTableSortStatus } from "mantine-datatable";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  NavigationType,
   useLocation,
   useNavigate,
   useNavigationType,
@@ -19,6 +20,8 @@ import {
 import { useTranslation } from "react-i18next";
 import type { Spool } from "../api";
 import { useLoadedTagIds, useSpools } from "../hooks";
+import { useIsMobile } from "../lib/breakpoints";
+import { formatGrams } from "../lib/format";
 import { spoolFillColor } from "../components/spoolFillColor";
 import { EmptyStateCard } from "../components/EmptyStateCard";
 import { PageShell } from "../components/PageShell";
@@ -28,6 +31,7 @@ import {
   applySpoolFilters,
   applySpoolSort,
   searchParamsToSpoolState,
+  SORT_FIELDS,
   spoolStateToSearchParams,
   remainingGrams,
   SpoolFilterPanel,
@@ -44,50 +48,32 @@ function formatDate(value: string | null): string {
   return new Date(normalized).toLocaleString();
 }
 
-function formatGrams(grams: number | null): string {
-  if (grams == null) return "—";
-  if (grams >= 1000) return `${(grams / 1000).toFixed(2)} kg`;
-  return `${Math.round(grams)} g`;
-}
-
-const COLUMN_TO_SORT_FIELD: Record<string, SpoolSortField> = {
-  color_name: "color_name",
-  product: "product",
-  material: "material",
-  remain: "remain",
-  remain_grams: "remain_grams",
-  last_used: "last_used",
-  last_updated: "last_updated",
-};
-const SORT_FIELD_TO_COLUMN: Partial<Record<SpoolSortField, string>> = {
-  color_name: "color_name",
-  product: "product",
-  material: "material",
-  remain: "remain",
-  remain_grams: "remain_grams",
-  last_used: "last_used",
-  last_updated: "last_updated",
-};
-
 export default function SpoolsPage() {
   const { data: spools, isLoading, isError, error } = useSpools();
   const loadedTags = useLoadedTagIds();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initial = useMemo(() => searchParamsToSpoolState(searchParams), []);
-  const [filters, setFilters] = useState<SpoolFilters>(initial.filters);
-  const [sort, setSort] = useState<SpoolSort>(initial.sort);
-  const [view, setView] = useState<SpoolView>(initial.view);
-  const isMobile = useMediaQuery("(max-width: 48em)") ?? false;
+  const [filters, setFilters] = useState<SpoolFilters>(
+    () => searchParamsToSpoolState(searchParams).filters,
+  );
+  const [sort, setSort] = useState<SpoolSort>(
+    () => searchParamsToSpoolState(searchParams).sort,
+  );
+  const [view, setView] = useState<SpoolView>(
+    () => searchParamsToSpoolState(searchParams).view,
+  );
+  const isMobile = useIsMobile();
   const effectiveView: SpoolView = isMobile ? "list" : view;
 
   // Mirror filter/sort/view into the URL so back-navigation from a spool
-  // detail page restores the user's view, and URLs are shareable.
+  // detail page restores the user's view, and URLs are shareable. Debounced so
+  // each keystroke in search doesn't trigger a Router re-render.
+  const [debouncedFilters] = useDebouncedValue(filters, 250);
   useEffect(() => {
-    setSearchParams(spoolStateToSearchParams(filters, sort, view), {
+    setSearchParams(spoolStateToSearchParams(debouncedFilters, sort, view), {
       replace: true,
     });
-  }, [filters, sort, view, setSearchParams]);
+  }, [debouncedFilters, sort, view, setSearchParams]);
 
   // Preserve scroll position across detail navigations. Stored in
   // window.history.state.usr (read by React Router as location.state) so it's
@@ -123,7 +109,7 @@ export default function SpoolsPage() {
 
   useLayoutEffect(() => {
     if (hasRestoredScroll.current) return;
-    if (navigationType !== "POP") {
+    if (navigationType !== NavigationType.Pop) {
       hasRestoredScroll.current = true;
       return;
     }
@@ -155,16 +141,18 @@ export default function SpoolsPage() {
     };
     el.addEventListener("scroll", save, { passive: true });
     return () => el.removeEventListener("scroll", save);
-  }, [effectiveView, sorted.length]);
+  }, [effectiveView]);
 
   const sortStatus: DataTableSortStatus<Spool> = {
-    columnAccessor: SORT_FIELD_TO_COLUMN[sort.field] ?? "",
+    columnAccessor: sort.field,
     direction: sort.direction,
   };
 
   const handleSortStatusChange = (status: DataTableSortStatus<Spool>) => {
-    const field = COLUMN_TO_SORT_FIELD[status.columnAccessor as string];
-    if (field) setSort({ field, direction: status.direction });
+    const accessor = status.columnAccessor as string;
+    if (SORT_FIELDS.includes(accessor as SpoolSortField)) {
+      setSort({ field: accessor as SpoolSortField, direction: status.direction });
+    }
   };
 
   if (isLoading) {

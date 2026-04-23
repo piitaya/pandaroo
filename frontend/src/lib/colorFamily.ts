@@ -3,9 +3,11 @@ export type ColorFamily =
   | "orange"
   | "yellow"
   | "green"
+  | "teal"
   | "blue"
   | "purple"
   | "pink"
+  | "beige"
   | "brown"
   | "white"
   | "black"
@@ -16,9 +18,11 @@ export const COLOR_FAMILIES: readonly ColorFamily[] = [
   "orange",
   "yellow",
   "green",
+  "teal",
   "blue",
   "purple",
   "pink",
+  "beige",
   "brown",
   "white",
   "grey",
@@ -31,9 +35,11 @@ export const FAMILY_HEX: Record<ColorFamily, string> = {
   orange: "#FB8C00",
   yellow: "#FDD835",
   green: "#43A047",
+  teal: "#14B8A6",
   blue: "#1E88E5",
   purple: "#8E24AA",
   pink: "#EC407A",
+  beige: "#D2B48C",
   brown: "#795548",
   white: "#FFFFFF",
   grey: "#9E9E9E",
@@ -45,19 +51,27 @@ export function colorFamily(hex: string | null | undefined): ColorFamily | null 
   if (!rgb) return null;
   const { h, s, l } = rgbToHsl(rgb);
 
-  if (s < 0.12) {
+  if (s < 0.1) {
     if (l > 0.85) return "white";
     if (l < 0.15) return "black";
     return "grey";
   }
 
-  // Warm-low-lightness shades look brown to the eye even with some saturation.
-  if (l < 0.35 && (h < 50 || h >= 345)) return "brown";
+  // High-lightness reds read as pink (Hot Pink, Sakura, Cherry), not red.
+  if (l > 0.6 && (h < 15 || h >= 340)) return "pink";
+
+  // Warm high-lightness colors are beige / cream / tan.
+  if (l > 0.7 && h >= 15 && h < 60) return "beige";
+
+  // Low-to-mid lightness warm colors are brown; cap saturation so that
+  // saturated dark reds stay in "red".
+  if (l < 0.45 && (h < 45 || h >= 340) && s < 0.7) return "brown";
 
   if (h < 15 || h >= 345) return "red";
   if (h < 45) return "orange";
   if (h < 65) return "yellow";
   if (h < 170) return "green";
+  if (h < 185) return "teal";
   if (h < 250) return "blue";
   if (h < 290) return "purple";
   return "pink";

@@ -6,7 +6,6 @@ import {
   Title,
   Tooltip,
 } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import { useTranslation } from "react-i18next";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
@@ -14,6 +13,7 @@ import {
   IconCylinder,
   IconSettings,
 } from "@tabler/icons-react";
+import { useIsMobile } from "../lib/breakpoints";
 import { ErrorBoundary } from "./ErrorBoundary";
 import BottomBar, { BOTTOM_BAR_HEIGHT, type NavItem } from "./BottomBar";
 
@@ -22,7 +22,7 @@ const HEADER_HEIGHT = 56;
 export default function Layout() {
   const location = useLocation();
   const { t } = useTranslation();
-  const isMobile = useMediaQuery("(max-width: 48em)") ?? false;
+  const isMobile = useIsMobile();
 
   const primaryLinks: NavItem[] = [
     { to: "/live", label: t("nav.live"), icon: IconBroadcast },

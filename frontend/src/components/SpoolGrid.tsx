@@ -1,14 +1,9 @@
 import { Badge, Card, Group, Progress, SimpleGrid, Stack, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import type { Spool } from "../api";
+import { formatGrams } from "../lib/format";
 import { remainingGrams } from "./SpoolToolbar";
 import { spoolFillColor } from "./spoolFillColor";
-
-function formatGrams(grams: number | null): string {
-  if (grams == null) return "—";
-  if (grams >= 1000) return `${(grams / 1000).toFixed(2)} kg`;
-  return `${Math.round(grams)} g`;
-}
 
 interface Props {
   spools: readonly Spool[];

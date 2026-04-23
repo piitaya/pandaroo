@@ -12,7 +12,7 @@ import {
   TextInput,
   Tooltip,
 } from "@mantine/core";
-import { useDisclosure, useMediaQuery } from "@mantine/hooks";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconFilter,
   IconLayoutGrid,
@@ -26,6 +26,7 @@ import {
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Spool } from "../api";
+import { useIsMobile } from "../lib/breakpoints";
 import {
   COLOR_FAMILIES,
   FAMILY_HEX,
@@ -154,23 +155,13 @@ export function SpoolFilterPanel({
     value: SpoolFilters[K],
   ) => onFiltersChange({ ...filters, [key]: value });
 
-  const sortFields: SpoolSortField[] = [
-    "last_updated",
-    "last_used",
-    "first_seen",
-    "remain",
-    "remain_grams",
-    "material",
-    "product",
-    "color_name",
-  ];
 
   return (
     <Stack gap="md">
       <Group gap="xs" wrap="nowrap" align="flex-end">
         <Select
           label={t("spools.sort.label")}
-          data={sortFields.map((f) => ({
+          data={SORT_FIELDS.map((f) => ({
             value: f,
             label: t(`spools.sort.${f}`),
           }))}
@@ -295,7 +286,7 @@ export function SpoolToolbar(props: Props) {
     onViewChange,
   } = props;
   const { t } = useTranslation();
-  const isMobile = useMediaQuery("(max-width: 48em)") ?? false;
+  const isMobile = useIsMobile();
   const [opened, { open, close }] = useDisclosure(false);
 
   const facetCount =
@@ -475,7 +466,7 @@ export function spoolStateToSearchParams(
 }
 
 const STOCK_LEVELS: readonly SpoolStockLevel[] = ["all", "low", "full"];
-const SORT_FIELDS: readonly SpoolSortField[] = [
+export const SORT_FIELDS: readonly SpoolSortField[] = [
   "last_updated",
   "last_used",
   "first_seen",
