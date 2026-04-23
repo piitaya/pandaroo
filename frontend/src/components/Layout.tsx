@@ -1,6 +1,6 @@
 import {
   ActionIcon,
-  AppShell,
+  Box,
   Button,
   Group,
   Title,
@@ -16,6 +16,8 @@ import {
 } from "@tabler/icons-react";
 import { ErrorBoundary } from "./ErrorBoundary";
 import BottomBar, { BOTTOM_BAR_HEIGHT, type NavItem } from "./BottomBar";
+
+const HEADER_HEIGHT = 56;
 
 export default function Layout() {
   const location = useLocation();
@@ -39,15 +41,17 @@ export default function Layout() {
       : location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
-    <AppShell
-      padding="md"
-      header={{ height: 56 }}
-      footer={{
-        height: BOTTOM_BAR_HEIGHT,
-        collapsed: !isMobile,
-      }}
-    >
-      <AppShell.Header p="sm">
+    <Box style={{ display: "flex", flexDirection: "column", height: "100dvh" }}>
+      <Box
+        component="header"
+        p="sm"
+        style={{
+          flexShrink: 0,
+          height: HEADER_HEIGHT,
+          borderBottom: "1px solid var(--mantine-color-default-border)",
+          background: "var(--mantine-color-body)",
+        }}
+      >
         <Group h="100%" gap="sm" wrap="nowrap" justify="space-between">
           <Group gap="xl" wrap="nowrap">
             <Title order={4}>Pandaroo</Title>
@@ -81,15 +85,25 @@ export default function Layout() {
             </ActionIcon>
           </Tooltip>
         </Group>
-      </AppShell.Header>
-      <AppShell.Footer>
-        <BottomBar items={mobileLinks} isActive={isActive} />
-      </AppShell.Footer>
-      <AppShell.Main>
+      </Box>
+      <Box component="main" style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
         <ErrorBoundary>
           <Outlet />
         </ErrorBoundary>
-      </AppShell.Main>
-    </AppShell>
+      </Box>
+      {isMobile && (
+        <Box
+          component="footer"
+          style={{
+            flexShrink: 0,
+            height: BOTTOM_BAR_HEIGHT,
+            borderTop: "1px solid var(--mantine-color-default-border)",
+            background: "var(--mantine-color-body)",
+          }}
+        >
+          <BottomBar items={mobileLinks} isActive={isActive} />
+        </Box>
+      )}
+    </Box>
   );
 }

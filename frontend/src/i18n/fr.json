@@ -12,6 +12,8 @@
     "copy": "Copier",
     "copied": "Copié",
     "clear": "Effacer",
+    "yes": "Oui",
+    "no": "Non",
     "left_nozzle": "Buse gauche",
     "right_nozzle": "Buse droite",
     "drag_handle": "Glisser pour réordonner"
@@ -171,7 +173,7 @@
     }
   },
   "spool_detail": {
-    "back": "Retour à l'inventaire",
+    "back": "Retour",
     "location": {
       "not_loaded": "Pas dans un AMS"
     },
@@ -242,6 +244,8 @@
       "search_placeholder": "Rechercher par couleur, produit, matière…",
       "material": "Matière",
       "material_placeholder": "Choisir une matière…",
+      "product": "Produit",
+      "product_placeholder": "Choisir un produit…",
       "color": "Couleur",
       "color_placeholder": "Choisir une couleur…",
       "any": "Tous",
@@ -252,7 +256,8 @@
         "low": "Faible",
         "full": "Pleine"
       },
-      "ams_only": "Uniquement dans l'AMS"
+      "ams_only": "Uniquement dans l'AMS",
+      "weight_unknown": "Uniquement sans poids défini"
     },
     "sort": {
       "label": "Trier par",
@@ -276,7 +281,17 @@
     },
     "view": {
       "table": "Tableau",
+      "list": "Liste",
       "grid": "Grille"
+    },
+    "columns": {
+      "color_name": "Couleur",
+      "product": "Produit",
+      "material": "Matériau",
+      "remaining": "Restant",
+      "in_ams": "AMS",
+      "last_used": "Dernière utilisation",
+      "last_updated": "Dernière mise à jour"
     }
   },
   "color_family": {

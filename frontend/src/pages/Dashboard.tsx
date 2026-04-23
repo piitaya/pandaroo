@@ -11,6 +11,7 @@ import { IconHelp, IconPlus } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { PrinterBlock } from "../components/PrinterBlock";
 import { EmptyStateCard } from "../components/EmptyStateCard";
+import { PageShell } from "../components/PageShell";
 import { StatusLegend } from "../components/StatusLegend";
 import { usePrinters } from "../hooks";
 
@@ -20,12 +21,14 @@ export default function DashboardPage() {
   const [legendOpened, { open: openLegend, close: closeLegend }] =
     useDisclosure(false);
 
-  if (isLoading) return <Loader />;
+  if (isLoading) return <PageShell><Loader /></PageShell>;
   if (isError) {
     return (
-      <Alert color="red" title={t("dashboard.failed_to_load")}>
-        {error instanceof Error ? error.message : String(error)}
-      </Alert>
+      <PageShell>
+        <Alert color="red" title={t("dashboard.failed_to_load")}>
+          {error instanceof Error ? error.message : String(error)}
+        </Alert>
+      </PageShell>
     );
   }
 
@@ -34,7 +37,8 @@ export default function DashboardPage() {
   const hasAnyPrinter = allPrinters.length > 0;
 
   return (
-    <Stack gap="xl">
+    <PageShell>
+      <Stack gap="xl">
       <Group gap="xs" wrap="nowrap">
         <Title order={2}>{t("dashboard.title")}</Title>
         <ActionIcon
@@ -76,7 +80,8 @@ export default function DashboardPage() {
         <PrinterBlock key={p.serial} p={p} />
       ))}
 
-      <StatusLegend opened={legendOpened} onClose={closeLegend} />
-    </Stack>
+        <StatusLegend opened={legendOpened} onClose={closeLegend} />
+      </Stack>
+    </PageShell>
   );
 }

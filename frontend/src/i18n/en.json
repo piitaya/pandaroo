@@ -12,6 +12,8 @@
     "copy": "Copy",
     "copied": "Copied",
     "clear": "Clear",
+    "yes": "Yes",
+    "no": "No",
     "left_nozzle": "Left nozzle",
     "right_nozzle": "Right nozzle",
     "drag_handle": "Drag to reorder"
@@ -171,7 +173,7 @@
     }
   },
   "spool_detail": {
-    "back": "Back to inventory",
+    "back": "Back",
     "location": {
       "not_loaded": "Not currently loaded"
     },
@@ -242,6 +244,8 @@
       "search_placeholder": "Search by color, product, material…",
       "material": "Material",
       "material_placeholder": "Pick a material…",
+      "product": "Product",
+      "product_placeholder": "Pick a product…",
       "color": "Color",
       "color_placeholder": "Pick a color…",
       "any": "Any",
@@ -252,7 +256,8 @@
         "low": "Low",
         "full": "Full"
       },
-      "ams_only": "Only spools in AMS"
+      "ams_only": "Only spools in AMS",
+      "weight_unknown": "Only spools with unknown weight"
     },
     "sort": {
       "label": "Sort by",
@@ -276,7 +281,17 @@
     },
     "view": {
       "table": "Table",
+      "list": "List",
       "grid": "Grid"
+    },
+    "columns": {
+      "color_name": "Color",
+      "product": "Product",
+      "material": "Material",
+      "remaining": "Remaining",
+      "in_ams": "AMS",
+      "last_used": "Last used",
+      "last_updated": "Last updated"
     }
   },
   "color_family": {

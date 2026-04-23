@@ -17,6 +17,7 @@ import {
   IconFilter,
   IconLayoutGrid,
   IconLayoutList,
+  IconList,
   IconSearch,
   IconSortAscending,
   IconSortDescending,
@@ -83,30 +84,44 @@ const DEFAULT_DIRECTION: Record<SpoolSortField, "asc" | "desc"> = {
 export interface SpoolFilters {
   search: string;
   materials: string[];
+  products: string[];
   colorFamilies: ColorFamily[];
   stock: SpoolStockLevel;
   amsOnly: boolean;
+  weightUnknown: boolean;
 }
 
 export const EMPTY_FILTERS: SpoolFilters = {
   search: "",
   materials: [],
+  products: [],
   colorFamilies: [],
   stock: "all",
   amsOnly: false,
+  weightUnknown: false,
 };
 
 function facetsAreActive(f: SpoolFilters): boolean {
   return (
     f.materials.length > 0 ||
+    f.products.length > 0 ||
     f.colorFamilies.length > 0 ||
     f.stock !== "all" ||
-    f.amsOnly
+    f.amsOnly ||
+    f.weightUnknown
   );
 }
 
 function clearFacets(f: SpoolFilters): SpoolFilters {
-  return { ...f, materials: [], colorFamilies: [], stock: "all", amsOnly: false };
+  return {
+    ...f,
+    materials: [],
+    products: [],
+    colorFamilies: [],
+    stock: "all",
+    amsOnly: false,
+    weightUnknown: false,
+  };
 }
 
 interface PanelProps {
@@ -129,7 +144,7 @@ export function SpoolFilterPanel({
   onSortChange,
 }: PanelProps) {
   const { t } = useTranslation();
-  const { materials, colorFamilies: availableFamilies } = useMemo(
+  const { materials, products, colorFamilies: availableFamilies } = useMemo(
     () => deriveOptions(spools),
     [spools],
   );
@@ -200,6 +215,14 @@ export function SpoolFilterPanel({
         options={materials}
         getLabel={(v) => v}
       />
+      <PillPicker<string>
+        label={t("spools.filters.product")}
+        placeholder={t("spools.filters.product_placeholder")}
+        value={filters.products}
+        onChange={(v) => update("products", v)}
+        options={products}
+        getLabel={(v) => v}
+      />
       <PillPicker<ColorFamily>
         label={t("spools.filters.color")}
         placeholder={t("spools.filters.color_placeholder")}
@@ -229,6 +252,11 @@ export function SpoolFilterPanel({
         checked={filters.amsOnly}
         onChange={(e) => update("amsOnly", e.currentTarget.checked)}
       />
+      <Switch
+        label={t("spools.filters.weight_unknown")}
+        checked={filters.weightUnknown}
+        onChange={(e) => update("weightUnknown", e.currentTarget.checked)}
+      />
       {facetsAreActive(filters) && (
         <Button
           variant="subtle"
@@ -243,7 +271,7 @@ export function SpoolFilterPanel({
   );
 }
 
-export type SpoolView = "table" | "grid";
+export type SpoolView = "table" | "grid" | "list";
 
 interface Props extends PanelProps {
   loadedTags: ReadonlySet<string>;
@@ -272,9 +300,11 @@ export function SpoolToolbar(props: Props) {
 
   const facetCount =
     filters.materials.length +
+    filters.products.length +
     filters.colorFamilies.length +
     (filters.stock !== "all" ? 1 : 0) +
-    (filters.amsOnly ? 1 : 0);
+    (filters.amsOnly ? 1 : 0) +
+    (filters.weightUnknown ? 1 : 0);
 
   return (
     <>
@@ -332,6 +362,14 @@ export function SpoolToolbar(props: Props) {
                 ),
               },
               {
+                value: "list",
+                label: (
+                  <Tooltip label={t("spools.view.list")}>
+                    <IconList size={16} />
+                  </Tooltip>
+                ),
+              },
+              {
                 value: "grid",
                 label: (
                   <Tooltip label={t("spools.view.grid")}>
@@ -367,14 +405,17 @@ export function SpoolToolbar(props: Props) {
 
 function deriveOptions(spools: readonly Spool[]) {
   const materials = new Set<string>();
+  const products = new Set<string>();
   const families = new Set<ColorFamily>();
   for (const s of spools) {
     if (s.material) materials.add(s.material);
+    if (s.product) products.add(s.product);
     const fam = colorFamily(s.color_hex);
     if (fam) families.add(fam);
   }
   return {
     materials: [...materials].sort(),
+    products: [...products].sort(),
     colorFamilies: COLOR_FAMILIES.filter((f) => families.has(f)),
   };
 }
@@ -413,6 +454,75 @@ export function applySpoolSort(
   });
 }
 
+export function spoolStateToSearchParams(
+  filters: SpoolFilters,
+  sort: SpoolSort,
+  view: SpoolView,
+): URLSearchParams {
+  const p = new URLSearchParams();
+  if (filters.search) p.set("q", filters.search);
+  if (filters.materials.length) p.set("material", filters.materials.join(","));
+  if (filters.products.length) p.set("product", filters.products.join(","));
+  if (filters.colorFamilies.length) p.set("color", filters.colorFamilies.join(","));
+  if (filters.stock !== "all") p.set("stock", filters.stock);
+  if (filters.amsOnly) p.set("ams", "1");
+  if (filters.weightUnknown) p.set("noweight", "1");
+  if (sort.field !== DEFAULT_SORT.field || sort.direction !== DEFAULT_SORT.direction) {
+    p.set("sort", `${sort.field}:${sort.direction}`);
+  }
+  if (view !== "table") p.set("view", view);
+  return p;
+}
+
+const STOCK_LEVELS: readonly SpoolStockLevel[] = ["all", "low", "full"];
+const SORT_FIELDS: readonly SpoolSortField[] = [
+  "last_updated",
+  "last_used",
+  "first_seen",
+  "remain",
+  "remain_grams",
+  "material",
+  "product",
+  "color_name",
+];
+
+export function searchParamsToSpoolState(params: URLSearchParams): {
+  filters: SpoolFilters;
+  sort: SpoolSort;
+  view: SpoolView;
+} {
+  const stockRaw = params.get("stock");
+  const stock = STOCK_LEVELS.includes(stockRaw as SpoolStockLevel)
+    ? (stockRaw as SpoolStockLevel)
+    : "all";
+  const filters: SpoolFilters = {
+    search: params.get("q") ?? "",
+    materials: params.get("material")?.split(",").filter(Boolean) ?? [],
+    products: params.get("product")?.split(",").filter(Boolean) ?? [],
+    colorFamilies: (params.get("color")?.split(",").filter(Boolean) ?? []).filter(
+      (c): c is ColorFamily => COLOR_FAMILIES.includes(c as ColorFamily),
+    ),
+    stock,
+    amsOnly: params.get("ams") === "1",
+    weightUnknown: params.get("noweight") === "1",
+  };
+  const sortParam = params.get("sort");
+  let sort: SpoolSort = DEFAULT_SORT;
+  if (sortParam) {
+    const [field, direction] = sortParam.split(":");
+    if (
+      SORT_FIELDS.includes(field as SpoolSortField) &&
+      (direction === "asc" || direction === "desc")
+    ) {
+      sort = { field: field as SpoolSortField, direction };
+    }
+  }
+  const viewRaw = params.get("view");
+  const view: SpoolView =
+    viewRaw === "grid" || viewRaw === "list" ? viewRaw : "table";
+  return { filters, sort, view };
+}
+
 export function applySpoolFilters(
   spools: readonly Spool[],
   filters: SpoolFilters,
@@ -431,6 +541,9 @@ export function applySpoolFilters(
     if (filters.materials.length > 0) {
       if (!s.material || !filters.materials.includes(s.material)) continue;
     }
+    if (filters.products.length > 0) {
+      if (!s.product || !filters.products.includes(s.product)) continue;
+    }
     if (filters.colorFamilies.length > 0) {
       const fam = colorFamily(s.color_hex);
       if (!fam || !filters.colorFamilies.includes(fam)) continue;
@@ -444,6 +557,7 @@ export function applySpoolFilters(
         break;
     }
     if (filters.amsOnly && !loadedTags.has(s.tag_id)) continue;
+    if (filters.weightUnknown && s.weight != null) continue;
     out.push(s);
   }
   return out;
