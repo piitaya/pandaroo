@@ -130,13 +130,26 @@ export function PillPicker<T extends string>({
 
   const dropdownOptions = options.map((v) => (
     <Combobox.Option value={v} key={v} active={selected.has(v)}>
-      <Group gap={8} wrap="nowrap">
+      <Group gap={8} wrap="nowrap" align="flex-start">
         <CheckIcon
           size={10}
-          style={{ visibility: selected.has(v) ? "visible" : "hidden" }}
+          style={{
+            visibility: selected.has(v) ? "visible" : "hidden",
+            flexShrink: 0,
+            marginTop: 6,
+          }}
         />
-        {renderAdornment?.(v)}
-        <Text size="sm">{getLabel(v)}</Text>
+        {renderAdornment && (
+          <span style={{ flexShrink: 0, display: "inline-flex" }}>
+            {renderAdornment(v)}
+          </span>
+        )}
+        <Text
+          size="sm"
+          style={{ flex: 1, minWidth: 0, wordBreak: "break-word" }}
+        >
+          {getLabel(v)}
+        </Text>
       </Group>
     </Combobox.Option>
   ));
@@ -186,7 +199,11 @@ export function PillPicker<T extends string>({
         </PillsInput>
       </Combobox.DropdownTarget>
       <Combobox.Dropdown>
-        <Combobox.Options>{dropdownOptions}</Combobox.Options>
+        <Combobox.Options
+          style={{ maxHeight: "min(320px, 50dvh)", overflowY: "auto" }}
+        >
+          {dropdownOptions}
+        </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>
   );

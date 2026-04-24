@@ -1,15 +1,12 @@
 import {
   ActionIcon,
-  Alert,
   Badge,
   Button,
-  CloseButton,
   Drawer,
   Group,
   SegmentedControl,
   Select,
   Stack,
-  Switch,
   Text,
   TextInput,
   Tooltip,
@@ -27,7 +24,7 @@ import {
 } from "@tabler/icons-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { Spool } from "../api";
+import type { CatalogEntry, Spool } from "../api";
 import { useIsMobile } from "../lib/breakpoints";
 import {
   COLOR_FAMILIES,
@@ -39,99 +36,126 @@ import { ColorSwatch } from "./ColorSwatch";
 import { PillPicker } from "./PillPicker";
 import { spoolHexes } from "./spoolLabel";
 
-type SpoolStockLevel = "all" | "low" | "full";
+export interface FilamentOwnership {
+  spools: Spool[];
+  totalRemaining: number | null;
+}
 
-export type SpoolSortField =
-  | "last_updated"
-  | "last_used"
-  | "first_seen"
-  | "remain"
-  | "remain_grams"
+export interface FilamentRow {
+  entry: CatalogEntry;
+  variantIds: string[];
+  ownership: FilamentOwnership | null;
+}
+
+export function aggregateBySku(
+  catalog: readonly CatalogEntry[],
+  spools: readonly Spool[],
+): FilamentRow[] {
+  const spoolsByVariant = new Map<string, Spool[]>();
+  for (const s of spools) {
+    if (!s.variant_id) continue;
+    const arr = spoolsByVariant.get(s.variant_id);
+    if (arr) arr.push(s);
+    else spoolsByVariant.set(s.variant_id, [s]);
+  }
+  const groups = new Map<string, CatalogEntry[]>();
+  for (const e of catalog) {
+    const key = `${e.sku}::${e.product}`;
+    const arr = groups.get(key);
+    if (arr) arr.push(e);
+    else groups.set(key, [e]);
+  }
+  const rows: FilamentRow[] = [];
+  for (const entries of groups.values()) {
+    const entry = entries[0];
+    const variantIds = entries.map((e) => e.id);
+    const owned: Spool[] = [];
+    for (const id of variantIds) {
+      const sp = spoolsByVariant.get(id);
+      if (sp) owned.push(...sp);
+    }
+    let total: number | null = null;
+    for (const s of owned) {
+      if (s.weight != null && s.remain != null) {
+        total = (total ?? 0) + (s.weight * s.remain) / 100;
+      }
+    }
+    const ownership: FilamentOwnership | null =
+      owned.length > 0 ? { spools: owned, totalRemaining: total } : null;
+    rows.push({ entry, variantIds, ownership });
+  }
+  return rows;
+}
+
+type Ownership = "all" | "owned" | "not_owned";
+
+export type FilamentSortField =
   | "material"
   | "product"
-  | "color_name";
+  | "color_name"
+  | "owned"
+  | "remain_grams";
 
-export interface SpoolSort {
-  field: SpoolSortField;
+export interface FilamentSort {
+  field: FilamentSortField;
   direction: "asc" | "desc";
 }
 
-export const DEFAULT_SORT: SpoolSort = { field: "last_updated", direction: "desc" };
+export const DEFAULT_SORT: FilamentSort = { field: "owned", direction: "desc" };
 
-// Sensible defaults per field — newest-first for dates, lowest-first for
-// "remaining" so low-stock rises to the top, alphabetical for text.
-const DEFAULT_DIRECTION: Record<SpoolSortField, "asc" | "desc"> = {
-  last_updated: "desc",
-  last_used: "desc",
-  first_seen: "desc",
-  remain: "asc",
-  remain_grams: "asc",
+const DEFAULT_DIRECTION: Record<FilamentSortField, "asc" | "desc"> = {
   material: "asc",
   product: "asc",
   color_name: "asc",
+  owned: "desc",
+  remain_grams: "desc",
 };
 
-export interface SpoolFilters {
+export interface FilamentFilters {
   search: string;
   materials: string[];
   products: string[];
   colorFamilies: ColorFamily[];
-  variantIds: string[];
-  stock: SpoolStockLevel;
-  amsOnly: boolean;
-  noRemain: boolean;
+  ownership: Ownership;
 }
 
-export const EMPTY_FILTERS: SpoolFilters = {
+export const EMPTY_FILTERS: FilamentFilters = {
   search: "",
   materials: [],
   products: [],
   colorFamilies: [],
-  variantIds: [],
-  stock: "all",
-  amsOnly: false,
-  noRemain: false,
+  ownership: "all",
 };
 
-function facetsAreActive(f: SpoolFilters): boolean {
+function facetsAreActive(f: FilamentFilters): boolean {
   return (
     f.materials.length > 0 ||
     f.products.length > 0 ||
     f.colorFamilies.length > 0 ||
-    f.variantIds.length > 0 ||
-    f.stock !== "all" ||
-    f.amsOnly ||
-    f.noRemain
+    f.ownership !== "all"
   );
 }
 
-function clearFacets(f: SpoolFilters): SpoolFilters {
+function clearFacets(f: FilamentFilters): FilamentFilters {
   return {
     ...f,
     materials: [],
     products: [],
     colorFamilies: [],
-    variantIds: [],
-    stock: "all",
-    amsOnly: false,
-    noRemain: false,
+    ownership: "all",
   };
 }
 
 interface PanelProps {
-  spools: readonly Spool[];
-  filters: SpoolFilters;
-  onFiltersChange: (next: SpoolFilters) => void;
-  sort: SpoolSort;
-  onSortChange: (sort: SpoolSort) => void;
+  catalog: readonly CatalogEntry[];
+  filters: FilamentFilters;
+  onFiltersChange: (next: FilamentFilters) => void;
+  sort: FilamentSort;
+  onSortChange: (sort: FilamentSort) => void;
 }
 
-/**
- * Stacked filter + sort controls. Used in the desktop sidebar
- * and inside the mobile drawer.
- */
-export function SpoolFilterPanel({
-  spools,
+export function FilamentFilterPanel({
+  catalog,
   filters,
   onFiltersChange,
   sort,
@@ -139,13 +163,13 @@ export function SpoolFilterPanel({
 }: PanelProps) {
   const { t } = useTranslation();
   const { materials, products, colorFamilies: availableFamilies } = useMemo(
-    () => deriveOptions(spools, filters.materials),
-    [spools, filters.materials],
+    () => deriveOptions(catalog, filters.materials),
+    [catalog, filters.materials],
   );
 
-  const update = <K extends keyof SpoolFilters>(
+  const update = <K extends keyof FilamentFilters>(
     key: K,
-    value: SpoolFilters[K],
+    value: FilamentFilters[K],
   ) => onFiltersChange({ ...filters, [key]: value });
 
   const changeMaterials = (next: string[]) => {
@@ -154,7 +178,7 @@ export function SpoolFilterPanel({
       return;
     }
     const { products: valid, colorFamilies: validFams } = deriveOptions(
-      spools,
+      catalog,
       next,
     );
     const validProducts = new Set(valid);
@@ -169,38 +193,17 @@ export function SpoolFilterPanel({
 
   return (
     <Stack gap="md">
-      {filters.variantIds.length > 0 && (
-        <Alert
-          color="blue"
-          variant="light"
-          withCloseButton={false}
-          p="xs"
-        >
-          <Group justify="space-between" gap="xs" wrap="nowrap" align="center">
-            <Text size="xs">
-              {t("spools.filters.variant_filter", {
-                ids: filters.variantIds.join(", "),
-              })}
-            </Text>
-            <CloseButton
-              size="sm"
-              aria-label={t("common.clear")}
-              onClick={() => update("variantIds", [])}
-            />
-          </Group>
-        </Alert>
-      )}
       <Group gap="xs" wrap="nowrap" align="flex-end">
         <Select
-          label={t("spools.sort.label")}
+          label={t("filaments.sort.label")}
           data={SORT_FIELDS.map((f) => ({
             value: f,
-            label: t(`spools.sort.${f}`),
+            label: t(`filaments.sort.${f}`),
           }))}
           value={sort.field}
           onChange={(v) => {
             if (!v) return;
-            const field = v as SpoolSortField;
+            const field = v as FilamentSortField;
             onSortChange({ field, direction: DEFAULT_DIRECTION[field] });
           }}
           allowDeselect={false}
@@ -208,7 +211,7 @@ export function SpoolFilterPanel({
         />
         <Tooltip
           label={t(
-            `spools.sort.direction.${sort.direction === "asc" ? "asc" : "desc"}`,
+            `filaments.sort.direction.${sort.direction === "asc" ? "asc" : "desc"}`,
           )}
         >
           <ActionIcon
@@ -220,7 +223,7 @@ export function SpoolFilterPanel({
                 direction: sort.direction === "asc" ? "desc" : "asc",
               })
             }
-            aria-label={t("spools.sort.toggle_direction")}
+            aria-label={t("filaments.sort.toggle_direction")}
           >
             {sort.direction === "asc" ? (
               <IconSortAscending size={16} />
@@ -231,24 +234,24 @@ export function SpoolFilterPanel({
         </Tooltip>
       </Group>
       <PillPicker<string>
-        label={t("spools.filters.material")}
-        placeholder={t("spools.filters.material_placeholder")}
+        label={t("filaments.filters.material")}
+        placeholder={t("filaments.filters.material_placeholder")}
         value={filters.materials}
         onChange={changeMaterials}
         options={materials}
         getLabel={(v) => v}
       />
       <PillPicker<string>
-        label={t("spools.filters.product")}
-        placeholder={t("spools.filters.product_placeholder")}
+        label={t("filaments.filters.product")}
+        placeholder={t("filaments.filters.product_placeholder")}
         value={filters.products}
         onChange={(v) => update("products", v)}
         options={products}
         getLabel={(v) => v}
       />
       <PillPicker<ColorFamily>
-        label={t("spools.filters.color")}
-        placeholder={t("spools.filters.color_placeholder")}
+        label={t("filaments.filters.color")}
+        placeholder={t("filaments.filters.color_placeholder")}
         value={filters.colorFamilies}
         onChange={(v) => update("colorFamilies", v)}
         options={availableFamilies}
@@ -259,29 +262,22 @@ export function SpoolFilterPanel({
       />
       <Stack gap={6}>
         <Text size="sm" fw={500}>
-          {t("spools.filters.stock.label")}
+          {t("filaments.filters.ownership.label")}
         </Text>
         <SegmentedControl
           fullWidth
-          value={filters.stock}
-          onChange={(v) => update("stock", v as SpoolStockLevel)}
+          value={filters.ownership}
+          onChange={(v) => update("ownership", v as Ownership)}
           data={[
-            { value: "all", label: t("spools.filters.stock.all") },
-            { value: "low", label: t("spools.filters.stock.low") },
-            { value: "full", label: t("spools.filters.stock.full") },
+            { value: "all", label: t("filaments.filters.ownership.all") },
+            { value: "owned", label: t("filaments.filters.ownership.owned") },
+            {
+              value: "not_owned",
+              label: t("filaments.filters.ownership.not_owned"),
+            },
           ]}
         />
       </Stack>
-      <Switch
-        label={t("spools.filters.ams_only")}
-        checked={filters.amsOnly}
-        onChange={(e) => update("amsOnly", e.currentTarget.checked)}
-      />
-      <Switch
-        label={t("spools.filters.no_remain")}
-        checked={filters.noRemain}
-        onChange={(e) => update("noRemain", e.currentTarget.checked)}
-      />
       {facetsAreActive(filters) && (
         <Button
           variant="subtle"
@@ -289,29 +285,23 @@ export function SpoolFilterPanel({
           size="xs"
           onClick={() => onFiltersChange(clearFacets(filters))}
         >
-          {t("spools.filters.clear")}
+          {t("filaments.filters.clear")}
         </Button>
       )}
     </Stack>
   );
 }
 
-export type SpoolView = "table" | "grid" | "list";
+export type FilamentView = "table" | "grid" | "list";
 
 interface Props extends PanelProps {
-  loadedTags: ReadonlySet<string>;
-  view: SpoolView;
-  onViewChange: (view: SpoolView) => void;
+  view: FilamentView;
+  onViewChange: (view: FilamentView) => void;
 }
 
-/**
- * Search input + (on mobile) a Filter button that opens a bottom
- * drawer containing the SpoolFilterPanel. On desktop, callers render
- * the panel separately in a sidebar.
- */
-export function SpoolToolbar(props: Props) {
+export function FilamentToolbar(props: Props) {
   const {
-    spools,
+    catalog,
     filters,
     onFiltersChange,
     sort,
@@ -327,17 +317,14 @@ export function SpoolToolbar(props: Props) {
     filters.materials.length +
     filters.products.length +
     filters.colorFamilies.length +
-    (filters.variantIds.length > 0 ? 1 : 0) +
-    (filters.stock !== "all" ? 1 : 0) +
-    (filters.amsOnly ? 1 : 0) +
-    (filters.noRemain ? 1 : 0);
+    (filters.ownership !== "all" ? 1 : 0);
 
   return (
     <>
       <Group gap="xs" wrap="nowrap">
         <TextInput
           leftSection={<IconSearch size={14} />}
-          placeholder={t("spools.filters.search_placeholder")}
+          placeholder={t("filaments.filters.search_placeholder")}
           value={filters.search}
           onChange={(e) =>
             onFiltersChange({ ...filters, search: e.currentTarget.value })
@@ -365,24 +352,24 @@ export function SpoolToolbar(props: Props) {
           >
             {facetCount > 0 ? (
               <Group gap={6} wrap="nowrap">
-                {t("spools.filters.label")}
+                {t("filaments.filters.label")}
                 <Badge size="xs" color="gray" variant="white">
                   {facetCount}
                 </Badge>
               </Group>
             ) : (
-              t("spools.filters.label")
+              t("filaments.filters.label")
             )}
           </Button>
         ) : (
           <SegmentedControl
             value={view}
-            onChange={(v) => onViewChange(v as SpoolView)}
+            onChange={(v) => onViewChange(v as FilamentView)}
             data={[
               {
                 value: "table",
                 label: (
-                  <Tooltip label={t("spools.view.table")}>
+                  <Tooltip label={t("filaments.view.table")}>
                     <IconLayoutList size={16} />
                   </Tooltip>
                 ),
@@ -390,7 +377,7 @@ export function SpoolToolbar(props: Props) {
               {
                 value: "grid",
                 label: (
-                  <Tooltip label={t("spools.view.grid")}>
+                  <Tooltip label={t("filaments.view.grid")}>
                     <IconLayoutGrid size={16} />
                   </Tooltip>
                 ),
@@ -398,7 +385,7 @@ export function SpoolToolbar(props: Props) {
               {
                 value: "list",
                 label: (
-                  <Tooltip label={t("spools.view.list")}>
+                  <Tooltip label={t("filaments.view.list")}>
                     <IconList size={16} />
                   </Tooltip>
                 ),
@@ -414,10 +401,10 @@ export function SpoolToolbar(props: Props) {
           onClose={close}
           position="bottom"
           size="auto"
-          title={t("spools.filters.label")}
+          title={t("filaments.filters.label")}
         >
-          <SpoolFilterPanel
-            spools={spools}
+          <FilamentFilterPanel
+            catalog={catalog}
             filters={filters}
             onFiltersChange={onFiltersChange}
             sort={sort}
@@ -430,7 +417,7 @@ export function SpoolToolbar(props: Props) {
 }
 
 function deriveOptions(
-  spools: readonly Spool[],
+  catalog: readonly CatalogEntry[],
   selectedMaterials: readonly string[] = [],
 ) {
   const materials = new Set<string>();
@@ -438,12 +425,12 @@ function deriveOptions(
   const families = new Set<ColorFamily>();
   const materialFilter = new Set(selectedMaterials);
   const cascadeActive = materialFilter.size > 0;
-  for (const s of spools) {
-    if (s.material) materials.add(s.material);
-    if (cascadeActive && (!s.material || !materialFilter.has(s.material)))
+  for (const e of catalog) {
+    if (e.material) materials.add(e.material);
+    if (cascadeActive && (!e.material || !materialFilter.has(e.material)))
       continue;
-    if (s.product) products.add(s.product);
-    for (const h of spoolHexes(s)) {
+    if (e.product) products.add(e.product);
+    for (const h of spoolHexes(e)) {
       const fam = colorFamily(h);
       if (fam) families.add(fam);
     }
@@ -455,139 +442,143 @@ function deriveOptions(
   };
 }
 
-export function remainingGrams(spool: Spool): number | null {
-  if (spool.weight == null || spool.remain == null) return null;
-  return (spool.weight * spool.remain) / 100;
+function compareValues(
+  a: string | number | null | undefined,
+  b: string | number | null | undefined,
+): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b));
 }
 
-function sortValue(spool: Spool, field: SpoolSortField): string | number | null {
+function primaryValue(
+  row: FilamentRow,
+  field: FilamentSortField,
+): string | number | null {
   switch (field) {
-    case "last_updated": return spool.last_updated;
-    case "last_used": return spool.last_used;
-    case "first_seen": return spool.first_seen;
-    case "remain": return spool.remain;
-    case "remain_grams": return remainingGrams(spool);
-    case "material": return spool.material;
-    case "product": return spool.product;
-    case "color_name": return spool.color_name;
+    case "material":
+      return row.entry.material;
+    case "product":
+      return row.entry.product;
+    case "color_name":
+      return row.entry.color_name;
+    case "owned":
+      return row.ownership ? 1 : 0;
+    case "remain_grams":
+      return row.ownership?.totalRemaining ?? null;
   }
 }
 
-export function applySpoolSort(
-  spools: readonly Spool[],
-  sort: SpoolSort,
-): Spool[] {
+export function applyFilamentSort(
+  rows: readonly FilamentRow[],
+  sort: FilamentSort,
+): FilamentRow[] {
   const dir = sort.direction === "asc" ? 1 : -1;
-  return [...spools].sort((a, b) => {
-    const av = sortValue(a, sort.field);
-    const bv = sortValue(b, sort.field);
-    if (av == null && bv == null) return 0;
-    if (av == null) return 1; // nulls last regardless of direction
-    if (bv == null) return -1;
-    if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
-    return String(av).localeCompare(String(bv)) * dir;
+  return [...rows].sort((a, b) => {
+    const primary =
+      compareValues(primaryValue(a, sort.field), primaryValue(b, sort.field)) *
+      dir;
+    if (primary !== 0) return primary;
+    return (
+      compareValues(a.entry.material, b.entry.material) ||
+      compareValues(a.entry.product, b.entry.product) ||
+      compareValues(a.entry.color_name, b.entry.color_name)
+    );
   });
 }
 
-export function spoolStateToSearchParams(
-  filters: SpoolFilters,
-  sort: SpoolSort,
-  view: SpoolView,
+export function filamentStateToSearchParams(
+  filters: FilamentFilters,
+  sort: FilamentSort,
+  view: FilamentView,
 ): URLSearchParams {
   const p = new URLSearchParams();
   if (filters.search) p.set("q", filters.search);
   if (filters.materials.length) p.set("material", filters.materials.join(","));
   if (filters.products.length) p.set("product", filters.products.join(","));
-  if (filters.colorFamilies.length) p.set("color", filters.colorFamilies.join(","));
-  if (filters.variantIds.length) p.set("variant", filters.variantIds.join(","));
-  if (filters.stock !== "all") p.set("stock", filters.stock);
-  if (filters.amsOnly) p.set("ams", "1");
-  if (filters.noRemain) p.set("noremain", "1");
-  if (sort.field !== DEFAULT_SORT.field || sort.direction !== DEFAULT_SORT.direction) {
+  if (filters.colorFamilies.length)
+    p.set("color", filters.colorFamilies.join(","));
+  if (filters.ownership !== "all") p.set("own", filters.ownership);
+  if (
+    sort.field !== DEFAULT_SORT.field ||
+    sort.direction !== DEFAULT_SORT.direction
+  ) {
     p.set("sort", `${sort.field}:${sort.direction}`);
   }
-  if (view !== "table") p.set("view", view);
+  if (view !== "grid") p.set("view", view);
   return p;
 }
 
-const STOCK_LEVELS: readonly SpoolStockLevel[] = ["all", "low", "full"];
-export const SORT_FIELDS: readonly SpoolSortField[] = [
-  "last_updated",
-  "last_used",
-  "first_seen",
-  "remain",
-  "remain_grams",
+const OWNERSHIP_VALUES: readonly Ownership[] = ["all", "owned", "not_owned"];
+export const SORT_FIELDS: readonly FilamentSortField[] = [
   "material",
   "product",
   "color_name",
+  "owned",
+  "remain_grams",
 ];
 
-export function searchParamsToSpoolState(params: URLSearchParams): {
-  filters: SpoolFilters;
-  sort: SpoolSort;
-  view: SpoolView;
+export function searchParamsToFilamentState(params: URLSearchParams): {
+  filters: FilamentFilters;
+  sort: FilamentSort;
+  view: FilamentView;
 } {
-  const stockRaw = params.get("stock");
-  const stock = STOCK_LEVELS.includes(stockRaw as SpoolStockLevel)
-    ? (stockRaw as SpoolStockLevel)
+  const ownRaw = params.get("own");
+  const ownership = OWNERSHIP_VALUES.includes(ownRaw as Ownership)
+    ? (ownRaw as Ownership)
     : "all";
-  const filters: SpoolFilters = {
+  const filters: FilamentFilters = {
     search: params.get("q") ?? "",
     materials: params.get("material")?.split(",").filter(Boolean) ?? [],
     products: params.get("product")?.split(",").filter(Boolean) ?? [],
     colorFamilies: (params.get("color")?.split(",").filter(Boolean) ?? []).filter(
       (c): c is ColorFamily => COLOR_FAMILIES.includes(c as ColorFamily),
     ),
-    variantIds: params.get("variant")?.split(",").filter(Boolean) ?? [],
-    stock,
-    amsOnly: params.get("ams") === "1",
-    noRemain: params.get("noremain") === "1",
+    ownership,
   };
   const sortParam = params.get("sort");
-  let sort: SpoolSort = DEFAULT_SORT;
+  let sort: FilamentSort = DEFAULT_SORT;
   if (sortParam) {
     const [field, direction] = sortParam.split(":");
     if (
-      SORT_FIELDS.includes(field as SpoolSortField) &&
+      SORT_FIELDS.includes(field as FilamentSortField) &&
       (direction === "asc" || direction === "desc")
     ) {
-      sort = { field: field as SpoolSortField, direction };
+      sort = { field: field as FilamentSortField, direction };
     }
   }
   const viewRaw = params.get("view");
-  const view: SpoolView =
-    viewRaw === "grid" || viewRaw === "list" ? viewRaw : "table";
+  const view: FilamentView =
+    viewRaw === "table" || viewRaw === "list" ? viewRaw : "grid";
   return { filters, sort, view };
 }
 
-export function applySpoolFilters(
-  spools: readonly Spool[],
-  filters: SpoolFilters,
-  loadedTags: ReadonlySet<string>,
-): Spool[] {
+export function applyFilamentFilters(
+  rows: readonly FilamentRow[],
+  filters: FilamentFilters,
+): FilamentRow[] {
   const q = filters.search.trim().toLowerCase();
   const materialSet = new Set(filters.materials);
   const productSet = new Set(filters.products);
   const familySet = new Set(filters.colorFamilies);
-  const variantSet = new Set(filters.variantIds);
-  const out: Spool[] = [];
-  for (const s of spools) {
-    if (variantSet.size > 0 && (!s.variant_id || !variantSet.has(s.variant_id)))
-      continue;
+  const out: FilamentRow[] = [];
+  for (const row of rows) {
+    const e = row.entry;
     if (q) {
-      const hay = [s.color_name, s.product, s.material, s.variant_id]
+      const hay = [e.color_name, e.product, e.material, e.sku, ...row.variantIds]
         .filter((v): v is string => !!v)
         .join(" ")
         .toLowerCase();
       if (!hay.includes(q)) continue;
     }
-    if (materialSet.size > 0 && (!s.material || !materialSet.has(s.material)))
+    if (materialSet.size > 0 && (!e.material || !materialSet.has(e.material)))
       continue;
-    if (productSet.size > 0 && (!s.product || !productSet.has(s.product)))
-      continue;
+    if (productSet.size > 0 && !productSet.has(e.product)) continue;
     if (familySet.size > 0) {
       let matched = false;
-      for (const h of spoolHexes(s)) {
+      for (const h of spoolHexes(e)) {
         const fam = colorFamily(h);
         if (fam && familySet.has(fam)) {
           matched = true;
@@ -596,17 +587,9 @@ export function applySpoolFilters(
       }
       if (!matched) continue;
     }
-    switch (filters.stock) {
-      case "low":
-        if (s.remain == null || s.remain >= 20) continue;
-        break;
-      case "full":
-        if (s.remain == null || s.remain < 95) continue;
-        break;
-    }
-    if (filters.amsOnly && !loadedTags.has(s.tag_id)) continue;
-    if (filters.noRemain && s.remain != null) continue;
-    out.push(s);
+    if (filters.ownership === "owned" && !row.ownership) continue;
+    if (filters.ownership === "not_owned" && row.ownership) continue;
+    out.push(row);
   }
   return out;
 }

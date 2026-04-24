@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-
 import Layout from "./components/Layout";
 import SettingsLayout from "./components/SettingsLayout";
 import Dashboard from "./pages/Dashboard";
+import Filaments from "./pages/Filaments";
 import Printers from "./pages/Printers";
 import Spools from "./pages/Spools";
 import SpoolDetail from "./pages/SpoolDetail";
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="live" element={<Dashboard />} />
           <Route path="inventory" element={<Spools />} />
           <Route path="inventory/:tagId" element={<SpoolDetail />} />
+          <Route path="filaments" element={<Filaments />} />
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<Settings />} />
             <Route path="printers" element={<Printers />} />

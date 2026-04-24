@@ -1,7 +1,8 @@
-import { Badge, Card, Group, Progress, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Badge, Card, Group, Progress, Stack, Text } from "@mantine/core";
 import type { Spool } from "../api";
 import { formatGrams } from "../lib/format";
 import { swatchBackground } from "./ColorSwatch";
+import { ResponsiveCardGrid } from "./ResponsiveCardGrid";
 import { spoolHexes } from "./spoolLabel";
 import { remainingGrams } from "./SpoolToolbar";
 import { spoolFillColor } from "./spoolFillColor";
@@ -13,7 +14,7 @@ interface Props {
 
 export function SpoolGrid({ spools, onOpen }: Props) {
   return (
-    <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="md">
+    <ResponsiveCardGrid>
       {spools.map((spool) => {
         const bandBackground =
           swatchBackground(spoolHexes(spool)) ??
@@ -23,12 +24,13 @@ export function SpoolGrid({ spools, onOpen }: Props) {
           key={spool.tag_id}
           withBorder
           radius="md"
-          padding="sm"
+          padding="xs"
+          h="100%"
           onClick={() => onOpen(spool.tag_id)}
           style={{ cursor: "pointer" }}
         >
           <Card.Section>
-            <div style={{ height: 72, background: bandBackground }} />
+            <div style={{ height: 64, background: bandBackground }} />
           </Card.Section>
           <Stack gap={4} mt="sm">
             <Text size="sm" fw={500} lineClamp={1}>
@@ -56,6 +58,6 @@ export function SpoolGrid({ spools, onOpen }: Props) {
         </Card>
         );
       })}
-    </SimpleGrid>
+    </ResponsiveCardGrid>
   );
 }

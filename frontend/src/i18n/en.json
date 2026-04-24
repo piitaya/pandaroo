@@ -2,6 +2,7 @@
   "nav": {
     "live": "Live",
     "inventory": "Inventory",
+    "filaments": "Filaments",
     "settings": "Settings"
   },
   "common": {
@@ -257,7 +258,8 @@
         "full": "Full"
       },
       "ams_only": "Only spools in AMS",
-      "no_remain": "Only spools with unknown stock"
+      "no_remain": "Only spools with unknown stock",
+      "variant_filter": "Filtered to variants: {{ids}}"
     },
     "sort": {
       "label": "Sort by",
@@ -292,6 +294,60 @@
       "in_ams": "AMS",
       "last_used": "Last used",
       "last_updated": "Last updated"
+    }
+  },
+  "filaments": {
+    "title": "Filaments",
+    "empty": "No filaments in the catalog yet.",
+    "no_match": "No filaments match the current filters.",
+    "failed_to_load": "Failed to load filaments",
+    "filters": {
+      "label": "Filters",
+      "search_placeholder": "Search by color, product, material…",
+      "material": "Material",
+      "material_placeholder": "Pick a material…",
+      "product": "Product",
+      "product_placeholder": "Pick a product…",
+      "color": "Color",
+      "color_placeholder": "Pick a color…",
+      "clear": "Clear",
+      "ownership": {
+        "label": "Ownership",
+        "all": "All",
+        "owned": "Owned",
+        "not_owned": "Not owned"
+      }
+    },
+    "sort": {
+      "label": "Sort by",
+      "toggle_direction": "Toggle sort direction",
+      "material": "Material",
+      "product": "Product",
+      "color_name": "Color",
+      "owned": "Ownership",
+      "remain_grams": "Remaining weight",
+      "direction": {
+        "asc": "Ascending",
+        "desc": "Descending"
+      }
+    },
+    "view": {
+      "table": "Table",
+      "list": "List",
+      "grid": "Grid"
+    },
+    "columns": {
+      "color_name": "Color",
+      "product": "Product",
+      "material": "Material",
+      "sku": "SKU",
+      "owned": "Owned",
+      "remaining": "Remaining"
+    },
+    "ownership": {
+      "n_spools_one": "{{count}} spool",
+      "n_spools_other": "{{count}} spools",
+      "not_owned": "Not owned"
     }
   },
   "color_family": {

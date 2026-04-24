@@ -2,6 +2,7 @@
   "nav": {
     "live": "En direct",
     "inventory": "Inventaire",
+    "filaments": "Filaments",
     "settings": "Paramètres"
   },
   "common": {
@@ -257,7 +258,8 @@
         "full": "Pleine"
       },
       "ams_only": "Uniquement dans l'AMS",
-      "no_remain": "Uniquement sans stock connu"
+      "no_remain": "Uniquement sans stock connu",
+      "variant_filter": "Filtré par variantes : {{ids}}"
     },
     "sort": {
       "label": "Trier par",
@@ -292,6 +294,60 @@
       "in_ams": "AMS",
       "last_used": "Dernière utilisation",
       "last_updated": "Dernière mise à jour"
+    }
+  },
+  "filaments": {
+    "title": "Filaments",
+    "empty": "Aucun filament dans le catalogue.",
+    "no_match": "Aucun filament ne correspond aux filtres.",
+    "failed_to_load": "Échec du chargement des filaments",
+    "filters": {
+      "label": "Filtres",
+      "search_placeholder": "Rechercher par couleur, produit, matière…",
+      "material": "Matière",
+      "material_placeholder": "Choisir une matière…",
+      "product": "Produit",
+      "product_placeholder": "Choisir un produit…",
+      "color": "Couleur",
+      "color_placeholder": "Choisir une couleur…",
+      "clear": "Effacer",
+      "ownership": {
+        "label": "Possession",
+        "all": "Tout",
+        "owned": "Possédé",
+        "not_owned": "Manquant"
+      }
+    },
+    "sort": {
+      "label": "Trier par",
+      "toggle_direction": "Inverser le tri",
+      "material": "Matière",
+      "product": "Produit",
+      "color_name": "Couleur",
+      "owned": "Possession",
+      "remain_grams": "Poids restant",
+      "direction": {
+        "asc": "Croissant",
+        "desc": "Décroissant"
+      }
+    },
+    "view": {
+      "table": "Tableau",
+      "list": "Liste",
+      "grid": "Grille"
+    },
+    "columns": {
+      "color_name": "Couleur",
+      "product": "Produit",
+      "material": "Matière",
+      "sku": "SKU",
+      "owned": "Possédé",
+      "remaining": "Restant"
+    },
+    "ownership": {
+      "n_spools_one": "{{count}} bobine",
+      "n_spools_other": "{{count}} bobines",
+      "not_owned": "Manquant"
     }
   },
   "color_family": {

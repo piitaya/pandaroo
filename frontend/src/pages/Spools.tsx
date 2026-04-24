@@ -8,14 +8,10 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { DataTable, type DataTableSortStatus } from "mantine-datatable";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import {
-  NavigationType,
-  useLocation,
-  useNavigate,
-  useNavigationType,
-  useSearchParams,
-} from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useViewStorage } from "../lib/useViewStorage";
+import { useScrollSaveRestore } from "../lib/useScrollSaveRestore";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { Spool } from "../api";
 import { useLoadedTagIds, useSpools } from "../hooks";
@@ -43,6 +39,9 @@ import {
   type SpoolView,
 } from "../components/SpoolToolbar";
 
+const SPOOL_VIEW_STORAGE_KEY = "pandaroo.spools.view";
+const SPOOL_VIEW_VALUES: readonly SpoolView[] = ["table", "grid", "list"];
+
 function formatDate(value: string | null): string {
   if (!value) return "—";
   const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
@@ -60,8 +59,11 @@ export default function SpoolsPage() {
   const [sort, setSort] = useState<SpoolSort>(
     () => searchParamsToSpoolState(searchParams).sort,
   );
-  const [view, setView] = useState<SpoolView>(
+  const [view, setView] = useViewStorage<SpoolView>(
+    SPOOL_VIEW_STORAGE_KEY,
+    SPOOL_VIEW_VALUES,
     () => searchParamsToSpoolState(searchParams).view,
+    searchParams.has("view"),
   );
   const isMobile = useIsMobile();
   const effectiveView: SpoolView = isMobile ? "list" : view;
@@ -76,43 +78,6 @@ export default function SpoolsPage() {
     });
   }, [debouncedFilters, sort, view, setSearchParams]);
 
-  // Preserve scroll position across detail navigations. Stored in
-  // window.history.state.usr (read by React Router as location.state) so it's
-  // scoped to this specific history entry — no cross-contamination with other
-  // /inventory visits, and persists across reloads.
-  const panelScrollRef = useRef<HTMLDivElement>(null);
-  const tableScrollRef = useRef<HTMLDivElement>(null);
-  const hasRestoredScroll = useRef(false);
-  const navigationType = useNavigationType();
-
-  const openSpool = (tagId: string) => {
-    const el =
-      effectiveView === "table"
-        ? tableScrollRef.current
-        : panelScrollRef.current;
-    if (el) {
-      const current = window.history.state ?? {};
-      window.history.replaceState(
-        { ...current, usr: { ...(current.usr ?? {}), scroll: el.scrollTop } },
-        "",
-      );
-    }
-    navigate(`/inventory/${encodeURIComponent(tagId)}`);
-  };
-
-  // Allow other pages to deep-link a spool by its tag id via navigation state.
-  const location = useLocation();
-  const navigate = useNavigate();
-  useEffect(() => {
-    const state = location.state as { selectTagId?: string } | null;
-    if (state?.selectTagId) {
-      navigate(`/inventory/${encodeURIComponent(state.selectTagId)}`, {
-        replace: true,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const filtered = useMemo(
     () => (spools ? applySpoolFilters(spools, filters, loadedTags) : []),
     [spools, filters, loadedTags],
@@ -123,22 +88,27 @@ export default function SpoolsPage() {
     [filtered, sort],
   );
 
-  useLayoutEffect(() => {
-    if (hasRestoredScroll.current) return;
-    if (navigationType !== NavigationType.Pop) {
-      hasRestoredScroll.current = true;
-      return;
+  const { panelScrollRef, tableScrollRef, saveScroll } = useScrollSaveRestore(
+    effectiveView,
+    sorted.length,
+  );
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const openSpool = (tagId: string) => {
+    saveScroll();
+    navigate(`/inventory/${encodeURIComponent(tagId)}`);
+  };
+
+  useEffect(() => {
+    const state = location.state as { selectTagId?: string } | null;
+    if (state?.selectTagId) {
+      navigate(`/inventory/${encodeURIComponent(state.selectTagId)}`, {
+        replace: true,
+      });
     }
-    if (!sorted.length) return;
-    const el =
-      effectiveView === "table"
-        ? tableScrollRef.current
-        : panelScrollRef.current;
-    if (!el) return;
-    const state = location.state as { scroll?: number } | null;
-    if (typeof state?.scroll === "number") el.scrollTop = state.scroll;
-    hasRestoredScroll.current = true;
-  }, [sorted.length, effectiveView, navigationType, location.state]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sortStatus: DataTableSortStatus<Spool> = {
     columnAccessor: sort.field,

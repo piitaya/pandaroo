@@ -11,6 +11,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import {
   IconBroadcast,
   IconCylinder,
+  IconPalette,
   IconSettings,
 } from "@tabler/icons-react";
 import { useIsMobile } from "../lib/breakpoints";
@@ -27,6 +28,7 @@ export default function Layout() {
   const primaryLinks: NavItem[] = [
     { to: "/live", label: t("nav.live"), icon: IconBroadcast },
     { to: "/inventory", label: t("nav.inventory"), icon: IconCylinder },
+    { to: "/filaments", label: t("nav.filaments"), icon: IconPalette },
   ];
   const settingsLink: NavItem = {
     to: "/settings",
