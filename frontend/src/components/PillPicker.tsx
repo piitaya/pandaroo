@@ -44,10 +44,20 @@ export function PillPicker<T extends string>({
   renderAdornment,
 }: Props<T>) {
   const { t } = useTranslation();
+  const [search, setSearch] = useState("");
   const combobox = useCombobox({
-    onDropdownClose: () => combobox.resetSelectedOption(),
+    onDropdownClose: () => {
+      combobox.resetSelectedOption();
+      setSearch("");
+    },
     onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
   });
+
+  const filteredOptions = search
+    ? options.filter((v) =>
+        getLabel(v).toLowerCase().includes(search.toLowerCase()),
+      )
+    : options;
 
   const selected = new Set(value);
 
@@ -128,7 +138,7 @@ export function PillPicker<T extends string>({
     );
   }
 
-  const dropdownOptions = options.map((v) => (
+  const dropdownOptions = filteredOptions.map((v) => (
     <Combobox.Option value={v} key={v} active={selected.has(v)}>
       <Group gap={8} wrap="nowrap" align="flex-start">
         <CheckIcon
@@ -157,7 +167,10 @@ export function PillPicker<T extends string>({
   return (
     <Combobox
       store={combobox}
-      onOptionSubmit={(val) => toggle(val as T)}
+      onOptionSubmit={(val) => {
+        toggle(val as T);
+        setSearch("");
+      }}
       withinPortal
     >
       <div aria-hidden style={MEASUREMENT_STYLE}>
@@ -177,6 +190,12 @@ export function PillPicker<T extends string>({
             {pills}
             <Combobox.EventsTarget>
               <PillsInput.Field
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.currentTarget.value);
+                  combobox.openDropdown();
+                  combobox.updateSelectedOptionIndex();
+                }}
                 onFocus={() => combobox.openDropdown()}
                 onBlur={() => combobox.closeDropdown()}
                 onKeyDown={(e) => {
@@ -202,7 +221,11 @@ export function PillPicker<T extends string>({
         <Combobox.Options
           style={{ maxHeight: "min(320px, 50dvh)", overflowY: "auto" }}
         >
-          {dropdownOptions}
+          {dropdownOptions.length > 0 ? (
+            dropdownOptions
+          ) : (
+            <Combobox.Empty>{t("common.no_results")}</Combobox.Empty>
+          )}
         </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>

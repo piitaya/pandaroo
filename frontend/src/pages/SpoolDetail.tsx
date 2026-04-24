@@ -315,7 +315,7 @@ export default function SpoolDetailPage() {
         onClose={() => setConfirmRemove(false)}
         onConfirm={() => {
           removeSpool.mutate(spool.tag_id, {
-            onSuccess: () => navigate("/inventory"),
+            onSuccess: () => navigate("/inventory", { replace: true }),
             onSettled: () => setConfirmRemove(false),
           });
         }}
