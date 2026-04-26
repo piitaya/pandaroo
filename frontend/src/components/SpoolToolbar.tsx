@@ -56,7 +56,7 @@ export interface SpoolSort {
   direction: "asc" | "desc";
 }
 
-export const DEFAULT_SORT: SpoolSort = { field: "color_name", direction: "asc" };
+export const DEFAULT_SORT: SpoolSort = { field: "product", direction: "asc" };
 
 export type SpoolGroupBy = "none" | "material" | "product" | "color_family";
 export const SPOOL_GROUP_VALUES: readonly SpoolGroupBy[] = [
@@ -500,19 +500,31 @@ function sortValue(spool: Spool, field: SpoolSortField): string | number | null 
   }
 }
 
+function compareValues(
+  a: string | number | null | undefined,
+  b: string | number | null | undefined,
+): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b));
+}
+
 export function applySpoolSort(
   spools: readonly Spool[],
   sort: SpoolSort,
 ): Spool[] {
   const dir = sort.direction === "asc" ? 1 : -1;
   return [...spools].sort((a, b) => {
-    const av = sortValue(a, sort.field);
-    const bv = sortValue(b, sort.field);
-    if (av == null && bv == null) return 0;
-    if (av == null) return 1; // nulls last regardless of direction
-    if (bv == null) return -1;
-    if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
-    return String(av).localeCompare(String(bv)) * dir;
+    const primary =
+      compareValues(sortValue(a, sort.field), sortValue(b, sort.field)) * dir;
+    if (primary !== 0) return primary;
+    return (
+      compareValues(a.material, b.material) ||
+      compareValues(a.product, b.product) ||
+      compareValues(a.color_name, b.color_name)
+    );
   });
 }
 

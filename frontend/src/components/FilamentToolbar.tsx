@@ -101,7 +101,7 @@ export interface FilamentSort {
   direction: "asc" | "desc";
 }
 
-export const DEFAULT_SORT: FilamentSort = { field: "color_name", direction: "asc" };
+export const DEFAULT_SORT: FilamentSort = { field: "product", direction: "asc" };
 
 export type FilamentGroupBy =
   | "none"
