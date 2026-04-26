@@ -56,7 +56,16 @@ export interface SpoolSort {
   direction: "asc" | "desc";
 }
 
-export const DEFAULT_SORT: SpoolSort = { field: "last_updated", direction: "desc" };
+export const DEFAULT_SORT: SpoolSort = { field: "color_name", direction: "asc" };
+
+export type SpoolGroupBy = "none" | "material" | "product" | "color_family";
+export const SPOOL_GROUP_VALUES: readonly SpoolGroupBy[] = [
+  "none",
+  "material",
+  "product",
+  "color_family",
+];
+export const DEFAULT_GROUP_BY: SpoolGroupBy = "product";
 
 // Sensible defaults per field — newest-first for dates, lowest-first for
 // "remaining" so low-stock rises to the top, alphabetical for text.
@@ -124,6 +133,8 @@ interface PanelProps {
   onFiltersChange: (next: SpoolFilters) => void;
   sort: SpoolSort;
   onSortChange: (sort: SpoolSort) => void;
+  groupBy: SpoolGroupBy;
+  onGroupByChange: (group: SpoolGroupBy) => void;
 }
 
 /**
@@ -136,6 +147,8 @@ export function SpoolFilterPanel({
   onFiltersChange,
   sort,
   onSortChange,
+  groupBy,
+  onGroupByChange,
 }: PanelProps) {
   const { t } = useTranslation();
   const { materials, products, colorFamilies: availableFamilies } = useMemo(
@@ -190,6 +203,16 @@ export function SpoolFilterPanel({
           </Group>
         </Alert>
       )}
+      <Select
+        label={t("common.group_by")}
+        data={SPOOL_GROUP_VALUES.map((v) => ({
+          value: v,
+          label: t(`spools.group.${v}`),
+        }))}
+        value={groupBy}
+        onChange={(v) => v && onGroupByChange(v as SpoolGroupBy)}
+        allowDeselect={false}
+      />
       <Group gap="xs" wrap="nowrap" align="flex-end">
         <Select
           label={t("spools.sort.label")}
@@ -247,8 +270,8 @@ export function SpoolFilterPanel({
         getLabel={(v) => v}
       />
       <PillPicker<ColorFamily>
-        label={t("spools.filters.color")}
-        placeholder={t("spools.filters.color_placeholder")}
+        label={t("spools.filters.color_family")}
+        placeholder={t("spools.filters.color_family_placeholder")}
         value={filters.colorFamilies}
         onChange={(v) => update("colorFamilies", v)}
         options={availableFamilies}
@@ -316,6 +339,8 @@ export function SpoolToolbar(props: Props) {
     onFiltersChange,
     sort,
     onSortChange,
+    groupBy,
+    onGroupByChange,
     view,
     onViewChange,
   } = props;
@@ -422,6 +447,8 @@ export function SpoolToolbar(props: Props) {
             onFiltersChange={onFiltersChange}
             sort={sort}
             onSortChange={onSortChange}
+            groupBy={groupBy}
+            onGroupByChange={onGroupByChange}
           />
         </Drawer>
       )}
@@ -465,8 +492,8 @@ function sortValue(spool: Spool, field: SpoolSortField): string | number | null 
     case "last_updated": return spool.last_updated;
     case "last_used": return spool.last_used;
     case "first_seen": return spool.first_seen;
-    case "remain": return spool.remain;
-    case "remain_grams": return remainingGrams(spool);
+    case "remain": return spool.remain ?? 0;
+    case "remain_grams": return remainingGrams(spool) ?? 0;
     case "material": return spool.material;
     case "product": return spool.product;
     case "color_name": return spool.color_name;
@@ -493,6 +520,7 @@ export function spoolStateToSearchParams(
   filters: SpoolFilters,
   sort: SpoolSort,
   view: SpoolView,
+  groupBy: SpoolGroupBy,
 ): URLSearchParams {
   const p = new URLSearchParams();
   if (filters.search) p.set("q", filters.search);
@@ -507,6 +535,7 @@ export function spoolStateToSearchParams(
     p.set("sort", `${sort.field}:${sort.direction}`);
   }
   if (view !== "table") p.set("view", view);
+  if (groupBy !== DEFAULT_GROUP_BY) p.set("group", groupBy);
   return p;
 }
 
@@ -526,6 +555,7 @@ export function searchParamsToSpoolState(params: URLSearchParams): {
   filters: SpoolFilters;
   sort: SpoolSort;
   view: SpoolView;
+  groupBy: SpoolGroupBy;
 } {
   const stockRaw = params.get("stock");
   const stock = STOCK_LEVELS.includes(stockRaw as SpoolStockLevel)
@@ -557,7 +587,13 @@ export function searchParamsToSpoolState(params: URLSearchParams): {
   const viewRaw = params.get("view");
   const view: SpoolView =
     viewRaw === "grid" || viewRaw === "list" ? viewRaw : "table";
-  return { filters, sort, view };
+  const groupRaw = params.get("group");
+  const groupBy: SpoolGroupBy = SPOOL_GROUP_VALUES.includes(
+    groupRaw as SpoolGroupBy,
+  )
+    ? (groupRaw as SpoolGroupBy)
+    : DEFAULT_GROUP_BY;
+  return { filters, sort, view, groupBy };
 }
 
 export function applySpoolFilters(
@@ -609,4 +645,31 @@ export function applySpoolFilters(
     out.push(s);
   }
   return out;
+}
+
+export function getSpoolGroupKey(spool: Spool, groupBy: SpoolGroupBy): string {
+  switch (groupBy) {
+    case "material":
+      return spool.material ?? "";
+    case "product":
+      return spool.product ?? "";
+    case "color_family": {
+      for (const h of spoolHexes(spool)) {
+        const fam = colorFamily(h);
+        if (fam) return fam;
+      }
+      return "";
+    }
+    case "none":
+      return "";
+  }
+}
+
+export function getSpoolGroupLabel(
+  key: string,
+  groupBy: SpoolGroupBy,
+  t: (k: string) => string,
+): string {
+  if (groupBy === "color_family") return t(`color_family.${key}`);
+  return key;
 }

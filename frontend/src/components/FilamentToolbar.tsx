@@ -101,7 +101,22 @@ export interface FilamentSort {
   direction: "asc" | "desc";
 }
 
-export const DEFAULT_SORT: FilamentSort = { field: "owned", direction: "desc" };
+export const DEFAULT_SORT: FilamentSort = { field: "color_name", direction: "asc" };
+
+export type FilamentGroupBy =
+  | "none"
+  | "material"
+  | "product"
+  | "color_family"
+  | "owned";
+export const FILAMENT_GROUP_VALUES: readonly FilamentGroupBy[] = [
+  "none",
+  "material",
+  "product",
+  "color_family",
+  "owned",
+];
+export const DEFAULT_GROUP_BY: FilamentGroupBy = "product";
 
 const DEFAULT_DIRECTION: Record<FilamentSortField, "asc" | "desc"> = {
   material: "asc",
@@ -152,6 +167,8 @@ interface PanelProps {
   onFiltersChange: (next: FilamentFilters) => void;
   sort: FilamentSort;
   onSortChange: (sort: FilamentSort) => void;
+  groupBy: FilamentGroupBy;
+  onGroupByChange: (group: FilamentGroupBy) => void;
 }
 
 export function FilamentFilterPanel({
@@ -160,6 +177,8 @@ export function FilamentFilterPanel({
   onFiltersChange,
   sort,
   onSortChange,
+  groupBy,
+  onGroupByChange,
 }: PanelProps) {
   const { t } = useTranslation();
   const { materials, products, colorFamilies: availableFamilies } = useMemo(
@@ -193,6 +212,16 @@ export function FilamentFilterPanel({
 
   return (
     <Stack gap="md">
+      <Select
+        label={t("common.group_by")}
+        data={FILAMENT_GROUP_VALUES.map((v) => ({
+          value: v,
+          label: t(`filaments.group.${v}`),
+        }))}
+        value={groupBy}
+        onChange={(v) => v && onGroupByChange(v as FilamentGroupBy)}
+        allowDeselect={false}
+      />
       <Group gap="xs" wrap="nowrap" align="flex-end">
         <Select
           label={t("filaments.sort.label")}
@@ -250,8 +279,8 @@ export function FilamentFilterPanel({
         getLabel={(v) => v}
       />
       <PillPicker<ColorFamily>
-        label={t("filaments.filters.color")}
-        placeholder={t("filaments.filters.color_placeholder")}
+        label={t("filaments.filters.color_family")}
+        placeholder={t("filaments.filters.color_family_placeholder")}
         value={filters.colorFamilies}
         onChange={(v) => update("colorFamilies", v)}
         options={availableFamilies}
@@ -306,6 +335,8 @@ export function FilamentToolbar(props: Props) {
     onFiltersChange,
     sort,
     onSortChange,
+    groupBy,
+    onGroupByChange,
     view,
     onViewChange,
   } = props;
@@ -409,6 +440,8 @@ export function FilamentToolbar(props: Props) {
             onFiltersChange={onFiltersChange}
             sort={sort}
             onSortChange={onSortChange}
+            groupBy={groupBy}
+            onGroupByChange={onGroupByChange}
           />
         </Drawer>
       )}
@@ -467,7 +500,7 @@ function primaryValue(
     case "owned":
       return row.ownership ? 1 : 0;
     case "remain_grams":
-      return row.ownership?.totalRemaining ?? null;
+      return row.ownership?.totalRemaining ?? 0;
   }
 }
 
@@ -493,6 +526,7 @@ export function filamentStateToSearchParams(
   filters: FilamentFilters,
   sort: FilamentSort,
   view: FilamentView,
+  groupBy: FilamentGroupBy,
 ): URLSearchParams {
   const p = new URLSearchParams();
   if (filters.search) p.set("q", filters.search);
@@ -508,6 +542,7 @@ export function filamentStateToSearchParams(
     p.set("sort", `${sort.field}:${sort.direction}`);
   }
   if (view !== "table") p.set("view", view);
+  if (groupBy !== DEFAULT_GROUP_BY) p.set("group", groupBy);
   return p;
 }
 
@@ -524,6 +559,7 @@ export function searchParamsToFilamentState(params: URLSearchParams): {
   filters: FilamentFilters;
   sort: FilamentSort;
   view: FilamentView;
+  groupBy: FilamentGroupBy;
 } {
   const ownRaw = params.get("own");
   const ownership = OWNERSHIP_VALUES.includes(ownRaw as Ownership)
@@ -552,7 +588,13 @@ export function searchParamsToFilamentState(params: URLSearchParams): {
   const viewRaw = params.get("view");
   const view: FilamentView =
     viewRaw === "grid" || viewRaw === "list" ? viewRaw : "table";
-  return { filters, sort, view };
+  const groupRaw = params.get("group");
+  const groupBy: FilamentGroupBy = FILAMENT_GROUP_VALUES.includes(
+    groupRaw as FilamentGroupBy,
+  )
+    ? (groupRaw as FilamentGroupBy)
+    : DEFAULT_GROUP_BY;
+  return { filters, sort, view, groupBy };
 }
 
 export function applyFilamentFilters(
@@ -592,4 +634,37 @@ export function applyFilamentFilters(
     out.push(row);
   }
   return out;
+}
+
+export function getFilamentGroupKey(
+  row: FilamentRow,
+  groupBy: FilamentGroupBy,
+): string {
+  switch (groupBy) {
+    case "material":
+      return row.entry.material ?? "";
+    case "product":
+      return row.entry.product;
+    case "color_family": {
+      for (const h of spoolHexes(row.entry)) {
+        const fam = colorFamily(h);
+        if (fam) return fam;
+      }
+      return "";
+    }
+    case "owned":
+      return row.ownership ? "owned" : "not_owned";
+    case "none":
+      return "";
+  }
+}
+
+export function getFilamentGroupLabel(
+  key: string,
+  groupBy: FilamentGroupBy,
+  t: (k: string) => string,
+): string {
+  if (groupBy === "color_family") return t(`color_family.${key}`);
+  if (groupBy === "owned") return t(`filaments.ownership.${key}`);
+  return key;
 }

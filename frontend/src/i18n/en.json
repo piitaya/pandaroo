@@ -14,6 +14,7 @@
     "copied": "Copied",
     "clear": "Clear",
     "no_results": "No results",
+    "group_by": "Group by",
     "yes": "Yes",
     "no": "No",
     "left_nozzle": "Left nozzle",
@@ -248,8 +249,8 @@
       "material_placeholder": "Pick a material…",
       "product": "Product",
       "product_placeholder": "Pick a product…",
-      "color": "Color",
-      "color_placeholder": "Pick a color…",
+      "color_family": "Color family",
+      "color_family_placeholder": "Pick a color family…",
       "any": "Any",
       "clear": "Clear",
       "stock": {
@@ -272,7 +273,7 @@
       "remain_grams": "Remaining weight",
       "material": "Material",
       "product": "Product",
-      "color_name": "Color",
+      "color_name": "Name",
       "direction": {
         "asc": "Ascending",
         "desc": "Descending"
@@ -287,8 +288,14 @@
       "list": "List",
       "grid": "Grid"
     },
+    "group": {
+      "none": "No grouping",
+      "material": "Material",
+      "product": "Product",
+      "color_family": "Color family"
+    },
     "columns": {
-      "color_name": "Color",
+      "color_name": "Name",
       "product": "Product",
       "material": "Material",
       "remaining": "Remaining",
@@ -309,8 +316,8 @@
       "material_placeholder": "Pick a material…",
       "product": "Product",
       "product_placeholder": "Pick a product…",
-      "color": "Color",
-      "color_placeholder": "Pick a color…",
+      "color_family": "Color family",
+      "color_family_placeholder": "Pick a color family…",
       "clear": "Clear",
       "ownership": {
         "label": "Ownership",
@@ -324,7 +331,7 @@
       "toggle_direction": "Toggle sort direction",
       "material": "Material",
       "product": "Product",
-      "color_name": "Color",
+      "color_name": "Name",
       "owned": "Ownership",
       "remain_grams": "Remaining weight",
       "direction": {
@@ -337,8 +344,15 @@
       "list": "List",
       "grid": "Grid"
     },
+    "group": {
+      "none": "No grouping",
+      "material": "Material",
+      "product": "Product",
+      "color_family": "Color family",
+      "owned": "Ownership"
+    },
     "columns": {
-      "color_name": "Color",
+      "color_name": "Name",
       "product": "Product",
       "material": "Material",
       "sku": "SKU",

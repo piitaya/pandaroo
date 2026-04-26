@@ -14,6 +14,7 @@
     "copied": "Copié",
     "clear": "Effacer",
     "no_results": "Aucun résultat",
+    "group_by": "Grouper par",
     "yes": "Oui",
     "no": "Non",
     "left_nozzle": "Buse gauche",
@@ -248,8 +249,8 @@
       "material_placeholder": "Choisir une matière…",
       "product": "Produit",
       "product_placeholder": "Choisir un produit…",
-      "color": "Couleur",
-      "color_placeholder": "Choisir une couleur…",
+      "color_family": "Famille de couleur",
+      "color_family_placeholder": "Choisir une famille de couleur…",
       "any": "Tous",
       "clear": "Effacer",
       "stock": {
@@ -272,7 +273,7 @@
       "remain_grams": "Poids restant",
       "material": "Matière",
       "product": "Produit",
-      "color_name": "Couleur",
+      "color_name": "Nom",
       "direction": {
         "asc": "Ascendant",
         "desc": "Descendant"
@@ -287,8 +288,14 @@
       "list": "Liste",
       "grid": "Grille"
     },
+    "group": {
+      "none": "Aucun groupe",
+      "material": "Matière",
+      "product": "Produit",
+      "color_family": "Famille de couleur"
+    },
     "columns": {
-      "color_name": "Couleur",
+      "color_name": "Nom",
       "product": "Produit",
       "material": "Matériau",
       "remaining": "Restant",
@@ -309,8 +316,8 @@
       "material_placeholder": "Choisir une matière…",
       "product": "Produit",
       "product_placeholder": "Choisir un produit…",
-      "color": "Couleur",
-      "color_placeholder": "Choisir une couleur…",
+      "color_family": "Famille de couleur",
+      "color_family_placeholder": "Choisir une famille de couleur…",
       "clear": "Effacer",
       "ownership": {
         "label": "Possession",
@@ -324,7 +331,7 @@
       "toggle_direction": "Inverser le tri",
       "material": "Matière",
       "product": "Produit",
-      "color_name": "Couleur",
+      "color_name": "Nom",
       "owned": "Possession",
       "remain_grams": "Poids restant",
       "direction": {
@@ -337,8 +344,15 @@
       "list": "Liste",
       "grid": "Grille"
     },
+    "group": {
+      "none": "Aucun groupe",
+      "material": "Matière",
+      "product": "Produit",
+      "color_family": "Famille de couleur",
+      "owned": "Possession"
+    },
     "columns": {
-      "color_name": "Couleur",
+      "color_name": "Nom",
       "product": "Produit",
       "material": "Matière",
       "sku": "SKU",

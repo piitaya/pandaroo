@@ -16,6 +16,14 @@ import { useFilamentCatalogEntries, useSpools } from "../hooks";
 import { useIsMobile } from "../lib/breakpoints";
 import { useScrollSaveRestore } from "../lib/useScrollSaveRestore";
 import { useViewStorage } from "../lib/useViewStorage";
+import { groupRows, type RowGroup } from "../lib/groupRows";
+import {
+  buildTableRecords,
+  dataCell,
+  isGroupHeaderRow,
+  makeGroupRowFactory,
+  type WithGroupHeader,
+} from "../lib/groupedTableRecords";
 import { formatGrams } from "../lib/format";
 import { ColorSwatch } from "../components/ColorSwatch";
 import { EmptyStateCard } from "../components/EmptyStateCard";
@@ -28,11 +36,14 @@ import {
   applyFilamentFilters,
   applyFilamentSort,
   filamentStateToSearchParams,
+  getFilamentGroupKey,
+  getFilamentGroupLabel,
   searchParamsToFilamentState,
   SORT_FIELDS,
   FilamentFilterPanel,
   FilamentToolbar,
   type FilamentFilters,
+  type FilamentGroupBy,
   type FilamentRow,
   type FilamentSort,
   type FilamentSortField,
@@ -59,16 +70,20 @@ export default function FilamentsPage() {
     () => searchParamsToFilamentState(searchParams).view,
     searchParams.has("view"),
   );
+  const [groupBy, setGroupBy] = useState<FilamentGroupBy>(
+    () => searchParamsToFilamentState(searchParams).groupBy,
+  );
   const isMobile = useIsMobile();
   const effectiveView: FilamentView = isMobile ? "list" : view;
   const navigate = useNavigate();
 
   const [debouncedFilters] = useDebouncedValue(filters, 250);
   useEffect(() => {
-    setSearchParams(filamentStateToSearchParams(debouncedFilters, sort, view), {
-      replace: true,
-    });
-  }, [debouncedFilters, sort, view, setSearchParams]);
+    setSearchParams(
+      filamentStateToSearchParams(debouncedFilters, sort, view, groupBy),
+      { replace: true },
+    );
+  }, [debouncedFilters, sort, view, groupBy, setSearchParams]);
 
   const rows = useMemo<FilamentRow[]>(
     () => aggregateBySku(catalog ?? [], spools ?? []),
@@ -83,6 +98,19 @@ export default function FilamentsPage() {
     [filtered, sort],
   );
 
+  const groups = useMemo<RowGroup<FilamentRow>[]>(() => {
+    if (groupBy === "none") {
+      return [{ key: "", label: "", rows: sorted }];
+    }
+    return groupRows(
+      sorted,
+      (r) => getFilamentGroupKey(r, groupBy),
+      (k) => getFilamentGroupLabel(k, groupBy, t),
+    );
+  }, [sorted, groupBy, t]);
+
+  const tableRecords = useMemo(() => buildTableRecords(groups), [groups]);
+
   const { panelScrollRef, tableScrollRef, saveScroll } = useScrollSaveRestore(
     effectiveView,
     sorted.length,
@@ -95,12 +123,14 @@ export default function FilamentsPage() {
     navigate(`/inventory?${params.toString()}`);
   };
 
-  const sortStatus: DataTableSortStatus<FilamentRow> = {
+  const sortStatus: DataTableSortStatus<WithGroupHeader<FilamentRow>> = {
     columnAccessor: sort.field,
     direction: sort.direction,
   };
 
-  const handleSortStatusChange = (status: DataTableSortStatus<FilamentRow>) => {
+  const handleSortStatusChange = (
+    status: DataTableSortStatus<WithGroupHeader<FilamentRow>>,
+  ) => {
     const accessor = status.columnAccessor as string;
     if (SORT_FIELDS.includes(accessor as FilamentSortField)) {
       setSort({ field: accessor as FilamentSortField, direction: status.direction });
@@ -147,6 +177,8 @@ export default function FilamentsPage() {
           onFiltersChange={setFilters}
           sort={sort}
           onSortChange={setSort}
+          groupBy={groupBy}
+          onGroupByChange={setGroupBy}
           view={view}
           onViewChange={setView}
         />
@@ -169,6 +201,8 @@ export default function FilamentsPage() {
             onFiltersChange={setFilters}
             sort={sort}
             onSortChange={setSort}
+            groupBy={groupBy}
+            onGroupByChange={setGroupBy}
           />
         </Box>
         <Box
@@ -188,10 +222,9 @@ export default function FilamentsPage() {
           {sorted.length > 0 && effectiveView === "grid" && (
             <Box
               ref={panelScrollRef}
-              p="md"
               style={{ flex: 1, overflow: "auto" }}
             >
-              <FilamentGrid rows={sorted} onOpen={openFilament} />
+              <FilamentGrid groups={groups} onOpen={openFilament} />
             </Box>
           )}
           {sorted.length > 0 && effectiveView === "list" && (
@@ -199,71 +232,79 @@ export default function FilamentsPage() {
               ref={panelScrollRef}
               style={{ flex: 1, overflow: "auto" }}
             >
-              <FilamentList rows={sorted} onOpen={openFilament} />
+              <FilamentList groups={groups} onOpen={openFilament} />
             </Box>
           )}
           {sorted.length > 0 && effectiveView === "table" && (
-            <DataTable<FilamentRow>
+            <DataTable<WithGroupHeader<FilamentRow>>
               height="100%"
               scrollViewportRef={tableScrollRef}
               withTableBorder={false}
               highlightOnHover
-              records={sorted}
-              idAccessor={(r) => `${r.entry.sku}::${r.entry.product}`}
+              records={tableRecords}
+              idAccessor={(r) =>
+                isGroupHeaderRow(r) ? r.key : `${r.entry.sku}::${r.entry.product}`
+              }
               sortStatus={sortStatus}
               onSortStatusChange={handleSortStatusChange}
-              onRowClick={({ record }) => openFilament(record.variantIds)}
+              onRowClick={({ record }) => {
+                if (isGroupHeaderRow(record)) return;
+                openFilament(record.variantIds);
+              }}
+              rowFactory={makeGroupRowFactory<FilamentRow>(7)}
               columns={[
                 {
                   accessor: "color_hex",
                   title: "",
                   sortable: false,
                   width: 40,
-                  render: ({ entry }) => (
+                  render: dataCell<FilamentRow>(({ entry }) => (
                     <ColorSwatch hexes={spoolHexes(entry)} size={24} round />
-                  ),
+                  )),
                 },
                 {
                   accessor: "color_name",
                   title: t("filaments.columns.color_name"),
                   sortable: true,
-                  render: ({ entry }) => (
+                  render: dataCell<FilamentRow>(({ entry }) => (
                     <Text size="sm" fw={500}>
                       {entry.color_name}
                     </Text>
-                  ),
+                  )),
                 },
                 {
                   accessor: "product",
                   title: t("filaments.columns.product"),
                   sortable: true,
-                  render: ({ entry }: { entry: CatalogEntry }) => (
-                    <Text size="sm">{entry.product}</Text>
+                  render: dataCell<FilamentRow>(
+                    ({ entry }: { entry: CatalogEntry }) => (
+                      <Text size="sm">{entry.product}</Text>
+                    ),
                   ),
                 },
                 {
                   accessor: "material",
                   title: t("filaments.columns.material"),
                   sortable: true,
-                  render: ({ entry }) => (
+                  render: dataCell<FilamentRow>(({ entry }) => (
                     <Text size="sm">{entry.material ?? "—"}</Text>
-                  ),
+                  )),
                 },
                 {
                   accessor: "sku",
                   title: t("filaments.columns.sku"),
                   sortable: false,
-                  render: ({ entry }) => (
+                  render: dataCell<FilamentRow>(({ entry }) => (
                     <Text size="xs" ff="monospace" c="dimmed">
                       {entry.sku}
                     </Text>
-                  ),
+                  )),
                 },
                 {
                   accessor: "owned",
                   title: t("filaments.columns.owned"),
                   sortable: true,
-                  render: ({ ownership }) =>
+                  render: dataCell<FilamentRow>(({ ownership }) =>
                     ownership ? (
                       <Badge size="sm" variant="light" color="green">
                         {t("filaments.ownership.n_spools", {
@@ -275,13 +316,14 @@ export default function FilamentsPage() {
                         {t("filaments.ownership.not_owned")}
                       </Text>
                     ),
+                  ),
                 },
                 {
                   accessor: "remain_grams",
                   title: t("filaments.columns.remaining"),
                   sortable: true,
                   width: 120,
-                  render: ({ ownership }) => (
+                  render: dataCell<FilamentRow>(({ ownership }) => (
                     <Group justify="flex-end" gap="xs">
                       <Text size="xs">
                         {ownership && ownership.totalRemaining != null
@@ -289,7 +331,7 @@ export default function FilamentsPage() {
                           : "—"}
                       </Text>
                     </Group>
-                  ),
+                  )),
                 },
               ]}
             />
