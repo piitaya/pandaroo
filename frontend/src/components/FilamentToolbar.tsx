@@ -507,7 +507,7 @@ export function filamentStateToSearchParams(
   ) {
     p.set("sort", `${sort.field}:${sort.direction}`);
   }
-  if (view !== "grid") p.set("view", view);
+  if (view !== "table") p.set("view", view);
   return p;
 }
 
@@ -551,7 +551,7 @@ export function searchParamsToFilamentState(params: URLSearchParams): {
   }
   const viewRaw = params.get("view");
   const view: FilamentView =
-    viewRaw === "table" || viewRaw === "list" ? viewRaw : "grid";
+    viewRaw === "grid" || viewRaw === "list" ? viewRaw : "table";
   return { filters, sort, view };
 }
 
