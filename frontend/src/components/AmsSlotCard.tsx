@@ -41,12 +41,12 @@ function SlotFill({
         size="sm"
       />
       <Group justify="space-between" gap={4} wrap="nowrap">
-        <Text size="xs" c="dimmed">
+        <Text size="xs" c="dimmed" truncate style={{ flex: 1, minWidth: 0 }}>
           {totalGrams != null && remainingGrams != null
             ? `${remainingGrams} g / ${totalGrams} g`
             : "— g / — g"}
         </Text>
-        <Text size="xs" c="dimmed">
+        <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
           {clamped != null ? `${clamped}%` : "—%"}
         </Text>
       </Group>
@@ -87,9 +87,8 @@ export function AmsSlotCard({ s }: { s: AmsSlot }) {
     <>
       <Card
         withBorder
-        shadow="sm"
         radius="md"
-        padding="md"
+        padding={8}
         onClick={isActionable ? open : undefined}
         onKeyDown={
           isActionable
@@ -104,22 +103,33 @@ export function AmsSlotCard({ s }: { s: AmsSlot }) {
         role={isActionable ? "button" : undefined}
         tabIndex={isActionable ? 0 : undefined}
         aria-label={isActionable ? t("slot.details_aria_label") : undefined}
-        style={{ cursor: isActionable ? "pointer" : undefined }}
+        style={{
+          cursor: isActionable ? "pointer" : undefined,
+          opacity: isEmpty ? 0.55 : undefined,
+          borderStyle: isEmpty ? "dashed" : undefined,
+        }}
       >
-        <Group justify="space-between" mb="xs" wrap="nowrap">
-          <Text fw={500}>{t("slot.label", { n: s.slot_id + 1 })}</Text>
-          <Badge color={status.color} variant="light">
+        <Group justify="space-between" mb={6} wrap="nowrap" gap={4}>
+          <Text size="xs" fw={500} c="dimmed" truncate style={{ minWidth: 0 }}>
+            {t("slot.label", { n: s.slot_id + 1 })}
+          </Text>
+          <Badge
+            size="xs"
+            color={status.color}
+            variant="light"
+            style={{ flexShrink: 0 }}
+          >
             {status.label}
           </Badge>
         </Group>
-        <Stack gap="sm">
-          <Group gap="sm" align="flex-start" wrap="nowrap">
+        <Stack gap={6}>
+          <Group gap="xs" align="flex-start" wrap="nowrap">
             <ColorSwatch
               hexes={isEmpty || isUnknownSpool || !sp ? [] : spoolHexes(sp)}
-              size={36}
+              size={28}
               round
             />
-            <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+            <Stack gap={0} style={{ minWidth: 0, flex: 1 }}>
               <Text
                 size="sm"
                 fw={500}

@@ -19,6 +19,8 @@
     "no": "Non",
     "left_nozzle": "Buse gauche",
     "right_nozzle": "Buse droite",
+    "left_nozzle_short": "G",
+    "right_nozzle_short": "D",
     "drag_handle": "Glisser pour réordonner"
   },
   "dashboard": {
