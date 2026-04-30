@@ -90,6 +90,31 @@ describe("parseAmsReport", () => {
     ]);
   });
 
+  it("preserves nozzle_id from previous units when partial updates omit the info field", () => {
+    const initialPayload = {
+      print: {
+        ams: {
+          ams: [{ id: 0, info: "11002103", tray: [{ id: 0 }] }],
+        },
+      },
+    };
+    const initial = parseAmsReport("AC12", initialPayload);
+    expect(initial[0]?.nozzle_id).toBe(1);
+
+    // Bambu sends partial updates without the `info` field — should keep
+    // the nozzle_id we learned from the initial pushall.
+    const partialPayload = {
+      print: {
+        ams: {
+          ams: [{ id: 0, tray: [{ id: 0, remain: 50 }] }],
+        },
+      },
+    };
+    const updated = parseAmsReport("AC12", partialPayload, initial);
+    expect(updated[0]?.nozzle_id).toBe(1);
+    expect(updated[0]?.slots[0]?.nozzle_id).toBe(1);
+  });
+
   it("decodes nozzle_id from the AMS info hex field on an H2C-shaped payload", () => {
     const payload = {
       print: {

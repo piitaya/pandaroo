@@ -19,6 +19,8 @@
     "no": "No",
     "left_nozzle": "Left nozzle",
     "right_nozzle": "Right nozzle",
+    "left_nozzle_short": "L",
+    "right_nozzle_short": "R",
     "drag_handle": "Drag to reorder"
   },
   "dashboard": {

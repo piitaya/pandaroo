@@ -53,16 +53,23 @@ function parseHexBits(value: unknown): number | null {
 export function parseAmsReport(
   printerSerial: string,
   payload: unknown,
+  previousUnits: ReadonlyArray<ParsedAmsUnit> = [],
 ): ParsedAmsUnit[] {
   const amsPayload = (payload as any)?.print?.ams;
   const trayExistBits = parseHexBits(amsPayload?.tray_exist_bits);
   const amsList = amsPayload?.ams;
   if (!Array.isArray(amsList)) return [];
 
+  const previousNozzle = new Map<number, number | null>();
+  for (const u of previousUnits) previousNozzle.set(u.id, u.nozzle_id);
+
   const units: ParsedAmsUnit[] = [];
   for (const ams of amsList) {
     const amsId = Number(ams?.id ?? 0);
-    const nozzleId = decodeNozzleId(ams?.info);
+    const decoded = decodeNozzleId(ams?.info);
+    // Bambu sends partial AMS updates without `info`; fall back to the last
+    // known nozzle id so the value doesn't flicker to null between pushalls.
+    const nozzleId = decoded ?? previousNozzle.get(amsId) ?? null;
     const trays: unknown[] = Array.isArray(ams?.tray) ? ams.tray : [];
     const slots = trays.map((tray) => {
       const t = tray as Record<string, unknown> | null;

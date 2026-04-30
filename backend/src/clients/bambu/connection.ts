@@ -106,7 +106,7 @@ export function connect(printer: PrinterConfig, bus: AppEventBus, log: FastifyBa
       return;
     }
     if (!Array.isArray((payload as any)?.print?.ams?.ams)) return;
-    const parsed = parseAmsReport(printer.serial, payload);
+    const parsed = parseAmsReport(printer.serial, payload, amsUnits);
     amsUnits.length = 0;
     amsUnits.push(...parsed);
 
