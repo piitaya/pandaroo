@@ -41,7 +41,18 @@ export function AmsBlock({
 }) {
   const header = (
     <Group gap="xs" align="center" justify="space-between" wrap="nowrap">
-      <Title order={5} c="dimmed" tt="uppercase" fz="xs" style={{ minWidth: 0 }} truncate>
+      <Title
+        order={5}
+        c="dimmed"
+        tt="uppercase"
+        fz="xs"
+        style={{
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
         {amsLabel(ams.id)}
       </Title>
       {showNozzle && <NozzleBadge nozzleId={ams.nozzle_id} />}
