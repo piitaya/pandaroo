@@ -6,6 +6,7 @@ import Filaments from "./pages/Filaments";
 import Printers from "./pages/Printers";
 import Spools from "./pages/Spools";
 import SpoolDetail from "./pages/SpoolDetail";
+import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
 import { useEventStream } from "./hooks";
 
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="inventory" element={<Spools />} />
           <Route path="inventory/:tagId" element={<SpoolDetail />} />
           <Route path="filaments" element={<Filaments />} />
+          <Route path="stats" element={<Stats />} />
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<Settings />} />
             <Route path="printers" element={<Printers />} />

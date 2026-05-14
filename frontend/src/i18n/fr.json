@@ -3,6 +3,7 @@
     "live": "En direct",
     "inventory": "Inventaire",
     "filaments": "Filaments",
+    "stats": "Stats",
     "settings": "Paramètres"
   },
   "common": {
@@ -381,6 +382,22 @@
     "white": "Blanc",
     "grey": "Gris",
     "black": "Noir"
+  },
+  "stats": {
+    "title": "Stats",
+    "failed_to_load": "Impossible de charger les stats",
+    "empty_title": "Aucune bobine suivie pour le moment",
+    "empty_body": "Scannez ou importez des bobines pour voir les répartitions ici.",
+    "no_data": "Aucune donnée",
+    "tiles": {
+      "spools": "Bobines",
+      "remaining": "Poids total",
+      "materials": "Matériaux",
+      "colors": "Couleurs"
+    },
+    "by_material": "Par matériau",
+    "by_color": "Par couleur",
+    "by_product": "Top produits"
   },
   "errors": {
     "generic": "Erreur"
