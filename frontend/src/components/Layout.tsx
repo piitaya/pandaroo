@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
   IconBroadcast,
+  IconChartBar,
   IconCylinder,
   IconPalette,
   IconSettings,
@@ -29,6 +30,7 @@ export default function Layout() {
     { to: "/live", label: t("nav.live"), icon: IconBroadcast },
     { to: "/inventory", label: t("nav.inventory"), icon: IconCylinder },
     { to: "/filaments", label: t("nav.filaments"), icon: IconPalette },
+    { to: "/stats", label: t("nav.stats"), icon: IconChartBar },
   ];
   const settingsLink: NavItem = {
     to: "/settings",

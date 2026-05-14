@@ -3,6 +3,7 @@
     "live": "Live",
     "inventory": "Inventory",
     "filaments": "Filaments",
+    "stats": "Stats",
     "settings": "Settings"
   },
   "common": {
@@ -381,6 +382,22 @@
     "white": "White",
     "grey": "Grey",
     "black": "Black"
+  },
+  "stats": {
+    "title": "Stats",
+    "failed_to_load": "Failed to load stats",
+    "empty_title": "No spools tracked yet",
+    "empty_body": "Scan or import some spools to see distribution charts here.",
+    "no_data": "No data",
+    "tiles": {
+      "spools": "Spools",
+      "remaining": "Total weight",
+      "materials": "Materials",
+      "colors": "Colors"
+    },
+    "by_material": "By material",
+    "by_color": "By color",
+    "by_product": "Top products"
   },
   "errors": {
     "generic": "Error"
